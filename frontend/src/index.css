@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@theme {
+  /* ===== 브랜드 (코랄) ===== */
+  --color-brand: #ff6b6b;
+  --color-brand-light: #ff8787;
+  --color-brand-bg: #fff5f5;
+
+  /* ===== 탭/필터 (코랄 통일) ===== */
+  --color-coral: #ff6b6b;
+  --color-coral-bg: #fff5f5;
+
+  /* ===== 배경 ===== */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8f9fb;
+  --color-bg-tertiary: #f1f3f5;
+  --color-bg-hover: #e9ecef;
+
+  /* ===== 텍스트 ===== */
+  --color-text-primary: #212529;
+  --color-text-secondary: #495057;
+  --color-text-muted: #868e96;
+
+  /* ===== 보더 ===== */
+  --color-border: #dee2e6;
+  --color-border-light: #e9ecef;
+
+  /* ===== 상태 ===== */
+  --color-success: #12b886;
+  --color-success-bg: #e6fcf5;
+  --color-warning: #f59f00;
+  --color-warning-bg: #fff9db;
+  --color-danger: #fa5252;
+  --color-danger-bg: #fff5f5;
+  --color-info: #339af0;
+  --color-info-bg: #e7f5ff;
+
+  /* ===== 에이전트 컬러 ===== */
+  --color-agent-cto: #4263eb;
+  --color-agent-cto-bg: #edf2ff;
+  --color-agent-planning: #ae3ec9;
+  --color-agent-planning-bg: #f8f0fc;
+  --color-agent-design: #e64980;
+  --color-agent-design-bg: #fff0f6;
+  --color-agent-frontend: #0ca678;
+  --color-agent-frontend-bg: #e6fcf5;
+  --color-agent-backend: #e67700;
+  --color-agent-backend-bg: #fff4e6;
+  --color-agent-qa: #f76707;
+  --color-agent-qa-bg: #fff4e6;
+
+  /* ===== 폰트 ===== */
+  --font-sans: 'Noto Sans KR', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ===== 글로벌 ===== */
+* { -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+}
+
+/* 스크롤바 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+/* ===== 인트로 애니메이션 ===== */
+@keyframes canvasIn {
+  from { opacity: 0; scale: 0.9; }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes logoIn {
+  from { opacity: 0; transform: translateY(40px) scale(0.8); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes blockBounce1 {
+  0% { opacity:0; transform:translateY(-60px) rotate(15deg) scale(0.3); }
+  60% { opacity:1; transform:translateY(8px) rotate(-8deg) scale(1.1); }
+  80% { transform:translateY(-4px) rotate(-3deg) scale(0.95); }
+  100% { transform:translateY(0) rotate(-5deg) scale(1); }
+}
+@keyframes blockBounce2 {
+  0% { opacity:0; transform:translateY(-60px) rotate(-12deg) scale(0.3); }
+  60% { opacity:1; transform:translateY(8px) rotate(6deg) scale(1.1); }
+  80% { transform:translateY(-4px) rotate(2deg) scale(0.95); }
+  100% { transform:translateY(0) rotate(4deg) scale(1); }
+}
+@keyframes blockBounce3 {
+  0% { opacity:0; transform:translateY(-60px) rotate(18deg) scale(0.3); }
+  60% { opacity:1; transform:translateY(8px) rotate(-5deg) scale(1.1); }
+  80% { transform:translateY(-4px) rotate(-1deg) scale(0.95); }
+  100% { transform:translateY(0) rotate(-3deg) scale(1); }
+}
+@keyframes blockWobble1 {
+  0%,100% { transform:rotate(-5deg) translateY(0); }
+  50% { transform:rotate(3deg) translateY(-7px); }
+}
+@keyframes blockWobble2 {
+  0%,100% { transform:rotate(4deg) translateY(0); }
+  50% { transform:rotate(-3deg) translateY(-5px); }
+}
+@keyframes blockWobble3 {
+  0%,100% { transform:rotate(-3deg) translateY(0); }
+  50% { transform:rotate(5deg) translateY(-8px); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes loadProgress {
+  0% { width: 0; }
+  30% { width: 15%; }
+  60% { width: 45%; }
+  80% { width: 70%; }
+  95% { width: 90%; }
+  100% { width: 100%; }
+}
+@keyframes cloudDrift {
+  0% { transform: translateX(-150px); opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translateX(min(1000px, 92vw)); opacity: 0; }
+}
+
+/* ===== 히어로 애니메이션 ===== */
+@keyframes badgeDrop {
+  0%{opacity:0;transform:translateY(-50px) rotate(-10deg) scale(0.5);}
+  60%{opacity:1;transform:translateY(5px) rotate(3deg) scale(1.05);}
+  80%{transform:translateY(-3px) rotate(-1deg) scale(0.98);}
+  100%{opacity:1;transform:translateY(0) rotate(0deg) scale(1);}
+}
+@keyframes badgeWiggle{0%,100%{transform:rotate(0deg);}25%{transform:rotate(-3deg);}75%{transform:rotate(3deg);}}
+@keyframes slideFromLeft{0%{opacity:0;transform:translateX(-80px) rotate(-3deg);}100%{opacity:1;transform:translateX(0) rotate(0deg);}}
+@keyframes bounceUp{0%{opacity:0;transform:translateY(60px) scale(0.8);}60%{opacity:1;transform:translateY(-8px) scale(1.03);}80%{transform:translateY(4px) scale(0.99);}100%{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes slideFromRight{0%{opacity:0;transform:translateX(60px);}100%{opacity:1;transform:translateX(0);}}
+@keyframes btnPopUp{0%{opacity:0;transform:translateY(40px) scale(0.7);}60%{opacity:1;transform:translateY(-5px) scale(1.05);}100%{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes gradientShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
+@keyframes inlineEmojiBounce{0%,100%{transform:translateY(0) rotate(0deg);}25%{transform:translateY(-8px) rotate(-8deg);}75%{transform:translateY(-4px) rotate(6deg);}}
+@keyframes arrowBounce{0%,100%{translate:0 0;}50%{translate:3px 3px;}}
+@keyframes iconBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}

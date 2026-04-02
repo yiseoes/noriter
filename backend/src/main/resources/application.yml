@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: noriter
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/noriter?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: noriter
+    password: noriter
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    show-sql: false
+    open-in-view: false
+
+  sql:
+    init:
+      mode: never
+
+server:
+  port: 8080
+
+# 놀이터 커스텀 설정
+noriter:
+  workspace:
+    path: ./workspace
+  claude:
+    model: claude-sonnet-4-6
+    api-key: ${CLAUDE_API_KEY:}  # 환경변수로 내장 키 설정
+  pipeline:
+    timeout: 1800000        # 전체 파이프라인 타임아웃 30분 (ms)
+    stage-timeout: 300000   # 스테이지 타임아웃 5분 (ms)
+    max-debug-attempts: 3   # QA↔디버깅 최대 반복 횟수

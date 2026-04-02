@@ -1,0 +1,13 @@
+package com.noriter.domain.enums;
+
+public enum AuditEventType {
+    PROJECT_CREATED,
+    PROJECT_DELETED,
+    PROJECT_STATUS_CHANGED,
+    STAGE_STARTED,
+    STAGE_COMPLETED,
+    STAGE_FAILED,
+    ARTIFACT_CREATED,
+    USER_ACTION,
+    SETTING_CHANGED
+}

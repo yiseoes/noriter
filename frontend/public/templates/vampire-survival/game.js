@@ -158,7 +158,7 @@ const MAPS={
     ],
     enemies:[],
     npcs:[{x:500,y:720,name:'상점 NPC',icon:'🧙',dialog:'어서와! 뭐가 필요하니?',shop:true}],
-    portals:[{x:1900,y:720,target:'forest',tx:60,ty:0,label:'다크우드 숲 →'}],
+    portals:[{x:1900,y:720,target:'forest',tx:150,ty:0,label:'다크우드 숲 →'}],
     trees:[100,400,700,1000,1300,1600,1850],
     houses:[{x:150,y:660,w:120,h:100},{x:800,y:640,w:140,h:120}],
   },
@@ -174,8 +174,8 @@ const MAPS={
     enemies:['slime','slime','slime','mushroom','mushroom','bat'],
     npcs:[],
     portals:[
-      {x:30,y:820,target:'village',tx:1800,ty:0,label:'← 마을'},
-      {x:2920,y:820,target:'dungeon',tx:60,ty:0,label:'던전 →'},
+      {x:30,y:820,target:'village',tx:1700,ty:0,label:'← 마을'},
+      {x:2920,y:820,target:'dungeon',tx:150,ty:0,label:'드라큘라 성 →'},
     ],
     trees:[150,350,600,900,1200,1500,1800,2100,2400,2700],
     houses:[],
@@ -191,7 +191,7 @@ const MAPS={
     ],
     enemies:['zombie','zombie','vampire','vampire','vampire','dracula'],
     npcs:[],
-    portals:[{x:30,y:820,target:'forest',tx:2850,ty:0,label:'← 숲'}],
+    portals:[{x:30,y:820,target:'forest',tx:2750,ty:0,label:'← 다크우드 숲'}],
     trees:[],
     houses:[],
   }
@@ -820,12 +820,15 @@ window.addEventListener('keydown',e=>{
   // E키: 포탈 이동 + NPC 대화
   if(e.key==='e'||e.key==='E'){
     if(!player||!gameRunning) return;
+    if(player._portalCooldown) return;
     const map=MAPS[currentMap];
-    // 포탈 체크 (넓은 감지 범위, grounded 불필요)
+    // 포탈 체크
     let moved=false;
     map.portals.forEach(p=>{
       if(!moved&&Math.abs(player.x-p.x)<80){
         currentMap=p.target;player.x=p.tx;player.y=0;loadMap();moved=true;
+        player._portalCooldown=true;
+        setTimeout(()=>{player._portalCooldown=false;},500);
       }
     });
     // NPC 체크

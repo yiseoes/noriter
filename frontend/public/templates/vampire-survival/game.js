@@ -252,10 +252,10 @@ let selectedCharImg=null, charSpriteImg=null;
     while(q.length){const[x,y]=q.pop();const pi=y*tw+x;if(x<0||x>=tw||y<0||y>=th||vis[pi])continue;if(!isW(pi*4))continue;vis[pi]=1;td[pi*4+3]=0;q.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);}
     tx.putImageData(tid,0,0);
 
-    // 2단계: 불투명 바운딩 박스 구하기
+    // 2단계: 불투명 바운딩 박스 구하기 (알파 128 이상만 — 노이즈 무시)
     let minX=tw,minY=th,maxX=0,maxY=0;
     for(let y=0;y<th;y++)for(let x=0;x<tw;x++){
-      if(td[(y*tw+x)*4+3]>10){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+      if(td[(y*tw+x)*4+3]>128){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
     }
     const cw=maxX-minX+1,ch=maxY-minY+1;
 

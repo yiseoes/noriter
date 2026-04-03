@@ -283,6 +283,43 @@ const ITEMS=[
   {id:'armor1',name:'가죽 갑옷',icon:'🛡️',desc:'방어력 +5',price:120,type:'equip',slot:'armor',def:5},
 ];
 
+// 보스 전용 레어 드롭
+const BOSS_DROPS={
+  dracula:{id:'bloodSword',name:'🩸 블러드 소드',icon:'🩸',desc:'ATK+40, 흡혈 강화',type:'equip',slot:'weapon',atk:40,rare:true},
+  reaper:{id:'deathRobe',name:'🌑 데스 로브',icon:'🌑',desc:'DEF+15, MP+30',type:'equip',slot:'armor',def:15,rare:true,effect:p=>{p.maxMp+=30;p.mp+=30;}},
+  firedragon:{id:'flameSword',name:'🔥 화염 검',icon:'🔥',desc:'ATK+60, 불꽃 공격',type:'equip',slot:'weapon',atk:60,rare:true},
+  iceking:{id:'iceArmor',name:'❄️ 얼음 갑옷',icon:'❄️',desc:'DEF+25, HP+50',type:'equip',slot:'armor',def:25,rare:true,effect:p=>{p.maxHp+=50;p.hp+=50;}},
+};
+
+// 업적 시스템
+const ACHIEVEMENTS=[
+  {id:'first_kill',name:'첫 사냥',desc:'첫 번째 몬스터 처치',icon:'🗡️',check:()=>kills>=1},
+  {id:'kill_50',name:'헌터',desc:'몬스터 50마리 처치',icon:'⚔️',check:()=>kills>=50},
+  {id:'kill_200',name:'학살자',desc:'몬스터 200마리 처치',icon:'💀',check:()=>kills>=200},
+  {id:'level_5',name:'성장하는 자',desc:'Lv.5 달성',icon:'⭐',check:()=>player&&player.level>=5},
+  {id:'level_10',name:'강해진 자',desc:'Lv.10 달성',icon:'🌟',check:()=>player&&player.level>=10},
+  {id:'level_20',name:'전설의 용사',desc:'Lv.20 달성',icon:'👑',check:()=>player&&player.level>=20},
+  {id:'boss_dracula',name:'드라큘라 슬레이어',desc:'드라큘라 처치',icon:'🧛',check:()=>bossKills.dracula>0},
+  {id:'boss_reaper',name:'사신을 이긴 자',desc:'사신 처치',icon:'💀',check:()=>bossKills.reaper>0},
+  {id:'boss_dragon',name:'용 사냥꾼',desc:'화염용 처치',icon:'🐉',check:()=>bossKills.firedragon>0},
+  {id:'boss_iceking',name:'겨울의 끝',desc:'얼음왕 처치',icon:'❄️',check:()=>bossKills.iceking>0},
+  {id:'boss_all',name:'🏆 올클리어',desc:'모든 보스 처치',icon:'🏆',check:()=>Object.values(bossKills).every(v=>v>0)},
+  {id:'gold_500',name:'부자',desc:'골드 500 달성',icon:'💰',check:()=>gold>=500},
+  {id:'gold_2000',name:'거부',desc:'골드 2000 달성',icon:'💎',check:()=>gold>=2000},
+];
+let bossKills={dracula:0,reaper:0,firedragon:0,iceking:0};
+let unlockedAchievements=new Set();
+let achievementNotice=null;
+
+function checkAchievements(){
+  ACHIEVEMENTS.forEach(a=>{
+    if(!unlockedAchievements.has(a.id)&&a.check()){
+      unlockedAchievements.add(a.id);
+      achievementNotice={text:`${a.icon} ${a.name}`,sub:a.desc,timer:120};
+    }
+  });
+}
+
 // ===== 게임 상태 =====
 let player,camera={x:0,y:0},currentMap,enemies=[],drops=[],particles=[],dmgTexts=[];
 let gameRunning=false,gold=0;
@@ -433,12 +470,24 @@ function useSkill(){
 }
 
 function killEnemy(e){
-  e.dead=true;player.xp+=e.xp;gold+=e.gold;
-  // 아이템 드롭
-  if(Math.random()<0.25){
-    const item=ITEMS[Math.floor(Math.random()*3)]; // 소비 아이템만 드롭
+  e.dead=true;player.xp+=e.xp;
+  gold+=Math.floor(e.gold*(player._goldMult||1));
+  kills++;
+  // 보스 처치 기록
+  if(e.boss&&bossKills[e.type]!==undefined) bossKills[e.type]++;
+  // 보스 레어 드롭
+  if(e.boss&&BOSS_DROPS[e.type]){
+    const rare=BOSS_DROPS[e.type];
+    drops.push({type:'item',x:e.x,y:e.y,vy:-4,item:{...rare},life:600,size:14});
+    achievementNotice={text:`🎉 레어 아이템!`,sub:rare.name+' 드롭!',timer:100};
+  }
+  // 일반 아이템 드롭
+  else if(Math.random()<0.25){
+    const item=ITEMS[Math.floor(Math.random()*3)];
     drops.push({type:'item',x:e.x,y:e.y,vy:-3,item:{...item},life:400,size:10});
   }
+  // 업적 체크
+  checkAchievements();
   spawnP(e.x+e.w/2,e.y+e.h/2,e.color,12);
   // 경험치 체크
   if(player.xp>=player.xpToNext) levelUp();
@@ -852,6 +901,21 @@ function render(){
   document.getElementById('mapName').textContent=MAPS[currentMap].name;
   document.getElementById('goldText').textContent=`💰 ${gold}`;
 
+  // 업적/레어 알림
+  if(achievementNotice&&achievementNotice.timer>0){
+    achievementNotice.timer--;
+    const a=Math.min(1,achievementNotice.timer/20);
+    ctx.globalAlpha=a;
+    ctx.fillStyle='rgba(0,0,0,0.7)';
+    roundRect(canvas.width/2-130,60,260,50,10);ctx.fill();
+    ctx.fillStyle='#ffd43b';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+    ctx.fillText(achievementNotice.text,canvas.width/2,82);
+    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='12px sans-serif';
+    ctx.fillText(achievementNotice.sub,canvas.width/2,100);
+    ctx.globalAlpha=1;
+    if(achievementNotice.timer<=0) achievementNotice=null;
+  }
+
   // 미니맵
   renderMinimap();
 }
@@ -887,7 +951,7 @@ function addToInventory(item){
 function useItem(idx){
   const item=inventory[idx];if(!item)return;
   if(item.type==='consumable'){item.effect(player);item.qty--;if(item.qty<=0)inventory.splice(idx,1);}
-  else if(item.type==='equip'){equipped[item.slot]=item;inventory.splice(idx,1);}
+  else if(item.type==='equip'){equipped[item.slot]=item;if(item.effect)item.effect(player);inventory.splice(idx,1);}
   renderInventory();
 }
 

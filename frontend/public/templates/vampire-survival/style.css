@@ -48,6 +48,8 @@ canvas { display:block; }
 .char-card .char-label { font-size:11px; color:rgba(255,255,255,0.5); }
 .char-step h3 { font-size:14px; color:rgba(255,255,255,0.6); margin-bottom:12px; }
 .char-step.hidden { display:none; }
+.step-header { display:flex; justify-content:space-between; align-items:center; width:100%; max-width:520px; margin-bottom:16px; }
+.step-title { font-size:14px; color:rgba(255,255,255,0.4); margin:0; }
 .back-btn { background:none; border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.5); padding:6px 14px;
   border-radius:8px; font-size:12px; cursor:pointer; transition:all 0.2s; }
 .back-btn:hover { border-color:rgba(255,255,255,0.5); color:white; }

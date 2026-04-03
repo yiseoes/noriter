@@ -28,9 +28,17 @@
   <!-- 미니맵 -->
   <div id="minimap"></div>
 
-  <!-- 캐릭터 생성 -->
-  <div id="charSelect">
+  <!-- 시작 화면 -->
+  <div id="startScreen">
     <h1>🧛 뱀파이어 서바이벌</h1>
+    <p>뱀파이어 몬스터를 때려잡고 레벨업하세요!</p>
+    <button onclick="document.getElementById('startScreen').classList.add('hidden');document.getElementById('charSelect').classList.remove('hidden');">🎮 게임 시작</button>
+    <p class="hint">← → 이동 · ↑/Space 점프 · Z 공격 · X 스킬 · E 포탈/NPC · I 인벤토리 · S 상태창</p>
+  </div>
+
+  <!-- 캐릭터 생성 -->
+  <div id="charSelect" class="hidden">
+    <h1>🧛 캐릭터 선택</h1>
 
     <!-- 1단계: 캐릭터 선택 -->
     <div id="step1" class="char-step">
@@ -42,21 +50,25 @@
     <div id="step2" class="char-step hidden">
       <p>직업을 선택하세요</p>
       <div id="charOptions2">
-        <div class="char-btn" onclick="selectChar('warrior')">
+        <div class="char-btn" onclick="pickJob('warrior')">
           <div class="char-name">⚔️ 전사</div>
           <div class="char-desc">높은 HP · 근접 공격 · 강한 방어</div>
           <div class="char-stats">STR 8 · DEX 3 · INT 2 · HP 150</div>
         </div>
-        <div class="char-btn" onclick="selectChar('mage')">
+        <div class="char-btn" onclick="pickJob('mage')">
           <div class="char-name">🔮 마법사</div>
           <div class="char-desc">높은 MP · 원거리 마법 · 광역기</div>
           <div class="char-stats">STR 2 · DEX 3 · INT 8 · HP 80</div>
         </div>
-        <div class="char-btn" onclick="selectChar('archer')">
+        <div class="char-btn" onclick="pickJob('archer')">
           <div class="char-name">🏹 궁수</div>
           <div class="char-desc">높은 DEX · 원거리 · 크리티컬</div>
           <div class="char-stats">STR 3 · DEX 8 · INT 2 · HP 100</div>
         </div>
+      </div>
+      <div id="step3" class="char-step hidden" style="margin-top:20px;text-align:center">
+        <p id="selectedInfo"></p>
+        <button onclick="confirmAndStart()">🎮 게임 시작</button>
       </div>
     </div>
 

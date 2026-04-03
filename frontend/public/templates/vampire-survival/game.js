@@ -361,6 +361,21 @@ let selectedCharImg=null, charSpriteImg=null;
   });
 })();
 
+let selectedJob=null;
+function pickJob(type){
+  selectedJob=type;
+  const names={warrior:'⚔️ 전사',mage:'🔮 마법사',archer:'🏹 궁수'};
+  document.getElementById('selectedInfo').textContent=names[type]+' 선택됨!';
+  document.getElementById('step3').classList.remove('hidden');
+  // 직업 버튼 하이라이트
+  document.querySelectorAll('#charOptions2 .char-btn').forEach(b=>b.style.borderColor='rgba(255,255,255,0.1)');
+  event.currentTarget.style.borderColor='#ff6b6b';
+}
+function confirmAndStart(){
+  if(!selectedJob) return;
+  selectChar(selectedJob);
+}
+
 function selectChar(type){
   const stats={
     warrior:{str:8,dex:3,int_:2,hp:150,mp:30,atkRange:55,atkType:'melee'},

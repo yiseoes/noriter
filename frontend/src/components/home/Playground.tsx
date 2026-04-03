@@ -14,9 +14,9 @@ const genreConfig: Record<string, { emoji: string; color: string; gradient: stri
 };
 
 const TEMPLATES = [
-  { id: 'tpl_vampire', name: '뱀파이어 서바이벌', desc: '사방에서 몰려오는 몬스터를 처치하는 서바이벌 액션', genre: 'ACTION', url: '/templates/vampire-survival/', emoji: '🧛' },
-  { id: 'tpl_tetris', name: '테트리스', desc: '블록을 회전하고 쌓아 줄을 완성하는 클래식 퍼즐', genre: 'PUZZLE', url: '/templates/tetris/', emoji: '🧱' },
-  { id: 'tpl_shooter', name: '스페이스 슈터', desc: '우주를 지켜라! 끝없는 적들을 물리치는 슈팅 게임', genre: 'SHOOTING', url: '/templates/space-shooter/', emoji: '🚀' },
+  { id: 'tpl_vampire', name: '뱀파이어 서바이벌', desc: '사방에서 몰려오는 몬스터를 처치하는 서바이벌 액션', genre: 'ACTION', url: '/templates/vampire-survival/index.html', emoji: '🧛' },
+  { id: 'tpl_tetris', name: '테트리스', desc: '블록을 회전하고 쌓아 줄을 완성하는 클래식 퍼즐', genre: 'PUZZLE', url: '/templates/tetris/index.html', emoji: '🧱' },
+  { id: 'tpl_shooter', name: '스페이스 슈터', desc: '우주를 지켜라! 끝없는 적들을 물리치는 슈팅 게임', genre: 'SHOOTING', url: '/templates/space-shooter/index.html', emoji: '🚀' },
 ];
 
 interface PlaygroundProps {
@@ -92,9 +92,9 @@ export default function Playground({ onCreateGame, onSelectProject, projects }: 
                 onPlay={() => {
                   // 데모 프로젝트면 장르별 템플릿 게임, 실제면 백엔드 미리보기
                   const templateMap: Record<string, string> = {
-                    ACTION: '/templates/vampire-survival/',
-                    PUZZLE: '/templates/tetris/',
-                    SHOOTING: '/templates/space-shooter/',
+                    ACTION: '/templates/vampire-survival/index.html',
+                    PUZZLE: '/templates/tetris/index.html',
+                    SHOOTING: '/templates/space-shooter/index.html',
                   };
                   const url = project.demo && templateMap[project.genre]
                     ? templateMap[project.genre]

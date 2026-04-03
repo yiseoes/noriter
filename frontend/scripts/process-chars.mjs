@@ -19,9 +19,9 @@ for (const name of files) {
       .raw()
       .toBuffer({ resolveWithObject: true });
 
-    // 흰색 픽셀 → 투명 (flood fill 시뮬레이션: 가장자리에서 시작)
+    // 흰색 픽셀 → 투명 (flood fill: 가장자리에서 시작)
     const w = info.width, h = info.height, ch = info.channels;
-    const isWhite = (i) => data[i] >= 245 && data[i+1] >= 245 && data[i+2] >= 245;
+    const isWhite = (i) => data[i] >= 240 && data[i+1] >= 240 && data[i+2] >= 240;
     const visited = new Uint8Array(w * h);
     const queue = [];
 
@@ -45,6 +45,31 @@ for (const name of files) {
       visited[pi] = 1;
       data[idx + 3] = 0; // 투명
       queue.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);
+    }
+
+    // 1.5. 작은 불투명 클러스터 제거 (노이즈 점)
+    const clusterVisited = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const pi = y * w + x;
+        if (clusterVisited[pi] || data[pi * ch + 3] === 0) continue;
+        // BFS로 연결된 불투명 픽셀 클러스터 찾기
+        const cluster = [];
+        const bfs = [[x, y]];
+        while (bfs.length) {
+          const [cx, cy] = bfs.pop();
+          const cpi = cy * w + cx;
+          if (cx < 0 || cx >= w || cy < 0 || cy >= h || clusterVisited[cpi]) continue;
+          if (data[cpi * ch + 3] === 0) continue;
+          clusterVisited[cpi] = 1;
+          cluster.push(cpi);
+          bfs.push([cx-1,cy],[cx+1,cy],[cx,cy-1],[cx,cy+1]);
+        }
+        // 50픽셀 미만 클러스터 → 노이즈로 제거
+        if (cluster.length < 50) {
+          for (const cpi of cluster) data[cpi * ch + 3] = 0;
+        }
+      }
     }
 
     // 2. 투명 처리된 버퍼로 이미지 생성 + trim + 리사이즈

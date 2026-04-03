@@ -8,64 +8,105 @@ const keys={};
 window.addEventListener('keydown',e=>{keys[e.key]=true;if([' ','ArrowUp','ArrowDown','i','s'].includes(e.key))e.preventDefault();});
 window.addEventListener('keyup',e=>keys[e.key]=false);
 
-// ===== 캐릭터 도트 스프라이트 =====
+// ===== 메이플 스타일 2등신 캐릭터 =====
+const SKIN='#ffe0bd',SKIN_S='#f5c69a',BLUSH='#ffb3b3';
 const SPRITES={
   warrior:{
-    hair:'#c92a2a',shirt:'#868e96',pants:'#495057',shoe:'#343a40',weapon:'⚔️',
-    dots:[
-      [0,0,'H','H','H','H',0,0,0],
-      [0,'H','H','H','H','H','H',0,0],
-      [0,'H','H','H','H','H','H',0,0],
-      [0,'S','S','S','S','S','S',0,0],
-      [0,'S','W','K','S','W','K','S',0],
-      [0,'S','S','S','R','S','S','S',0],
-      [0,0,'S','S','S','S','S',0,0],
-      [0,'C','C','C','C','C','C','C',0],
-      ['C','C','C','C','C','C','C','C','C'],
-      ['S','C','C','C','C','C','C','C','S'],
-      [0,0,'P','P',0,'P','P',0,0],
-      [0,0,'P','P',0,'P','P',0,0],
-      [0,'B','B',0,0,0,'B','B',0],
-    ]
+    hair:'#c92a2a',hairDk:'#a01e1e',shirt:'#4a6fa5',shirtDk:'#365380',pants:'#495057',pantsDk:'#343a40',shoe:'#5c3a1e',
+    // 2등신: 큰 머리(10행) + 작은 몸(8행) = 18행 x 12열, dot=2px
+    stand:[
+      [0,0,0,0,'H','H','H','H',0,0,0,0],
+      [0,0,'H','H','H','H','H','H','H','H',0,0],
+      [0,'H','H','H','H','H','H','H','H','H','H',0],
+      [0,'H','H','H','H','H','H','H','H','H','H',0],
+      [0,'h','h','S','S','S','S','S','S','h','h',0],
+      [0,'S','S','W','w','K','S','W','w','K','S',0],
+      [0,'S','S','S','S','S','S','S','S','S','S',0],
+      [0,0,'S','S','S','R','R','S','S','S',0,0],
+      [0,0,'S','S','S','m','S','S','S',0,0,0],
+      [0,0,0,'S','S','S','S','S',0,0,0,0],
+      [0,0,0,0,'C','C','C','C',0,0,0,0],
+      [0,0,0,'C','C','C','C','C','C',0,0,0],
+      [0,0,'s','C','C','C','C','C','C','s',0,0],
+      [0,0,'S','C','C','C','C','C','C','S',0,0],
+      [0,0,0,0,'P','P',0,'P','P',0,0,0],
+      [0,0,0,0,'P','P',0,'P','P',0,0,0],
+      [0,0,0,'P','P','P',0,'P','P','P',0,0],
+      [0,0,0,'B','B',0,0,0,'B','B',0,0],
+    ],
+    walk:[
+      [0,0,0,0,'H','H','H','H',0,0,0,0],
+      [0,0,'H','H','H','H','H','H','H','H',0,0],
+      [0,'H','H','H','H','H','H','H','H','H','H',0],
+      [0,'H','H','H','H','H','H','H','H','H','H',0],
+      [0,'h','h','S','S','S','S','S','S','h','h',0],
+      [0,'S','S','W','w','K','S','W','w','K','S',0],
+      [0,'S','S','S','S','S','S','S','S','S','S',0],
+      [0,0,'S','S','S','R','R','S','S','S',0,0],
+      [0,0,'S','S','S','m','S','S','S',0,0,0],
+      [0,0,0,'S','S','S','S','S',0,0,0,0],
+      [0,0,0,0,'C','C','C','C',0,0,0,0],
+      [0,0,0,'C','C','C','C','C','C',0,0,0],
+      [0,0,'s','C','C','C','C','C','C','s',0,0],
+      [0,0,'S','C','C','C','C','C','C','S',0,0],
+      [0,0,0,'P','P',0,0,0,'P','P',0,0],
+      [0,0,'P','P',0,0,0,0,0,'P','P',0],
+      [0,0,'B','B',0,0,0,0,0,0,'B',0],
+      [0,0,0,0,0,0,0,0,0,'B','B',0],
+    ],
   },
   mage:{
-    hair:'#7048e8',shirt:'#5f3dc4',pants:'#4c6ef5',shoe:'#364fc7',weapon:'🔮',
-    dots:[
-      [0,'Y',0,'H','H','H',0,0,0],
-      [0,'Y','H','H','H','H','H',0,0],
-      [0,0,'H','H','H','H','H',0,0],
-      [0,'S','S','S','S','S','S',0,0],
-      [0,'S','W','K','S','W','K','S',0],
-      [0,'S','S','S','R','S','S','S',0],
-      [0,0,'S','S','S','S','S',0,0],
-      [0,'C','C','C','C','C','C','C',0],
-      ['C','C','C','C','C','C','C','C','C'],
-      ['C','C','C','C','C','C','C','C','C'],
-      [0,'C','P','P','C','P','P','C',0],
-      [0,0,'P','P',0,'P','P',0,0],
-      [0,'B','B',0,0,0,'B','B',0],
-    ]
+    hair:'#7048e8',hairDk:'#5832c4',shirt:'#845ef7',shirtDk:'#6741d9',pants:'#5c7cfa',pantsDk:'#4263eb',shoe:'#364fc7',
+    stand:[
+      [0,0,0,'Y','H','H','H','H','Y',0,0,0],
+      [0,0,'H','H','H','H','H','H','H','H',0,0],
+      [0,'H','H','H','H','H','H','H','H','H','H',0],
+      [0,'H','H','H','H','H','H','H','H','H','H',0],
+      [0,'h','h','S','S','S','S','S','S','h','h',0],
+      [0,'S','S','W','w','K','S','W','w','K','S',0],
+      [0,'S','S','S','S','S','S','S','S','S','S',0],
+      [0,0,'S','S','S','R','R','S','S','S',0,0],
+      [0,0,'S','S','S','m','S','S','S',0,0,0],
+      [0,0,0,'S','S','S','S','S',0,0,0,0],
+      [0,0,0,0,'C','C','C','C',0,0,0,0],
+      [0,0,'C','C','C','C','C','C','C','C',0,0],
+      [0,'C','C','C','C','C','C','C','C','C','C',0],
+      [0,'C','C','C','C','C','C','C','C','C','C',0],
+      [0,0,'C','C','P','P',0,'P','P','C',0,0],
+      [0,0,0,0,'P','P',0,'P','P',0,0,0],
+      [0,0,0,0,'P','P',0,'P','P',0,0,0],
+      [0,0,0,'B','B','B',0,'B','B','B',0,0],
+    ],
+    walk:null,
   },
   archer:{
-    hair:'#2b8a3e',shirt:'#5c940d',pants:'#795548',shoe:'#4e342e',weapon:'🏹',
-    dots:[
-      [0,0,'H','H','H','H',0,0,0],
-      [0,'H','H','H','H','H','H',0,0],
-      [0,'H','H','H','H','H','H',0,0],
-      [0,'S','S','S','S','S','S',0,0],
-      [0,'S','W','K','S','W','K','S',0],
-      [0,'S','S','S','R','S','S','S',0],
-      [0,0,'S','S','S','S','S',0,0],
-      [0,'C','C','C','C','C','C',0,0],
-      ['C','C','C','C','C','C','C',0,0],
-      ['S','C','C','C','C','C','S',0,0],
-      [0,0,'P','P',0,'P','P',0,0],
-      [0,0,'P','P',0,'P','P',0,0],
-      [0,'B','B',0,0,0,'B','B',0],
-    ]
+    hair:'#2b8a3e',hairDk:'#1e6b2e',shirt:'#82c91e',shirtDk:'#5c940d',pants:'#795548',pantsDk:'#5d4037',shoe:'#4e342e',
+    stand:[
+      [0,0,0,0,'H','H','H','H',0,0,0,0],
+      [0,0,'H','H','H','H','H','H','H','H',0,0],
+      [0,'H','H','H','H','H','H','H','H','H','H',0],
+      [0,'H','H','H','H','H','H','H','H','H','H',0],
+      [0,'h','h','S','S','S','S','S','S','h','h',0],
+      [0,'S','S','W','w','K','S','W','w','K','S',0],
+      [0,'S','S','S','S','S','S','S','S','S','S',0],
+      [0,0,'S','S','S','R','R','S','S','S',0,0],
+      [0,0,'S','S','S','m','S','S','S',0,0,0],
+      [0,0,0,'S','S','S','S','S',0,0,0,0],
+      [0,0,0,0,'C','C','C','C',0,0,0,0],
+      [0,0,0,'C','C','C','C','C','C',0,0,0],
+      [0,0,0,'C','C','C','C','C','C',0,0,0],
+      [0,0,'s','C','C','C','C','C','C','s',0,0],
+      [0,0,0,0,'P','P',0,'P','P',0,0,0],
+      [0,0,0,0,'P','P',0,'P','P',0,0,0],
+      [0,0,0,'P','P',0,0,0,'P','P',0,0],
+      [0,0,0,'B','B',0,0,0,'B','B',0,0],
+    ],
+    walk:null,
   }
 };
-const SKIN='#ffe8cc',BLUSH='#ffb8b8';
+// 마법사/궁수 walk = stand 복사 (간략화)
+SPRITES.mage.walk=SPRITES.mage.stand;
+SPRITES.archer.walk=SPRITES.archer.stand;
 
 // ===== 맵 데이터 =====
 const MAPS={
@@ -362,10 +403,51 @@ function update(dt){
 
 // ===== 렌더링 =====
 function drawDot(x,y,s,dots,sprite,dir){
-  const colorMap={'H':sprite.hair,'S':SKIN,'C':sprite.shirt,'P':sprite.pants,'B':sprite.shoe,
-    'W':'#fff','K':'#222','R':BLUSH,'Y':'#ffd43b'};
+  const colorMap={
+    'H':sprite.hair,'h':sprite.hairDk||sprite.hair,
+    'S':SKIN,'s':SKIN_S,
+    'C':sprite.shirt,'c':sprite.shirtDk||sprite.shirt,
+    'P':sprite.pants,'p':sprite.pantsDk||sprite.pants,
+    'B':sprite.shoe,
+    'W':'#fff','w':'#aee6ff','K':'#222',
+    'R':BLUSH,'m':SKIN_S,'Y':'#ffd43b',
+  };
   const d=dir<0?dots.map(r=>[...r].reverse()):dots;
-  d.forEach((row,r)=>row.forEach((c,col)=>{if(c&&c!=='0'&&colorMap[c]){ctx.fillStyle=colorMap[c];ctx.fillRect(x+col*s,y+r*s,s,s);}}));
+  d.forEach((row,r)=>row.forEach((c,col)=>{
+    if(c&&c!=='0'&&colorMap[c]){ctx.fillStyle=colorMap[c];ctx.fillRect(x+col*s,y+r*s,s,s);}
+  }));
+}
+
+function drawPlayerFull(px,py){
+  const sp=player.sprite;
+  const s=2; // 도트 크기
+  const isWalking=Math.abs(player.vx)>0.5;
+  const frame=isWalking&&Math.floor(Date.now()/200)%2===0?sp.walk:sp.stand;
+  drawDot(px,py,s,frame,sp,player.facing);
+
+  // 무기 그리기
+  const wx=player.facing>0?px+24:px-10;
+  const wy=py+16;
+  if(player.type==='warrior'){
+    // 검
+    ctx.fillStyle='#adb5bd';ctx.fillRect(wx,wy-12,3,18);
+    ctx.fillStyle='#ffd43b';ctx.fillRect(wx-2,wy+4,7,3);
+    ctx.fillStyle='#862e9c';ctx.fillRect(wx,wy+6,3,5);
+    if(player.attacking){ctx.fillStyle='rgba(255,215,0,0.4)';ctx.beginPath();ctx.arc(wx,wy-6,20,0,Math.PI*2);ctx.fill();}
+  }else if(player.type==='mage'){
+    // 지팡이
+    ctx.fillStyle='#795548';ctx.fillRect(wx+1,wy-14,2,22);
+    ctx.fillStyle='#e040fb';ctx.beginPath();ctx.arc(wx+2,wy-16,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(224,64,251,0.3)';ctx.beginPath();ctx.arc(wx+2,wy-16,7,0,Math.PI*2);ctx.fill();
+    if(player.attacking){ctx.fillStyle='rgba(116,192,252,0.3)';ctx.beginPath();ctx.arc(px+12,py+10,25,0,Math.PI*2);ctx.fill();}
+  }else{
+    // 활
+    ctx.strokeStyle='#795548';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(wx+2,wy-4,10,player.facing>0?-0.8:Math.PI-0.8,player.facing>0?0.8:Math.PI+0.8);ctx.stroke();
+    ctx.strokeStyle='#ddd';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(wx+2+(player.facing>0?-1:1)*Math.cos(0.8)*10,wy-4-Math.sin(0.8)*10);
+    ctx.lineTo(wx+2+(player.facing>0?-1:1)*Math.cos(0.8)*10,wy-4+Math.sin(0.8)*10);ctx.stroke();
+  }
 }
 
 function render(){
@@ -446,12 +528,7 @@ function render(){
 
   // 플레이어
   ctx.globalAlpha=player.invincible>0?0.5:1;
-  drawDot(player.x,player.y,3,player.sprite.dots,player.sprite,player.facing);
-  if(player.attacking){
-    ctx.strokeStyle='rgba(255,215,0,0.6)';ctx.lineWidth=2;
-    const ax=player.x+player.w/2+player.facing*20,ay=player.y+player.h/2;
-    ctx.beginPath();ctx.arc(ax,ay,player.atkRange*0.3,0,Math.PI*2);ctx.stroke();
-  }
+  drawPlayerFull(player.x,player.y);
   ctx.globalAlpha=1;
 
   // 텍스트

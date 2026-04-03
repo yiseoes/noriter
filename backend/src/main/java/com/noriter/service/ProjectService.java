@@ -31,11 +31,19 @@ public class ProjectService {
     private int maxDebugAttempts;
 
     @Transactional
-    public Project createProject(String name, String requirement, Genre genre, boolean demo) {
-        log.info("[프로젝트 생성] 시작 - name={}, genre={}, demo={}, 요구사항 길이={}자",
-                name, genre, demo, requirement.length());
+    public Project createProject(String name, String requirement, Genre genre, boolean demo, String guestId) {
+        log.info("[프로젝트 생성] 시작 - name={}, genre={}, demo={}, guestId={}, 요구사항 길이={}자",
+                name, genre, demo, guestId, requirement.length());
 
-        Project project = Project.create(name, requirement, genre, maxDebugAttempts, demo);
+        // 게스트 1개 제한 (비데모 프로젝트)
+        if (guestId != null && !demo) {
+            long count = projectRepository.countByGuestIdAndDemoFalse(guestId);
+            if (count >= 1) {
+                throw new NoriterException(ErrorCode.GUEST_LIMIT_EXCEEDED);
+            }
+        }
+
+        Project project = Project.create(name, requirement, genre, maxDebugAttempts, demo, guestId);
         projectRepository.save(project);
         log.info("[프로젝트 생성] 프로젝트 저장 완료 - id={}", project.getId());
 
@@ -60,12 +68,14 @@ public class ProjectService {
                 });
     }
 
-    public Page<Project> getProjects(ProjectStatus status, Pageable pageable) {
-        log.debug("[프로젝트 목록] 조회 시작 - status={}, page={}, size={}",
-                status, pageable.getPageNumber(), pageable.getPageSize());
+    public Page<Project> getProjects(ProjectStatus status, Pageable pageable, String guestId) {
+        log.debug("[프로젝트 목록] 조회 시작 - status={}, guestId={}, page={}, size={}",
+                status, guestId, pageable.getPageNumber(), pageable.getPageSize());
 
         Page<Project> result;
-        if (status != null) {
+        if (guestId != null) {
+            result = projectRepository.findByGuestIdOrderByCreatedAtDesc(guestId, pageable);
+        } else if (status != null) {
             result = projectRepository.findByStatus(status, pageable);
         } else {
             result = projectRepository.findAllByOrderByCreatedAtDesc(pageable);

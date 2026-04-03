@@ -72,11 +72,11 @@ class ProjectServiceTest {
     @Test
     @DisplayName("프로젝트 목록을 상태별로 필터링할 수 있다")
     void getProjects_withStatusFilter() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
         Page<Project> page = new PageImpl<>(List.of(project));
         when(projectRepository.findByStatus(eq(ProjectStatus.CREATED), any())).thenReturn(page);
 
-        Page<Project> result = projectService.getProjects(ProjectStatus.CREATED, PageRequest.of(0, 20));
+        Page<Project> result = projectService.getProjects(ProjectStatus.CREATED, PageRequest.of(0, 20), null);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
@@ -84,7 +84,7 @@ class ProjectServiceTest {
     @Test
     @DisplayName("FAILED 상태의 프로젝트를 재시도할 수 있다")
     void retryProject_whenFailed_success() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
         project.updateStatus(ProjectStatus.FAILED);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
@@ -96,7 +96,7 @@ class ProjectServiceTest {
     @Test
     @DisplayName("FAILED가 아닌 프로젝트를 재시도하면 예외가 발생한다")
     void retryProject_whenNotFailed_throwsException() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
         assertThatThrownBy(() -> projectService.retryProject(project.getId(), null))
@@ -108,7 +108,7 @@ class ProjectServiceTest {
     @Test
     @DisplayName("진행 중인 프로젝트는 삭제할 수 없다")
     void deleteProject_whenInProgress_throwsException() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
         project.updateStatus(ProjectStatus.IN_PROGRESS);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
@@ -121,7 +121,7 @@ class ProjectServiceTest {
     @Test
     @DisplayName("COMPLETED가 아닌 프로젝트에 피드백을 보내면 예외가 발생한다")
     void requestFeedback_whenNotCompleted_throwsException() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
         assertThatThrownBy(() -> projectService.requestFeedback(project.getId(), "속도가 너무 빨라요"))
@@ -133,7 +133,7 @@ class ProjectServiceTest {
     @Test
     @DisplayName("IN_PROGRESS 상태의 프로젝트를 중단할 수 있다")
     void cancelProject_whenInProgress_success() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
         project.updateStatus(ProjectStatus.IN_PROGRESS);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 

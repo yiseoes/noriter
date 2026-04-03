@@ -32,7 +32,10 @@ public enum ErrorCode {
 
     // System
     API_KEY_NOT_CONFIGURED("NT-ERR-S001", 503, "API 키가 설정되지 않았습니다. 설정 페이지에서 API 키를 등록해주세요."),
-    INTERNAL_SERVER_ERROR("NT-ERR-S002", 500, "내부 서버 오류가 발생했습니다.");
+    INTERNAL_SERVER_ERROR("NT-ERR-S002", 500, "내부 서버 오류가 발생했습니다."),
+
+    // Guest
+    GUEST_LIMIT_EXCEEDED("NT-ERR-G002", 429, "게스트 모드에서는 1개의 게임만 생성할 수 있습니다. 회원가입하면 더 만들 수 있어요!");
 
     private final String code;
     private final int httpStatus;

@@ -16,9 +16,12 @@ interface CreateGameModalProps {
   onClose: () => void;
   onCreate: (data: { name?: string; genre?: string; requirement: string }) => void;
   isDemo?: boolean;
+  projectCount?: number;
+  onLogin?: () => void;
 }
 
-export default function CreateGameModal({ isOpen, onClose, onCreate, isDemo = false }: CreateGameModalProps) {
+export default function CreateGameModal({ isOpen, onClose, onCreate, isDemo = false, projectCount = 0, onLogin }: CreateGameModalProps) {
+  const guestLimitReached = !isDemo && projectCount >= 1;
   const [name, setName] = useState('');
   const [genre, setGenre] = useState('');
   const [desc, setDesc] = useState('');

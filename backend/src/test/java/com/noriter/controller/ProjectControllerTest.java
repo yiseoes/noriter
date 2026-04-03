@@ -57,9 +57,9 @@ class ProjectControllerTest {
     @Test
     @DisplayName("API-PRJ-001: 게임 생성 요청 성공 시 201을 반환한다")
     void createProject_success_returns201() throws Exception {
-        Project project = Project.create("테스트 게임", "뱀파이어 서바이벌 미니게임 만들어줘", Genre.ACTION, 3, false);
+        Project project = Project.create("테스트 게임", "뱀파이어 서바이벌 미니게임 만들어줘", Genre.ACTION, 3, false, null);
         when(settingsService.isApiKeyConfigured()).thenReturn(true);
-        when(projectService.createProject(anyString(), anyString(), any(), anyBoolean())).thenReturn(project);
+        when(projectService.createProject(anyString(), anyString(), any(), anyBoolean(), any())).thenReturn(project);
 
         CreateProjectRequest request = new CreateProjectRequest("테스트 게임", "뱀파이어 서바이벌 미니게임 만들어줘", "ACTION", false);
 
@@ -100,7 +100,7 @@ class ProjectControllerTest {
     @Test
     @DisplayName("API-PRJ-003: 프로젝트 상세 조회 성공")
     void getProjectDetail_success() throws Exception {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
         when(projectService.getProject(project.getId())).thenReturn(project);
         when(artifactService.getArtifacts(project.getId())).thenReturn(Collections.emptyList());
         when(tokenUsageService.getTotalTokens(project.getId())).thenReturn(0L);
@@ -146,7 +146,7 @@ class ProjectControllerTest {
     @Test
     @DisplayName("API-PRJ-006: 수정 요청 성공")
     void requestFeedback_success() throws Exception {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
         project.updateStatus(ProjectStatus.COMPLETED);
         project.updateStatus(ProjectStatus.REVISION);
         when(projectService.requestFeedback(eq(project.getId()), anyString())).thenReturn(project);
@@ -164,7 +164,7 @@ class ProjectControllerTest {
     @Test
     @DisplayName("API-PRJ-007: 파이프라인 중단 성공")
     void cancelProject_success() throws Exception {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
         project.updateStatus(ProjectStatus.CANCELLED);
         when(projectService.cancelProject(project.getId())).thenReturn(project);
 

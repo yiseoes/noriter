@@ -23,7 +23,7 @@ class ProjectRepositoryTest {
     @Test
     @DisplayName("프로젝트를 저장하고 조회할 수 있다")
     void save_and_findById() {
-        Project project = Project.create("테스트 게임", "뱀파이어 서바이벌 류 미니게임을 만들어줘", Genre.ACTION, 3, false);
+        Project project = Project.create("테스트 게임", "뱀파이어 서바이벌 류 미니게임을 만들어줘", Genre.ACTION, 3, false, null);
         projectRepository.save(project);
 
         Optional<Project> found = projectRepository.findById(project.getId());
@@ -37,8 +37,8 @@ class ProjectRepositoryTest {
     @Test
     @DisplayName("상태별로 프로젝트를 필터링할 수 있다")
     void findByStatus_filtersCorrectly() {
-        Project p1 = Project.create("게임1", "요구사항 10자 이상입니다 1", Genre.ACTION, 3, false);
-        Project p2 = Project.create("게임2", "요구사항 10자 이상입니다 2", Genre.PUZZLE, 3, false);
+        Project p1 = Project.create("게임1", "요구사항 10자 이상입니다 1", Genre.ACTION, 3, false, null);
+        Project p2 = Project.create("게임2", "요구사항 10자 이상입니다 2", Genre.PUZZLE, 3, false, null);
         p2.updateStatus(ProjectStatus.IN_PROGRESS);
 
         projectRepository.save(p1);
@@ -56,7 +56,7 @@ class ProjectRepositoryTest {
     @Test
     @DisplayName("프로젝트 삭제가 정상 동작한다")
     void delete_removesProject() {
-        Project project = Project.create("삭제 테스트", "요구사항 10자 이상입니다", Genre.ARCADE, 3, false);
+        Project project = Project.create("삭제 테스트", "요구사항 10자 이상입니다", Genre.ARCADE, 3, false, null);
         projectRepository.save(project);
 
         projectRepository.deleteById(project.getId());

@@ -11,4 +11,8 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
     Page<Project> findByStatus(ProjectStatus status, Pageable pageable);
 
     Page<Project> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    long countByGuestIdAndDemoFalse(String guestId);
+
+    Page<Project> findByGuestIdOrderByCreatedAtDesc(String guestId, Pageable pageable);
 }

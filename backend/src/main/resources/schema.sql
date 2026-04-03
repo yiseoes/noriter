@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS project (
     created_at          DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     completed_at        DATETIME(6),
     updated_at          DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-    demo                TINYINT       NOT NULL DEFAULT 0
+    demo                TINYINT       NOT NULL DEFAULT 0,
+    guest_id            VARCHAR(30)   DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS stage (

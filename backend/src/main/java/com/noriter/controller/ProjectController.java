@@ -52,8 +52,10 @@ public class ProjectController {
      * POST /api/projects
      */
     @PostMapping
-    public ResponseEntity<ProjectResponse> createProject(@Valid @RequestBody CreateProjectRequest request) {
-        log.info("[API-PRJ-001] 게임 생성 요청 수신 - name={}, genre={}, demo={}", request.getName(), request.getGenre(), request.isDemo());
+    public ResponseEntity<ProjectResponse> createProject(
+            @Valid @RequestBody CreateProjectRequest request,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
+        log.info("[API-PRJ-001] 게임 생성 요청 수신 - name={}, genre={}, demo={}, guestId={}", request.getName(), request.getGenre(), request.isDemo(), guestId);
 
         if (!request.isDemo() && !settingsService.isApiKeyConfigured()) {
             log.warn("[API-PRJ-001] API 키 미설정 상태에서 생성 요청");
@@ -63,7 +65,7 @@ public class ProjectController {
         Genre genre = parseGenre(request.getGenre());
         String name = request.getName() != null ? request.getName() : "새 게임 프로젝트";
 
-        Project project = projectService.createProject(name, request.getRequirement(), genre, request.isDemo());
+        Project project = projectService.createProject(name, request.getRequirement(), genre, request.isDemo(), guestId);
         log.info("[API-PRJ-001] 게임 생성 완료 - id={}", project.getId());
 
         // 파이프라인 자동 시작 (비동기)
@@ -81,12 +83,13 @@ public class ProjectController {
     public ResponseEntity<PageResponse<ProjectResponse>> getProjects(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("[API-PRJ-002] 프로젝트 목록 조회 - status={}, page={}, size={}", status, page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {
+        log.info("[API-PRJ-002] 프로젝트 목록 조회 - status={}, page={}, size={}, guestId={}", status, page, size, guestId);
 
         ProjectStatus projectStatus = status != null ? ProjectStatus.valueOf(status) : null;
         Page<Project> projects = projectService.getProjects(
-                projectStatus, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+                projectStatus, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")), guestId);
 
         List<ProjectResponse> content = projects.getContent().stream()
                 .map(ProjectResponse::new).toList();

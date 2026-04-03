@@ -60,6 +60,9 @@ public class Project {
     @Column(nullable = false)
     private boolean demo;
 
+    @Column(name = "guest_id", length = 30)
+    private String guestId;
+
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stageOrder ASC")
     private List<Stage> stages = new ArrayList<>();
@@ -67,7 +70,7 @@ public class Project {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Artifact> artifacts = new ArrayList<>();
 
-    public static Project create(String name, String requirement, Genre genre, int maxDebugAttempts, boolean demo) {
+    public static Project create(String name, String requirement, Genre genre, int maxDebugAttempts, boolean demo, String guestId) {
         Project project = new Project();
         project.id = IdGenerator.generateProjectId();
         project.name = name;
@@ -78,6 +81,7 @@ public class Project {
         project.debugAttempts = 0;
         project.maxDebugAttempts = maxDebugAttempts;
         project.demo = demo;
+        project.guestId = guestId;
         project.createdAt = LocalDateTime.now();
         project.updatedAt = LocalDateTime.now();
         return project;

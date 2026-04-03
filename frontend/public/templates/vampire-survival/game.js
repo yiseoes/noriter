@@ -381,7 +381,7 @@ function goBack(){
 function pickJob(type){
   selectedJob=type;
   const names={warrior:'⚔️ 전사',mage:'🔮 마법사',archer:'🏹 궁수'};
-  document.getElementById('selectedInfo').textContent=names[type]+' 선택됨!';
+  document.getElementById('selectedInfo').textContent=names[type]+' (으)로 시작하시겠습니까?';
   document.getElementById('step3').classList.remove('hidden');
   // 직업 버튼 하이라이트
   document.querySelectorAll('#charOptions2 .char-btn').forEach(b=>b.style.borderColor='rgba(255,255,255,0.1)');

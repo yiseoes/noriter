@@ -252,11 +252,22 @@ let selectedCharImg=null, charSpriteImg=null;
     while(q.length){const[x,y]=q.pop();const pi=y*tw+x;if(x<0||x>=tw||y<0||y>=th||vis[pi])continue;if(!isW(pi*4))continue;vis[pi]=1;td[pi*4+3]=0;q.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);}
     tx.putImageData(tid,0,0);
 
-    // 2단계: 불투명 바운딩 박스 구하기 (알파 128 이상만 — 노이즈 무시)
+    // 2단계: 노이즈 제거 후 바운딩 박스
+    // 행/열별 불투명 픽셀 수 카운트, 3개 이하면 노이즈로 투명 처리
+    for(let y=0;y<th;y++){
+      let cnt=0;for(let x=0;x<tw;x++) if(td[(y*tw+x)*4+3]>128) cnt++;
+      if(cnt<=3) for(let x=0;x<tw;x++) td[(y*tw+x)*4+3]=0;
+    }
+    for(let x=0;x<tw;x++){
+      let cnt=0;for(let y=0;y<th;y++) if(td[(y*tw+x)*4+3]>128) cnt++;
+      if(cnt<=3) for(let y=0;y<th;y++) td[(y*tw+x)*4+3]=0;
+    }
+    tx.putImageData(tid,0,0);
     let minX=tw,minY=th,maxX=0,maxY=0;
     for(let y=0;y<th;y++)for(let x=0;x<tw;x++){
       if(td[(y*tw+x)*4+3]>128){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
     }
+    if(minX>=maxX||minY>=maxY){minX=0;minY=0;maxX=tw-1;maxY=th-1;}
     const cw=maxX-minX+1,ch=maxY-minY+1;
 
     // 3단계: 통일 캔버스에 크기 맞춰 배치 (목표 높이 85px, 하단 정렬)

@@ -223,14 +223,14 @@ let statusOpen=false,invOpen=false,shopOpen=false;
 
 // ===== 캐릭터 선택 (이미지 스프라이트) =====
 const CHAR_IMAGES=[
-  {file:'girl1.jpg',label:'🌸 소녀',scale:1.0},
-  {file:'boy1.jpg',label:'🖤 소년',scale:1.0},
-  {file:'girl2.jpg',label:'🐰 바니',scale:1.0},
-  {file:'girl3.jpg',label:'👓 글래스',scale:0.85},
-  {file:'boy2.jpg',label:'😎 선글',scale:0.9},
-  {file:'boy3.jpg',label:'😈 데빌',scale:1.0},
-  {file:'girl4.jpg',label:'🌷 핑크',scale:1.0},
-  {file:'boy4.jpg',label:'💐 플라워',scale:1.4},
+  {file:'girl1.png',label:'🌸 소녀'},
+  {file:'boy1.png',label:'🖤 소년'},
+  {file:'girl2.png',label:'🐰 바니'},
+  {file:'girl3.png',label:'👓 글래스'},
+  {file:'boy2.png',label:'😎 선글'},
+  {file:'boy3.png',label:'😈 데빌'},
+  {file:'girl4.png',label:'🌷 핑크'},
+  {file:'boy4.png',label:'💐 플라워'},
 ];
 let selectedCharImg=null, charSpriteImg=null;
 
@@ -238,67 +238,16 @@ let selectedCharImg=null, charSpriteImg=null;
 (function initCharGrid(){
   const grid=document.getElementById('charGrid');
   if(!grid)return;
-  function removeWhiteBg(img,charScale,callback){
-    // 1단계: 원본 크기로 flood fill 배경 제거
-    const tw=img.width,th=img.height;
-    const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
-    const tx=tc.getContext('2d');
-    tx.drawImage(img,0,0);
-    const tid=tx.getImageData(0,0,tw,th),td=tid.data;
-    const vis=new Uint8Array(tw*th),q=[];
-    const isW=i=>td[i]>=248&&td[i+1]>=248&&td[i+2]>=248;
-    for(let x=0;x<tw;x++){if(isW(x*4))q.push([x,0]);if(isW(((th-1)*tw+x)*4))q.push([x,th-1]);}
-    for(let y=0;y<th;y++){if(isW((y*tw)*4))q.push([0,y]);if(isW((y*tw+tw-1)*4))q.push([tw-1,y]);}
-    while(q.length){const[x,y]=q.pop();const pi=y*tw+x;if(x<0||x>=tw||y<0||y>=th||vis[pi])continue;if(!isW(pi*4))continue;vis[pi]=1;td[pi*4+3]=0;q.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);}
-    tx.putImageData(tid,0,0);
-
-    // 2단계: 노이즈 제거 후 바운딩 박스
-    // 행/열별 불투명 픽셀 수 카운트, 3개 이하면 노이즈로 투명 처리
-    for(let y=0;y<th;y++){
-      let cnt=0;for(let x=0;x<tw;x++) if(td[(y*tw+x)*4+3]>128) cnt++;
-      if(cnt<=3) for(let x=0;x<tw;x++) td[(y*tw+x)*4+3]=0;
-    }
-    for(let x=0;x<tw;x++){
-      let cnt=0;for(let y=0;y<th;y++) if(td[(y*tw+x)*4+3]>128) cnt++;
-      if(cnt<=3) for(let y=0;y<th;y++) td[(y*tw+x)*4+3]=0;
-    }
-    tx.putImageData(tid,0,0);
-    let minX=tw,minY=th,maxX=0,maxY=0;
-    for(let y=0;y<th;y++)for(let x=0;x<tw;x++){
-      if(td[(y*tw+x)*4+3]>128){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
-    }
-    if(minX>=maxX||minY>=maxY){minX=0;minY=0;maxX=tw-1;maxY=th-1;}
-    const cw=maxX-minX+1,ch=maxY-minY+1;
-
-    // 3단계: 통일 캔버스에 크기 맞춰 배치 + 수동 스케일 보정
-    const S=100, TARGET_H=85;
-    const oc=document.createElement('canvas');oc.width=S;oc.height=S;
-    const ox=oc.getContext('2d');
-    const sc=Math.min(TARGET_H/ch, (S-10)/cw) * (charScale||1);
-    const dw=cw*sc, dh=ch*sc;
-    ox.drawImage(tc, minX,minY,cw,ch, (S-dw)/2, S-dh-2, dw, dh);
-    callback(oc.toDataURL(), oc);
-  }
-
   CHAR_IMAGES.forEach((ch,i)=>{
     const card=document.createElement('div');
     card.className='char-card';
-    const imgEl=document.createElement('img');
-    imgEl.alt=ch.label;
-    const tmpImg=new Image();
-    tmpImg.src=ch.file;
-    tmpImg.onload=()=>removeWhiteBg(tmpImg,ch.scale,(url)=>{imgEl.src=url;});
-    card.appendChild(imgEl);
-    const label=document.createElement('div');label.className='char-label';label.textContent=ch.label;
-    card.appendChild(label);
+    card.innerHTML=`<img src="${ch.file}" alt="${ch.label}"><div class="char-label">${ch.label}</div>`;
     card.onclick=()=>{
       selectedCharImg=ch.file;
       // 이미지 로드 + 흰배경 제거
       const img=new Image();
       img.src=ch.file;
-      img.onload=()=>{
-        removeWhiteBg(img,ch.scale,(url,oc)=>{charSpriteImg=oc;});
-      };
+      img.onload=()=>{charSpriteImg=img;};
       // UI 전환
       document.getElementById('step1').classList.add('hidden');
       document.getElementById('step2').classList.remove('hidden');

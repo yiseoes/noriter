@@ -89,6 +89,7 @@ export default function Playground({ onCreateGame, onSelectProject, projects }: 
                 desc={project.requirement}
                 date={project.createdAt}
                 isDemo={project.demo}
+                onPlay={() => setPlayingGame({ url: `/api/projects/${project.id}/game/preview`, title: project.name })}
                 onClick={() => onSelectProject(project)}
               />
             );

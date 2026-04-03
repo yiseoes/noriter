@@ -89,7 +89,18 @@ export default function Playground({ onCreateGame, onSelectProject, projects }: 
                 desc={project.requirement}
                 date={project.createdAt}
                 isDemo={project.demo}
-                onPlay={() => setPlayingGame({ url: `/api/projects/${project.id}/preview`, title: project.name })}
+                onPlay={() => {
+                  // 데모 프로젝트면 장르별 템플릿 게임, 실제면 백엔드 미리보기
+                  const templateMap: Record<string, string> = {
+                    ACTION: '/templates/vampire-survival/',
+                    PUZZLE: '/templates/tetris/',
+                    SHOOTING: '/templates/space-shooter/',
+                  };
+                  const url = project.demo && templateMap[project.genre]
+                    ? templateMap[project.genre]
+                    : `/api/projects/${project.id}/preview`;
+                  setPlayingGame({ url, title: project.name });
+                }}
                 onClick={() => onSelectProject(project)}
               />
             );

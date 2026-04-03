@@ -5,14 +5,19 @@ type SseEventType = 'log' | 'stage-update' | 'agent-msg' | 'error' | 'complete' 
 interface UseSseOptions {
   projectId: string | null;
   onEvent: (type: SseEventType, data: unknown) => void;
+  enabled?: boolean;
 }
 
-export function useSse({ projectId, onEvent }: UseSseOptions) {
+export function useSse({ projectId, onEvent, enabled = true }: UseSseOptions) {
   const sourceRef = useRef<EventSource | null>(null);
 
   const connect = useCallback(() => {
-    if (!projectId) return;
-    const es = new EventSource(`/api/projects/${projectId}/sse`);
+    if (!projectId || !enabled) return;
+
+    // 이전 연결 정리
+    sourceRef.current?.close();
+
+    const es = new EventSource(`/api/projects/${projectId}/stream`);
 
     const eventTypes: SseEventType[] = ['log', 'stage-update', 'agent-msg', 'error', 'complete', 'cancelled'];
     eventTypes.forEach(type => {
@@ -25,8 +30,14 @@ export function useSse({ projectId, onEvent }: UseSseOptions) {
       });
     });
 
+    es.onerror = () => {
+      // 연결 끊기면 3초 후 재시도
+      es.close();
+      setTimeout(connect, 3000);
+    };
+
     sourceRef.current = es;
-  }, [projectId, onEvent]);
+  }, [projectId, onEvent, enabled]);
 
   const disconnect = useCallback(() => {
     sourceRef.current?.close();

@@ -8,105 +8,143 @@ const keys={};
 window.addEventListener('keydown',e=>{keys[e.key]=true;if([' ','ArrowUp','ArrowDown','i','s'].includes(e.key))e.preventDefault();});
 window.addEventListener('keyup',e=>keys[e.key]=false);
 
-// ===== 메이플 스타일 2등신 캐릭터 =====
+// ===== 메이플 SD 캐릭터 (초거대 머리 + 반짝 눈 + 미니 몸) =====
 const SKIN='#ffe0bd',SKIN_S='#f5c69a',BLUSH='#ffb3b3';
+// Canvas로 직접 그리기 (도트 배열 대신 함수)
+function drawMapleChar(cx,cy,sprite,dir,walking,attacking,grounded){
+  const d=dir; // 1=right, -1=left
+  ctx.save();
+  if(d<0){ctx.translate(cx+sprite.w,cy);ctx.scale(-1,1);cx=0;cy=0;}
+  else{ctx.translate(cx,cy);cx=0;cy=0;}
+
+  const hw=sprite.headW,hh=sprite.headH; // 머리 크기
+  const bw=sprite.bodyW,bh=sprite.bodyH;
+  const hx=cx+(sprite.w-hw)/2, hy=cy;
+  const bx=cx+(sprite.w-bw)/2, by=cy+hh-4;
+
+  // === 머리카락 (풍성하게) ===
+  ctx.fillStyle=sprite.hair;
+  // 뒤 머리카락
+  roundRect(hx-3,hy-2,hw+6,hh+8,hw/2);
+  ctx.fill();
+  // 앞머리
+  ctx.fillStyle=sprite.hairDk;
+  roundRect(hx,hy,hw,hh*0.45,hw/3);
+  ctx.fill();
+  // 옆머리
+  ctx.fillStyle=sprite.hair;
+  ctx.fillRect(hx-4,hy+hh*0.3,5,hh*0.5);
+  ctx.fillRect(hx+hw-1,hy+hh*0.3,5,hh*0.5);
+
+  // === 얼굴 ===
+  ctx.fillStyle=SKIN;
+  roundRect(hx+2,hy+hh*0.3,hw-4,hh*0.6,6);
+  ctx.fill();
+
+  // === 눈 (거대 + 반짝) ===
+  const eyeY=hy+hh*0.48, eyeW=hw*0.22, eyeH=hw*0.28;
+  const lex=hx+hw*0.22, rex=hx+hw*0.58;
+  // 흰자
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.ellipse(lex,eyeY,eyeW,eyeH,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(rex,eyeY,eyeW,eyeH,0,0,Math.PI*2);ctx.fill();
+  // 동공 (큰 원)
+  ctx.fillStyle=sprite.eyeColor||'#2c2c2c';
+  ctx.beginPath();ctx.ellipse(lex+1,eyeY+1,eyeW*0.7,eyeH*0.75,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(rex+1,eyeY+1,eyeW*0.7,eyeH*0.75,0,0,Math.PI*2);ctx.fill();
+  // 하이라이트 (별 반짝)
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.arc(lex-eyeW*0.2,eyeY-eyeH*0.25,eyeW*0.3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(rex-eyeW*0.2,eyeY-eyeH*0.25,eyeW*0.3,0,Math.PI*2);ctx.fill();
+  // 작은 하이라이트
+  ctx.beginPath();ctx.arc(lex+eyeW*0.25,eyeY+eyeH*0.2,eyeW*0.15,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(rex+eyeW*0.25,eyeY+eyeH*0.2,eyeW*0.15,0,Math.PI*2);ctx.fill();
+
+  // 볼터치
+  ctx.fillStyle='rgba(255,150,150,0.35)';
+  ctx.beginPath();ctx.ellipse(hx+hw*0.12,hy+hh*0.62,4,3,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(hx+hw*0.72,hy+hh*0.62,4,3,0,0,Math.PI*2);ctx.fill();
+
+  // 입 (작은 미소)
+  ctx.fillStyle='#e07070';
+  ctx.beginPath();ctx.arc(hx+hw*0.44,hy+hh*0.7,2,0,Math.PI);ctx.fill();
+
+  // === 몸통 ===
+  ctx.fillStyle=sprite.shirt;
+  roundRect(bx,by,bw,bh*0.55,3);ctx.fill();
+  // 팔
+  const armY=by+2;
+  ctx.fillStyle=SKIN;
+  ctx.fillRect(bx-3,armY,4,bh*0.35);
+  ctx.fillRect(bx+bw-1,armY,4,bh*0.35);
+
+  // === 하의 ===
+  ctx.fillStyle=sprite.pants;
+  ctx.fillRect(bx+1,by+bh*0.5,bw-2,bh*0.25);
+
+  // === 다리 + 신발 ===
+  const legY=by+bh*0.7;
+  const walkOff=walking?Math.sin(Date.now()/120)*4:0;
+  // 왼다리
+  ctx.fillStyle=SKIN_S;
+  ctx.fillRect(bx+2,legY+walkOff,bw*0.3,bh*0.2);
+  ctx.fillStyle=sprite.shoe;
+  ctx.fillRect(bx+1,legY+bh*0.18+walkOff,bw*0.35,bh*0.12);
+  // 오른다리
+  ctx.fillStyle=SKIN_S;
+  ctx.fillRect(bx+bw*0.55,legY-walkOff,bw*0.3,bh*0.2);
+  ctx.fillStyle=sprite.shoe;
+  ctx.fillRect(bx+bw*0.5,legY+bh*0.18-walkOff,bw*0.35,bh*0.12);
+
+  // === 무기 ===
+  if(sprite.weaponDraw) sprite.weaponDraw(ctx,bx,by,bw,bh,attacking);
+
+  ctx.restore();
+}
+
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+
 const SPRITES={
   warrior:{
-    hair:'#c92a2a',hairDk:'#a01e1e',shirt:'#4a6fa5',shirtDk:'#365380',pants:'#495057',pantsDk:'#343a40',shoe:'#5c3a1e',
-    // 2등신: 큰 머리(10행) + 작은 몸(8행) = 18행 x 12열, dot=2px
-    stand:[
-      [0,0,0,0,'H','H','H','H',0,0,0,0],
-      [0,0,'H','H','H','H','H','H','H','H',0,0],
-      [0,'H','H','H','H','H','H','H','H','H','H',0],
-      [0,'H','H','H','H','H','H','H','H','H','H',0],
-      [0,'h','h','S','S','S','S','S','S','h','h',0],
-      [0,'S','S','W','w','K','S','W','w','K','S',0],
-      [0,'S','S','S','S','S','S','S','S','S','S',0],
-      [0,0,'S','S','S','R','R','S','S','S',0,0],
-      [0,0,'S','S','S','m','S','S','S',0,0,0],
-      [0,0,0,'S','S','S','S','S',0,0,0,0],
-      [0,0,0,0,'C','C','C','C',0,0,0,0],
-      [0,0,0,'C','C','C','C','C','C',0,0,0],
-      [0,0,'s','C','C','C','C','C','C','s',0,0],
-      [0,0,'S','C','C','C','C','C','C','S',0,0],
-      [0,0,0,0,'P','P',0,'P','P',0,0,0],
-      [0,0,0,0,'P','P',0,'P','P',0,0,0],
-      [0,0,0,'P','P','P',0,'P','P','P',0,0],
-      [0,0,0,'B','B',0,0,0,'B','B',0,0],
-    ],
-    walk:[
-      [0,0,0,0,'H','H','H','H',0,0,0,0],
-      [0,0,'H','H','H','H','H','H','H','H',0,0],
-      [0,'H','H','H','H','H','H','H','H','H','H',0],
-      [0,'H','H','H','H','H','H','H','H','H','H',0],
-      [0,'h','h','S','S','S','S','S','S','h','h',0],
-      [0,'S','S','W','w','K','S','W','w','K','S',0],
-      [0,'S','S','S','S','S','S','S','S','S','S',0],
-      [0,0,'S','S','S','R','R','S','S','S',0,0],
-      [0,0,'S','S','S','m','S','S','S',0,0,0],
-      [0,0,0,'S','S','S','S','S',0,0,0,0],
-      [0,0,0,0,'C','C','C','C',0,0,0,0],
-      [0,0,0,'C','C','C','C','C','C',0,0,0],
-      [0,0,'s','C','C','C','C','C','C','s',0,0],
-      [0,0,'S','C','C','C','C','C','C','S',0,0],
-      [0,0,0,'P','P',0,0,0,'P','P',0,0],
-      [0,0,'P','P',0,0,0,0,0,'P','P',0],
-      [0,0,'B','B',0,0,0,0,0,0,'B',0],
-      [0,0,0,0,0,0,0,0,0,'B','B',0],
-    ],
+    w:36,headW:32,headH:28,bodyW:20,bodyH:22,h:48,
+    hair:'#c92a2a',hairDk:'#8b1a1a',shirt:'#4a6fa5',pants:'#495057',shoe:'#3d2b1f',
+    eyeColor:'#1a1a2e',
+    weaponDraw(c,bx,by,bw,bh,atk){
+      // 검
+      const wx=bx+bw+2,wy=by-5;
+      c.fillStyle='#adb5bd';c.fillRect(wx,wy,3,22);
+      c.fillStyle='#ffd43b';c.fillRect(wx-3,wy+16,9,3);
+      c.fillStyle='#862e9c';c.fillRect(wx,wy+18,3,6);
+      if(atk){c.fillStyle='rgba(255,215,0,0.3)';c.beginPath();c.arc(wx+1,wy+8,18,0,Math.PI*2);c.fill();}
+    }
   },
   mage:{
-    hair:'#7048e8',hairDk:'#5832c4',shirt:'#845ef7',shirtDk:'#6741d9',pants:'#5c7cfa',pantsDk:'#4263eb',shoe:'#364fc7',
-    stand:[
-      [0,0,0,'Y','H','H','H','H','Y',0,0,0],
-      [0,0,'H','H','H','H','H','H','H','H',0,0],
-      [0,'H','H','H','H','H','H','H','H','H','H',0],
-      [0,'H','H','H','H','H','H','H','H','H','H',0],
-      [0,'h','h','S','S','S','S','S','S','h','h',0],
-      [0,'S','S','W','w','K','S','W','w','K','S',0],
-      [0,'S','S','S','S','S','S','S','S','S','S',0],
-      [0,0,'S','S','S','R','R','S','S','S',0,0],
-      [0,0,'S','S','S','m','S','S','S',0,0,0],
-      [0,0,0,'S','S','S','S','S',0,0,0,0],
-      [0,0,0,0,'C','C','C','C',0,0,0,0],
-      [0,0,'C','C','C','C','C','C','C','C',0,0],
-      [0,'C','C','C','C','C','C','C','C','C','C',0],
-      [0,'C','C','C','C','C','C','C','C','C','C',0],
-      [0,0,'C','C','P','P',0,'P','P','C',0,0],
-      [0,0,0,0,'P','P',0,'P','P',0,0,0],
-      [0,0,0,0,'P','P',0,'P','P',0,0,0],
-      [0,0,0,'B','B','B',0,'B','B','B',0,0],
-    ],
-    walk:null,
+    w:36,headW:32,headH:28,bodyW:20,bodyH:22,h:48,
+    hair:'#7048e8',hairDk:'#4c2db3',shirt:'#845ef7',pants:'#5c7cfa',shoe:'#364fc7',
+    eyeColor:'#4c1d95',
+    weaponDraw(c,bx,by,bw,bh,atk){
+      const wx=bx+bw+2,wy=by-10;
+      c.fillStyle='#795548';c.fillRect(wx+1,wy,2,28);
+      c.fillStyle='#e040fb';c.beginPath();c.arc(wx+2,wy-2,5,0,Math.PI*2);c.fill();
+      c.fillStyle='rgba(224,64,251,0.25)';c.beginPath();c.arc(wx+2,wy-2,9,0,Math.PI*2);c.fill();
+      if(atk){c.fillStyle='rgba(116,192,252,0.25)';c.beginPath();c.arc(bx+bw/2,by,28,0,Math.PI*2);c.fill();}
+    }
   },
   archer:{
-    hair:'#2b8a3e',hairDk:'#1e6b2e',shirt:'#82c91e',shirtDk:'#5c940d',pants:'#795548',pantsDk:'#5d4037',shoe:'#4e342e',
-    stand:[
-      [0,0,0,0,'H','H','H','H',0,0,0,0],
-      [0,0,'H','H','H','H','H','H','H','H',0,0],
-      [0,'H','H','H','H','H','H','H','H','H','H',0],
-      [0,'H','H','H','H','H','H','H','H','H','H',0],
-      [0,'h','h','S','S','S','S','S','S','h','h',0],
-      [0,'S','S','W','w','K','S','W','w','K','S',0],
-      [0,'S','S','S','S','S','S','S','S','S','S',0],
-      [0,0,'S','S','S','R','R','S','S','S',0,0],
-      [0,0,'S','S','S','m','S','S','S',0,0,0],
-      [0,0,0,'S','S','S','S','S',0,0,0,0],
-      [0,0,0,0,'C','C','C','C',0,0,0,0],
-      [0,0,0,'C','C','C','C','C','C',0,0,0],
-      [0,0,0,'C','C','C','C','C','C',0,0,0],
-      [0,0,'s','C','C','C','C','C','C','s',0,0],
-      [0,0,0,0,'P','P',0,'P','P',0,0,0],
-      [0,0,0,0,'P','P',0,'P','P',0,0,0],
-      [0,0,0,'P','P',0,0,0,'P','P',0,0],
-      [0,0,0,'B','B',0,0,0,'B','B',0,0],
-    ],
-    walk:null,
+    w:36,headW:32,headH:28,bodyW:20,bodyH:22,h:48,
+    hair:'#2b8a3e',hairDk:'#1a5c28',shirt:'#82c91e',pants:'#795548',shoe:'#4e342e',
+    eyeColor:'#1b5e20',
+    weaponDraw(c,bx,by,bw,bh,atk){
+      const wx=bx+bw+4,wy=by-2;
+      c.strokeStyle='#6d4c41';c.lineWidth=2;
+      c.beginPath();c.arc(wx,wy+8,12,-0.9,0.9);c.stroke();
+      c.strokeStyle='#bbb';c.lineWidth=1;
+      c.beginPath();c.moveTo(wx+Math.cos(-0.9)*12,wy+8+Math.sin(-0.9)*12);
+      c.lineTo(wx+Math.cos(0.9)*12,wy+8+Math.sin(0.9)*12);c.stroke();
+      if(atk){c.fillStyle='#ffd43b';c.beginPath();c.moveTo(wx+14,wy+7);c.lineTo(wx+26,wy+8);c.lineTo(wx+14,wy+9);c.fill();}
+    }
   }
 };
-// 마법사/궁수 walk = stand 복사 (간략화)
-SPRITES.mage.walk=SPRITES.mage.stand;
-SPRITES.archer.walk=SPRITES.archer.stand;
 
 // ===== 맵 데이터 =====
 const MAPS={
@@ -191,7 +229,7 @@ function selectChar(type){
     archer:{str:3,dex:8,int_:2,hp:100,mp:50,atkRange:250,atkType:'ranged'},
   }[type];
   player={
-    type,x:200,y:0,w:27,h:39,vx:0,vy:0,speed:4,jumpForce:-12,
+    type,x:200,y:0,w:36,h:48,vx:0,vy:0,speed:4,jumpForce:-12,
     hp:stats.hp,maxHp:stats.hp,mp:stats.mp,maxMp:stats.mp,
     xp:0,xpToNext:20,level:1,
     str:stats.str,dex:stats.dex,int_:stats.int_,statPoints:0,
@@ -420,34 +458,8 @@ function drawDot(x,y,s,dots,sprite,dir){
 
 function drawPlayerFull(px,py){
   const sp=player.sprite;
-  const s=2; // 도트 크기
   const isWalking=Math.abs(player.vx)>0.5;
-  const frame=isWalking&&Math.floor(Date.now()/200)%2===0?sp.walk:sp.stand;
-  drawDot(px,py,s,frame,sp,player.facing);
-
-  // 무기 그리기
-  const wx=player.facing>0?px+24:px-10;
-  const wy=py+16;
-  if(player.type==='warrior'){
-    // 검
-    ctx.fillStyle='#adb5bd';ctx.fillRect(wx,wy-12,3,18);
-    ctx.fillStyle='#ffd43b';ctx.fillRect(wx-2,wy+4,7,3);
-    ctx.fillStyle='#862e9c';ctx.fillRect(wx,wy+6,3,5);
-    if(player.attacking){ctx.fillStyle='rgba(255,215,0,0.4)';ctx.beginPath();ctx.arc(wx,wy-6,20,0,Math.PI*2);ctx.fill();}
-  }else if(player.type==='mage'){
-    // 지팡이
-    ctx.fillStyle='#795548';ctx.fillRect(wx+1,wy-14,2,22);
-    ctx.fillStyle='#e040fb';ctx.beginPath();ctx.arc(wx+2,wy-16,4,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(224,64,251,0.3)';ctx.beginPath();ctx.arc(wx+2,wy-16,7,0,Math.PI*2);ctx.fill();
-    if(player.attacking){ctx.fillStyle='rgba(116,192,252,0.3)';ctx.beginPath();ctx.arc(px+12,py+10,25,0,Math.PI*2);ctx.fill();}
-  }else{
-    // 활
-    ctx.strokeStyle='#795548';ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(wx+2,wy-4,10,player.facing>0?-0.8:Math.PI-0.8,player.facing>0?0.8:Math.PI+0.8);ctx.stroke();
-    ctx.strokeStyle='#ddd';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(wx+2+(player.facing>0?-1:1)*Math.cos(0.8)*10,wy-4-Math.sin(0.8)*10);
-    ctx.lineTo(wx+2+(player.facing>0?-1:1)*Math.cos(0.8)*10,wy-4+Math.sin(0.8)*10);ctx.stroke();
-  }
+  drawMapleChar(px,py,sp,player.facing,isWalking,player.attacking,player.grounded);
 }
 
 function render(){

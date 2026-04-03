@@ -66,7 +66,7 @@ function spawnEnemy() {
   const plat = platforms[platIdx];
   const ex = side;
   const ey = plat.y - (isBoss?50:30);
-  const names = ['슬라임','머쉬룸','스텀프','주니어발록'];
+  const names = ['박쥐','좀비','뱀파이어','드라큘라'];
   const colors = [['#51cf66','#37b24d'],['#ff922b','#e67700'],['#ae3ec9','#862e9c'],['#fa5252','#e03131']];
   const ci = Math.min(tier, colors.length-1);
   enemies.push({

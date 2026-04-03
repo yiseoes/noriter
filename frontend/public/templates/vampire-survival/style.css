@@ -40,7 +40,7 @@ canvas { display:block; }
 .char-card { padding:12px 8px; background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.1);
   border-radius:14px; text-align:center; cursor:pointer; transition:all 0.2s; }
 .char-card:hover { border-color:#ff6b6b; background:rgba(255,107,107,0.1); transform:translateY(-4px); }
-.char-card img { width:80px; height:80px; object-fit:contain; image-rendering:pixelated; display:block; margin:0 auto 6px; }
+.char-card img { width:80px; height:80px; object-fit:contain; image-rendering:pixelated; display:block; margin:0 auto 6px; mix-blend-mode:multiply; }
 .char-card .char-label { font-size:11px; color:rgba(255,255,255,0.5); }
 .char-step h3 { font-size:14px; color:rgba(255,255,255,0.6); margin-bottom:12px; }
 .char-step.hidden { display:none; }

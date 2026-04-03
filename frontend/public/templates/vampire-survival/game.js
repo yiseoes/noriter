@@ -262,7 +262,8 @@ let selectedCharImg=null, charSpriteImg=null;
         const id=ox.getImageData(0,0,SIZE,SIZE);
         const d=id.data;
         for(let i=0;i<d.length;i+=4){
-          if(d[i]>250&&d[i+1]>250&&d[i+2]>250) d[i+3]=0;
+          // 순수 흰색(254+)만 제거, 살색/회색 보존
+          if(d[i]>=254&&d[i+1]>=254&&d[i+2]>=254) d[i+3]=0;
         }
         ox.putImageData(id,0,0);
         charSpriteImg=oc;

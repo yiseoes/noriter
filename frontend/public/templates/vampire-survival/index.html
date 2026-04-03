@@ -38,20 +38,22 @@
 
   <!-- 캐릭터 생성 -->
   <div id="charSelect" class="hidden">
-    <!-- 공통 헤더 (고정 위치) -->
+    <!-- 헤더 레이어 -->
     <div class="step-header">
-      <button class="back-btn" id="backBtn" onclick="goBack()">← 뒤로</button>
+      <button class="back-btn" onclick="goBack()">← 뒤로</button>
       <p class="step-title" id="stepTitle">캐릭터를 선택하세요</p>
       <div style="width:60px"></div>
     </div>
 
-    <!-- 1단계: 캐릭터 선택 -->
-    <div id="step1" class="char-step">
-      <div class="char-grid" id="charGrid"></div>
-    </div>
+    <!-- 컨텐츠 레이어 (정중앙) -->
+    <div class="step-content">
+      <!-- 1단계: 캐릭터 선택 -->
+      <div id="step1" class="char-step">
+        <div class="char-grid" id="charGrid"></div>
+      </div>
 
-    <!-- 2단계: 직업 선택 -->
-    <div id="step2" class="char-step hidden">
+      <!-- 2단계: 직업 선택 -->
+      <div id="step2" class="char-step hidden">
       <div id="charOptions2">
         <div class="char-btn" onclick="pickJob('warrior')">
           <div class="char-name">⚔️ 전사</div>
@@ -74,8 +76,7 @@
         <button onclick="confirmAndStart()">🎮 게임 시작</button>
       </div>
     </div>
-
-    <p class="hint">← → 이동 · ↑/Space 점프 · Z 공격 · X 스킬 · E 포탈/NPC · I 인벤토리 · S 상태창</p>
+    </div><!-- /step-content -->
   </div>
 
   <!-- 상태창 -->

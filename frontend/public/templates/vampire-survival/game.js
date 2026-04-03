@@ -149,7 +149,7 @@ const SPRITES={
 // ===== 맵 데이터 =====
 const MAPS={
   village:{
-    name:'🏘️ 리프레 마을', bg1:'#87CEEB',bg2:'#228B22',groundColor:'#4a7c28',
+    name:'🏘️ 블러드문 마을', bg1:'#1a0a2e',bg2:'#2d1b4e',groundColor:'#3d2b5c',
     width:2000,height:800,
     platforms:[
       {x:0,y:760,w:2000,h:40}, // 바닥
@@ -158,12 +158,12 @@ const MAPS={
     ],
     enemies:[],
     npcs:[{x:500,y:720,name:'상점 NPC',icon:'🧙',dialog:'어서와! 뭐가 필요하니?',shop:true}],
-    portals:[{x:1900,y:720,target:'forest',tx:60,ty:0,label:'헤네시스 숲 →'}],
+    portals:[{x:1900,y:720,target:'forest',tx:60,ty:0,label:'다크우드 숲 →'}],
     trees:[100,400,700,1000,1300,1600,1850],
     houses:[{x:150,y:660,w:120,h:100},{x:800,y:640,w:140,h:120}],
   },
   forest:{
-    name:'🌲 헤네시스 숲', bg1:'#2d5016',bg2:'#1a3a0a',groundColor:'#3d6b1e',
+    name:'🌲 다크우드 숲', bg1:'#0d1117',bg2:'#1a0a1e',groundColor:'#2a1a3a',
     width:3000,height:900,
     platforms:[
       {x:0,y:860,w:3000,h:40},
@@ -181,7 +181,7 @@ const MAPS={
     houses:[],
   },
   dungeon:{
-    name:'🏚️ 어둠의 던전', bg1:'#1a1a2e',bg2:'#16213e',groundColor:'#2d2d44',
+    name:'🏚️ 드라큘라 성', bg1:'#1a1a2e',bg2:'#16213e',groundColor:'#2d2d44',
     width:2500,height:900,
     platforms:[
       {x:0,y:860,w:2500,h:40},
@@ -394,15 +394,7 @@ function update(dt){
   if(keys['z']||keys['Z']) attack();
   if(keys['x']||keys['X']) useSkill();
 
-  // 포탈 (E키 또는 grounded 상태에서 ArrowUp)
-  if(keys['e']||keys['E']||(keys['ArrowUp']&&player.grounded)){
-    map.portals.forEach(p=>{
-      if(Math.abs(player.x-p.x)<50&&player.grounded){
-        keys['ArrowUp']=false; // 점프 방지
-        currentMap=p.target;player.x=p.tx;player.y=0;loadMap();
-      }
-    });
-  }
+  // 포탈은 keydown 핸들러(E키)에서 처리
 
   // 물리
   player.vy+=G;player.x+=player.vx;player.y+=player.vy;
@@ -825,12 +817,23 @@ function showGameOver(){
 window.addEventListener('keydown',e=>{
   if(e.key==='i'||e.key==='I') toggleInventory();
   if(e.key==='s'||e.key==='S') toggleStatus();
-  // NPC 대화 (E키)
+  // E키: 포탈 이동 + NPC 대화
   if(e.key==='e'||e.key==='E'){
+    if(!player||!gameRunning) return;
     const map=MAPS[currentMap];
-    map.npcs.forEach(n=>{
-      if(Math.abs(player.x-n.x)<50&&n.shop) toggleShop();
+    // 포탈 체크 (넓은 감지 범위, grounded 불필요)
+    let moved=false;
+    map.portals.forEach(p=>{
+      if(!moved&&Math.abs(player.x-p.x)<80){
+        currentMap=p.target;player.x=p.tx;player.y=0;loadMap();moved=true;
+      }
     });
+    // NPC 체크
+    if(!moved){
+      map.npcs.forEach(n=>{
+        if(Math.abs(player.x-n.x)<50&&n.shop) toggleShop();
+      });
+    }
   }
 });
 

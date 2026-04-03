@@ -507,21 +507,23 @@ function drawDot(x,y,s,dots,sprite,dir){
 
 function drawPlayerFull(px,py){
   if(charSpriteImg){
-    // 이미지 스프라이트 사용
-    ctx.save();
-    if(player.facing<0){ctx.translate(px+player.w,py);ctx.scale(-1,1);px=0;py=0;}
-    else{ctx.translate(px,py);px=0;py=0;}
-    // 걷기 흔들림
     const bob=Math.abs(player.vx)>0.5?Math.sin(Date.now()/100)*2:0;
-    ctx.drawImage(charSpriteImg,px-4,py+bob-4,player.w+8,player.h+8);
+    const sw=player.w+8, sh=player.h+8;
+    ctx.save();
+    if(player.facing<0){
+      ctx.translate(px+player.w/2,0);
+      ctx.scale(-1,1);
+      ctx.drawImage(charSpriteImg,-sw/2,py+bob-4,sw,sh);
+    }else{
+      ctx.drawImage(charSpriteImg,px-4,py+bob-4,sw,sh);
+    }
+    ctx.restore();
     // 공격 이펙트
     if(player.attacking){
       ctx.strokeStyle='rgba(255,215,0,0.5)';ctx.lineWidth=2;
-      ctx.beginPath();ctx.arc(player.w/2+player.w*0.4,player.h*0.4,player.atkRange*0.3,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.arc(px+player.w/2+player.facing*25,py+player.h*0.4,player.atkRange*0.3,0,Math.PI*2);ctx.stroke();
     }
-    ctx.restore();
   }else{
-    // 폴백: Canvas 그리기
     drawMapleChar(px,py,player.sprite,player.facing,Math.abs(player.vx)>0.5,player.attacking,player.grounded);
   }
 }

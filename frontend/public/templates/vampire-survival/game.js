@@ -238,10 +238,34 @@ let selectedCharImg=null, charSpriteImg=null;
 (function initCharGrid(){
   const grid=document.getElementById('charGrid');
   if(!grid)return;
+  function removeWhiteBg(img,callback){
+    const S=100;
+    const oc=document.createElement('canvas');oc.width=S;oc.height=S;
+    const ox=oc.getContext('2d');
+    const sc=Math.min(S/img.width,S/img.height)*0.92;
+    const dw=img.width*sc,dh=img.height*sc;
+    ox.drawImage(img,(S-dw)/2,S-dh,dw,dh);
+    const id=ox.getImageData(0,0,S,S),d=id.data;
+    const vis=new Uint8Array(S*S),q=[];
+    const isW=i=>d[i]>=248&&d[i+1]>=248&&d[i+2]>=248;
+    for(let x=0;x<S;x++){if(isW(x*4))q.push([x,0]);if(isW(((S-1)*S+x)*4))q.push([x,S-1]);}
+    for(let y=0;y<S;y++){if(isW((y*S)*4))q.push([0,y]);if(isW((y*S+S-1)*4))q.push([S-1,y]);}
+    while(q.length){const[x,y]=q.pop();const pi=y*S+x;if(x<0||x>=S||y<0||y>=S||vis[pi])continue;if(!isW(pi*4))continue;vis[pi]=1;d[pi*4+3]=0;q.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);}
+    ox.putImageData(id,0,0);
+    callback(oc.toDataURL());
+  }
+
   CHAR_IMAGES.forEach((ch,i)=>{
     const card=document.createElement('div');
     card.className='char-card';
-    card.innerHTML=`<img src="${ch.file}" alt="${ch.label}"><div class="char-label">${ch.label}</div>`;
+    const imgEl=document.createElement('img');
+    imgEl.alt=ch.label;
+    const tmpImg=new Image();
+    tmpImg.src=ch.file;
+    tmpImg.onload=()=>removeWhiteBg(tmpImg,url=>{imgEl.src=url;});
+    card.appendChild(imgEl);
+    const label=document.createElement('div');label.className='char-label';label.textContent=ch.label;
+    card.appendChild(label);
     card.onclick=()=>{
       selectedCharImg=ch.file;
       // 이미지 로드 + 흰배경 제거

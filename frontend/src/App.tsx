@@ -14,12 +14,6 @@ import { useTheme } from './hooks/useTheme';
 import { useProjects, useCreateProject, useDeleteProject, useCancelProject } from './hooks/useProjects';
 import type { Project } from './types';
 
-// 감사 로그는 아직 mock (API 연동 시 교체)
-const mockAuditLogs = [
-  { id: 'aud_1', eventType: 'STAGE_COMPLETED', projectName: '뱀파이어 서바이벌', detail: 'QA 완료', timestamp: '14:55' },
-  { id: 'aud_2', eventType: 'PROJECT_CREATED', projectName: '뱀파이어 서바이벌', detail: '장르: 액션', timestamp: '14:30' },
-  { id: 'aud_3', eventType: 'SETTING_CHANGED', projectName: undefined, detail: 'API 키 변경됨', timestamp: '14:00' },
-];
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
@@ -99,7 +93,7 @@ export default function App() {
 
         <CreateGameModal isOpen={createModal.isOpen} onClose={createModal.close} onCreate={handleCreateDone} isDemo={isDemo} />
         <ProjectListModal isOpen={projectsModal.isOpen} onClose={projectsModal.close} onSelect={handleSelectProject} projects={projects} />
-        <AuditLogModal isOpen={auditModal.isOpen} onClose={auditModal.close} logs={mockAuditLogs} />
+        <AuditLogModal isOpen={auditModal.isOpen} onClose={auditModal.close} />
         <SettingsModal isOpen={settingsModal.isOpen} onClose={settingsModal.close} />
         <AuthModal isOpen={authModal.isOpen} onClose={authModal.close} />
 

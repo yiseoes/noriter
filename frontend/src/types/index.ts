@@ -63,8 +63,9 @@ export interface TokenUsage {
 export interface AuditLog {
   id: string;
   eventType: string;
-  projectName?: string;
-  detail: string;
+  projectId?: string;
+  description: string;
+  detail?: Record<string, string>;
   timestamp: string;
 }
 

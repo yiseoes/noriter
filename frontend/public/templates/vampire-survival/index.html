@@ -28,31 +28,39 @@
   <!-- 미니맵 -->
   <div id="minimap"></div>
 
-  <!-- 캐릭터 선택 -->
+  <!-- 캐릭터 생성 -->
   <div id="charSelect">
     <h1>🧛 뱀파이어 서바이벌</h1>
-    <p>캐릭터를 선택하세요</p>
-    <div id="charOptions">
-      <div class="char-btn" onclick="selectChar('warrior')">
-        <div class="char-preview" id="previewWarrior"></div>
-        <div class="char-name">⚔️ 전사</div>
-        <div class="char-desc">높은 HP · 근접 공격 · 강한 방어</div>
-        <div class="char-stats">STR 8 · DEX 3 · INT 2 · HP 150</div>
-      </div>
-      <div class="char-btn" onclick="selectChar('mage')">
-        <div class="char-preview" id="previewMage"></div>
-        <div class="char-name">🔮 마법사</div>
-        <div class="char-desc">높은 MP · 원거리 마법 · 광역기</div>
-        <div class="char-stats">STR 2 · DEX 3 · INT 8 · HP 80</div>
-      </div>
-      <div class="char-btn" onclick="selectChar('archer')">
-        <div class="char-preview" id="previewArcher"></div>
-        <div class="char-name">🏹 궁수</div>
-        <div class="char-desc">높은 DEX · 원거리 · 크리티컬</div>
-        <div class="char-stats">STR 3 · DEX 8 · INT 2 · HP 100</div>
+
+    <!-- 1단계: 캐릭터 선택 -->
+    <div id="step1" class="char-step">
+      <p>캐릭터를 선택하세요</p>
+      <div class="char-grid" id="charGrid"></div>
+    </div>
+
+    <!-- 2단계: 직업 선택 -->
+    <div id="step2" class="char-step hidden">
+      <p>직업을 선택하세요</p>
+      <div id="charOptions2">
+        <div class="char-btn" onclick="selectChar('warrior')">
+          <div class="char-name">⚔️ 전사</div>
+          <div class="char-desc">높은 HP · 근접 공격 · 강한 방어</div>
+          <div class="char-stats">STR 8 · DEX 3 · INT 2 · HP 150</div>
+        </div>
+        <div class="char-btn" onclick="selectChar('mage')">
+          <div class="char-name">🔮 마법사</div>
+          <div class="char-desc">높은 MP · 원거리 마법 · 광역기</div>
+          <div class="char-stats">STR 2 · DEX 3 · INT 8 · HP 80</div>
+        </div>
+        <div class="char-btn" onclick="selectChar('archer')">
+          <div class="char-name">🏹 궁수</div>
+          <div class="char-desc">높은 DEX · 원거리 · 크리티컬</div>
+          <div class="char-stats">STR 3 · DEX 8 · INT 2 · HP 100</div>
+        </div>
       </div>
     </div>
-    <p class="hint">← → 이동 · ↑/Space 점프 · Z 공격 · X 스킬 · I 인벤토리 · S 상태창 · ↑ 포탈</p>
+
+    <p class="hint">← → 이동 · ↑/Space 점프 · Z 공격 · X 스킬 · I 인벤토리 · S 상태창</p>
   </div>
 
   <!-- 상태창 -->

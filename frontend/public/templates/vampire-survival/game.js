@@ -221,7 +221,41 @@ let gameRunning=false,gold=0;
 let inventory=[],equipped={weapon:null,armor:null};
 let statusOpen=false,invOpen=false,shopOpen=false;
 
-// ===== 캐릭터 선택 =====
+// ===== 캐릭터 선택 (이미지 스프라이트) =====
+const CHAR_IMAGES=[
+  {file:'girl1.jpg',label:'🌸 소녀'},
+  {file:'boy1.jpg',label:'🖤 소년'},
+  {file:'girl2.jpg',label:'🐰 바니'},
+  {file:'girl3.jpg',label:'👓 글래스'},
+  {file:'boy2.jpg',label:'😎 선글'},
+  {file:'boy3.jpg',label:'😈 데빌'},
+  {file:'girl4.jpg',label:'🌷 핑크'},
+  {file:'boy4.jpg',label:'💐 플라워'},
+];
+let selectedCharImg=null, charSpriteImg=null;
+
+// 캐릭터 그리드 생성
+(function initCharGrid(){
+  const grid=document.getElementById('charGrid');
+  if(!grid)return;
+  CHAR_IMAGES.forEach((ch,i)=>{
+    const card=document.createElement('div');
+    card.className='char-card';
+    card.innerHTML=`<img src="${ch.file}" alt="${ch.label}"><div class="char-label">${ch.label}</div>`;
+    card.onclick=()=>{
+      selectedCharImg=ch.file;
+      // 이미지 로드
+      const img=new Image();
+      img.src=ch.file;
+      img.onload=()=>{charSpriteImg=img;};
+      // UI 전환
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.remove('hidden');
+    };
+    grid.appendChild(card);
+  });
+})();
+
 function selectChar(type){
   const stats={
     warrior:{str:8,dex:3,int_:2,hp:150,mp:30,atkRange:55,atkType:'melee'},
@@ -229,7 +263,7 @@ function selectChar(type){
     archer:{str:3,dex:8,int_:2,hp:100,mp:50,atkRange:250,atkType:'ranged'},
   }[type];
   player={
-    type,x:200,y:0,w:36,h:48,vx:0,vy:0,speed:4,jumpForce:-12,
+    type,x:200,y:0,w:40,h:52,vx:0,vy:0,speed:4,jumpForce:-12,
     hp:stats.hp,maxHp:stats.hp,mp:stats.mp,maxMp:stats.mp,
     xp:0,xpToNext:20,level:1,
     str:stats.str,dex:stats.dex,int_:stats.int_,statPoints:0,
@@ -457,9 +491,24 @@ function drawDot(x,y,s,dots,sprite,dir){
 }
 
 function drawPlayerFull(px,py){
-  const sp=player.sprite;
-  const isWalking=Math.abs(player.vx)>0.5;
-  drawMapleChar(px,py,sp,player.facing,isWalking,player.attacking,player.grounded);
+  if(charSpriteImg){
+    // 이미지 스프라이트 사용
+    ctx.save();
+    if(player.facing<0){ctx.translate(px+player.w,py);ctx.scale(-1,1);px=0;py=0;}
+    else{ctx.translate(px,py);px=0;py=0;}
+    // 걷기 흔들림
+    const bob=Math.abs(player.vx)>0.5?Math.sin(Date.now()/100)*2:0;
+    ctx.drawImage(charSpriteImg,px-4,py+bob-4,player.w+8,player.h+8);
+    // 공격 이펙트
+    if(player.attacking){
+      ctx.strokeStyle='rgba(255,215,0,0.5)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(player.w/2+player.w*0.4,player.h*0.4,player.atkRange*0.3,0,Math.PI*2);ctx.stroke();
+    }
+    ctx.restore();
+  }else{
+    // 폴백: Canvas 그리기
+    drawMapleChar(px,py,player.sprite,player.facing,Math.abs(player.vx)>0.5,player.attacking,player.grounded);
+  }
 }
 
 function render(){

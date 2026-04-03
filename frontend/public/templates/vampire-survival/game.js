@@ -248,14 +248,20 @@ let selectedCharImg=null, charSpriteImg=null;
       const img=new Image();
       img.src=ch.file;
       img.onload=()=>{
+        // 통일 크기 캔버스 (100x100)
+        const SIZE=100;
         const oc=document.createElement('canvas');
-        oc.width=img.width;oc.height=img.height;
+        oc.width=SIZE;oc.height=SIZE;
         const ox=oc.getContext('2d');
-        ox.drawImage(img,0,0);
-        const id=ox.getImageData(0,0,oc.width,oc.height);
+        // 비율 유지하면서 중앙에 맞춤
+        const scale=Math.min(SIZE/img.width,SIZE/img.height)*0.9;
+        const dw=img.width*scale, dh=img.height*scale;
+        const dx=(SIZE-dw)/2, dy=(SIZE-dh)/2;
+        ox.drawImage(img,dx,dy,dw,dh);
+        // 흰배경 제거
+        const id=ox.getImageData(0,0,SIZE,SIZE);
         const d=id.data;
         for(let i=0;i<d.length;i+=4){
-          // 순수 흰색 배경만 제거 (250 이상)
           if(d[i]>250&&d[i+1]>250&&d[i+2]>250) d[i+3]=0;
         }
         ox.putImageData(id,0,0);

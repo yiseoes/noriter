@@ -239,20 +239,34 @@ let selectedCharImg=null, charSpriteImg=null;
   const grid=document.getElementById('charGrid');
   if(!grid)return;
   function removeWhiteBg(img,callback){
-    const S=100;
+    // 1단계: 원본 크기로 flood fill 배경 제거
+    const tw=img.width,th=img.height;
+    const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
+    const tx=tc.getContext('2d');
+    tx.drawImage(img,0,0);
+    const tid=tx.getImageData(0,0,tw,th),td=tid.data;
+    const vis=new Uint8Array(tw*th),q=[];
+    const isW=i=>td[i]>=248&&td[i+1]>=248&&td[i+2]>=248;
+    for(let x=0;x<tw;x++){if(isW(x*4))q.push([x,0]);if(isW(((th-1)*tw+x)*4))q.push([x,th-1]);}
+    for(let y=0;y<th;y++){if(isW((y*tw)*4))q.push([0,y]);if(isW((y*tw+tw-1)*4))q.push([tw-1,y]);}
+    while(q.length){const[x,y]=q.pop();const pi=y*tw+x;if(x<0||x>=tw||y<0||y>=th||vis[pi])continue;if(!isW(pi*4))continue;vis[pi]=1;td[pi*4+3]=0;q.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);}
+    tx.putImageData(tid,0,0);
+
+    // 2단계: 불투명 바운딩 박스 구하기
+    let minX=tw,minY=th,maxX=0,maxY=0;
+    for(let y=0;y<th;y++)for(let x=0;x<tw;x++){
+      if(td[(y*tw+x)*4+3]>10){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+    }
+    const cw=maxX-minX+1,ch=maxY-minY+1;
+
+    // 3단계: 통일 캔버스에 크기 맞춰 배치 (목표 높이 85px, 하단 정렬)
+    const S=100, TARGET_H=85;
     const oc=document.createElement('canvas');oc.width=S;oc.height=S;
     const ox=oc.getContext('2d');
-    const sc=Math.min(S/img.width,S/img.height)*0.92;
-    const dw=img.width*sc,dh=img.height*sc;
-    ox.drawImage(img,(S-dw)/2,S-dh,dw,dh);
-    const id=ox.getImageData(0,0,S,S),d=id.data;
-    const vis=new Uint8Array(S*S),q=[];
-    const isW=i=>d[i]>=248&&d[i+1]>=248&&d[i+2]>=248;
-    for(let x=0;x<S;x++){if(isW(x*4))q.push([x,0]);if(isW(((S-1)*S+x)*4))q.push([x,S-1]);}
-    for(let y=0;y<S;y++){if(isW((y*S)*4))q.push([0,y]);if(isW((y*S+S-1)*4))q.push([S-1,y]);}
-    while(q.length){const[x,y]=q.pop();const pi=y*S+x;if(x<0||x>=S||y<0||y>=S||vis[pi])continue;if(!isW(pi*4))continue;vis[pi]=1;d[pi*4+3]=0;q.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);}
-    ox.putImageData(id,0,0);
-    callback(oc.toDataURL());
+    const sc=Math.min(TARGET_H/ch, (S-10)/cw);
+    const dw=cw*sc, dh=ch*sc;
+    ox.drawImage(tc, minX,minY,cw,ch, (S-dw)/2, S-dh-2, dw, dh);
+    callback(oc.toDataURL(), oc);
   }
 
   CHAR_IMAGES.forEach((ch,i)=>{
@@ -272,43 +286,7 @@ let selectedCharImg=null, charSpriteImg=null;
       const img=new Image();
       img.src=ch.file;
       img.onload=()=>{
-        // 통일 크기 캔버스
-        const SIZE=100;
-        const oc=document.createElement('canvas');
-        oc.width=SIZE;oc.height=SIZE;
-        const ox=oc.getContext('2d');
-        // 비율 유지 중앙 배치
-        const scale=Math.min(SIZE/img.width,SIZE/img.height)*0.92;
-        const dw=img.width*scale, dh=img.height*scale;
-        const dx=(SIZE-dw)/2, dy=SIZE-dh; // 하단 정렬 (발 맞춤)
-        ox.drawImage(img,dx,dy,dw,dh);
-        // flood fill로 가장자리 흰배경만 제거 (캐릭터 내부 색 보존)
-        const id=ox.getImageData(0,0,SIZE,SIZE);
-        const d=id.data;
-        const visited=new Uint8Array(SIZE*SIZE);
-        const isWhite=(idx)=>d[idx]>=248&&d[idx+1]>=248&&d[idx+2]>=248;
-        const queue=[];
-        // 네 변 가장자리에서 시작
-        for(let x=0;x<SIZE;x++){
-          if(isWhite(x*4)) queue.push([x,0]);
-          if(isWhite(((SIZE-1)*SIZE+x)*4)) queue.push([x,SIZE-1]);
-        }
-        for(let y=0;y<SIZE;y++){
-          if(isWhite((y*SIZE)*4)) queue.push([0,y]);
-          if(isWhite((y*SIZE+SIZE-1)*4)) queue.push([SIZE-1,y]);
-        }
-        while(queue.length){
-          const[x,y]=queue.pop();
-          const pi=y*SIZE+x;
-          if(x<0||x>=SIZE||y<0||y>=SIZE||visited[pi]) continue;
-          const idx=pi*4;
-          if(!isWhite(idx)) continue;
-          visited[pi]=1;
-          d[idx+3]=0; // 투명으로
-          queue.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);
-        }
-        ox.putImageData(id,0,0);
-        charSpriteImg=oc;
+        removeWhiteBg(img,(url,oc)=>{charSpriteImg=oc;});
       };
       // UI 전환
       document.getElementById('step1').classList.add('hidden');

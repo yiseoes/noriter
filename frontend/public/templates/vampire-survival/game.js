@@ -244,10 +244,25 @@ let selectedCharImg=null, charSpriteImg=null;
     card.innerHTML=`<img src="${ch.file}" alt="${ch.label}"><div class="char-label">${ch.label}</div>`;
     card.onclick=()=>{
       selectedCharImg=ch.file;
-      // 이미지 로드
+      // 이미지 로드 + 흰배경 제거
       const img=new Image();
       img.src=ch.file;
-      img.onload=()=>{charSpriteImg=img;};
+      img.onload=()=>{
+        const oc=document.createElement('canvas');
+        oc.width=img.width;oc.height=img.height;
+        const ox=oc.getContext('2d');
+        ox.drawImage(img,0,0);
+        const id=ox.getImageData(0,0,oc.width,oc.height);
+        const d=id.data;
+        for(let i=0;i<d.length;i+=4){
+          // 흰색/거의 흰색 → 투명
+          if(d[i]>230&&d[i+1]>230&&d[i+2]>230) d[i+3]=0;
+          // 밝은 회색도 반투명
+          else if(d[i]>210&&d[i+1]>210&&d[i+2]>210) d[i+3]=Math.floor(d[i+3]*0.3);
+        }
+        ox.putImageData(id,0,0);
+        charSpriteImg=oc;
+      };
       // UI 전환
       document.getElementById('step1').classList.add('hidden');
       document.getElementById('step2').classList.remove('hidden');

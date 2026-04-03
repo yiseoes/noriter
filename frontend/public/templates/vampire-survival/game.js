@@ -328,14 +328,14 @@ let statusOpen=false,invOpen=false,shopOpen=false;
 
 // ===== 캐릭터 선택 (이미지 스프라이트) =====
 const CHAR_IMAGES=[
-  {file:'girl1.png',label:'🌸 소녀'},
-  {file:'boy1.png',label:'🖤 소년'},
-  {file:'girl2.png',label:'🐰 바니'},
-  {file:'girl3.png',label:'👓 글래스'},
-  {file:'boy2.png',label:'😎 선글'},
-  {file:'boy3.png',label:'😈 데빌'},
-  {file:'girl4.png',label:'🌷 핑크'},
-  {file:'boy4.png',label:'💐 플라워'},
+  {file:'girl1.png',label:'예시 1'},
+  {file:'boy1.png',label:'예시 2'},
+  {file:'girl2.png',label:'예시 3'},
+  {file:'girl3.png',label:'예시 4'},
+  {file:'boy2.png',label:'예시 5'},
+  {file:'boy3.png',label:'예시 6'},
+  {file:'girl4.png',label:'예시 7'},
+  {file:'boy4.png',label:'예시 8'},
 ];
 let selectedCharImg=null, charSpriteImg=null;
 

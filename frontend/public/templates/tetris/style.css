@@ -1,0 +1,20 @@
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a1a; display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:'Segoe UI',sans-serif; color:white; }
+#game-container { display:flex; gap:16px; align-items:flex-start; }
+canvas { border:2px solid rgba(255,255,255,0.15); border-radius:8px; background:#111; }
+#sidebar-left, #sidebar-right { display:flex; flex-direction:column; gap:10px; }
+.panel { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px; text-align:center; min-width:110px; }
+.panel h3 { font-size:11px; color:rgba(255,255,255,0.4); letter-spacing:2px; margin-bottom:8px; }
+.panel div { font-size:20px; font-weight:700; }
+.panel canvas { border:none; background:transparent; display:block; margin:0 auto; }
+#startScreen, #overlay {
+  position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.85); z-index:100;
+}
+.hidden { display:none !important; }
+h1 { font-size:42px; margin-bottom:8px; }
+h2 { font-size:28px; margin-bottom:8px; }
+p { color:rgba(255,255,255,0.6); margin-bottom:16px; font-size:14px; }
+button { padding:12px 32px; border:none; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;
+  background:linear-gradient(135deg,#339af0,#74c0fc); color:white; }
+button:hover { transform:scale(1.05); }

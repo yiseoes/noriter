@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>테트리스</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container">
+    <div id="sidebar-left">
+      <div class="panel"><h3>HOLD</h3><canvas id="holdCanvas" width="100" height="100"></canvas></div>
+    </div>
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
+    <div id="sidebar-right">
+      <div class="panel"><h3>NEXT</h3><canvas id="nextCanvas" width="100" height="100"></canvas></div>
+      <div class="panel"><h3>SCORE</h3><div id="score">0</div></div>
+      <div class="panel"><h3>LEVEL</h3><div id="level">1</div></div>
+      <div class="panel"><h3>LINES</h3><div id="lines">0</div></div>
+    </div>
+  </div>
+  <div id="overlay" class="hidden">
+    <h2 id="overlayTitle"></h2>
+    <p id="overlayText"></p>
+    <button onclick="startGame()">시작</button>
+  </div>
+  <div id="startScreen">
+    <h1>🧱 테트리스</h1>
+    <p>← → 이동 · ↑ 회전 · ↓ 소프트드롭 · Space 하드드롭 · C 홀드</p>
+    <button onclick="startGame()">게임 시작</button>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

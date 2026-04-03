@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스페이스 슈터</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="ui">
+    <span id="score">SCORE: 0</span>
+    <span id="lives">❤️❤️❤️</span>
+    <span id="wave">WAVE 1</span>
+  </div>
+  <div id="powerUpNotice" class="hidden"></div>
+  <div id="startScreen">
+    <h1>🚀 스페이스 슈터</h1>
+    <p>우주를 지켜라! 끝없는 적들을 물리치세요</p>
+    <p class="hint">← → 이동 · Space 발사 · 자동발사 지원</p>
+    <button onclick="startGame()">게임 시작</button>
+  </div>
+  <div id="gameOver" class="hidden">
+    <h2>💀 GAME OVER</h2>
+    <p id="finalScore"></p>
+    <button onclick="startGame()">다시 하기</button>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

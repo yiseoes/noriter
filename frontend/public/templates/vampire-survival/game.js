@@ -514,7 +514,7 @@ function drawPlayerFull(px,py){
     const bob=Math.abs(player.vx)>0.5?Math.sin(Date.now()/100)*2:0;
     const sw=player.w+8, sh=player.h+8;
     ctx.save();
-    if(player.facing<0){
+    if(player.facing>0){
       ctx.translate(px+player.w/2,0);
       ctx.scale(-1,1);
       ctx.drawImage(charSpriteImg,-sw/2,py+bob-4,sw,sh);

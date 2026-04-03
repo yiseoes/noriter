@@ -1,32 +1,88 @@
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#0a0a1a; overflow:hidden; font-family:'Segoe UI',sans-serif; }
+body { background:#0a0a1a; overflow:hidden; font-family:'Segoe UI',sans-serif; color:white; image-rendering:pixelated; }
 canvas { display:block; }
 
-#ui { position:fixed; top:12px; left:12px; right:12px; z-index:10; pointer-events:none; }
-#hpBar, #xpBar { height:14px; background:rgba(255,255,255,0.1); border-radius:7px; margin-bottom:4px; position:relative; overflow:hidden; }
-#hpFill { height:100%; background:linear-gradient(90deg,#fa5252,#ff6b6b); border-radius:7px; transition:width 0.3s; }
-#xpFill { height:100%; background:linear-gradient(90deg,#339af0,#74c0fc); border-radius:7px; transition:width 0.3s; }
-#hpBar span, #xpBar span { position:absolute; top:0; left:50%; transform:translateX(-50%); font-size:10px; color:white; line-height:14px; text-shadow:0 1px 2px rgba(0,0,0,0.5); }
-#info { display:flex; justify-content:space-between; font-size:13px; color:rgba(255,255,255,0.7); margin-top:6px; }
-#info span { background:rgba(0,0,0,0.4); padding:2px 8px; border-radius:4px; }
+/* UI */
+#ui { position:fixed; top:0; left:0; right:0; z-index:10; pointer-events:none; padding:8px 12px; }
+#bars { display:flex; flex-direction:column; gap:3px; max-width:280px; }
+#hpBar,#mpBar,#xpBar { height:16px; background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.2); border-radius:2px; position:relative; overflow:hidden; }
+#hpFill { height:100%; background:linear-gradient(180deg,#ff6b6b,#c92a2a); transition:width 0.3s; }
+#mpFill { height:100%; background:linear-gradient(180deg,#74c0fc,#1864ab); transition:width 0.3s; }
+#xpFill { height:100%; background:linear-gradient(180deg,#ffd43b,#e67700); transition:width 0.3s; }
+#hpBar span,#mpBar span,#xpBar span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; text-shadow:0 1px 2px #000; }
+#info { display:flex; gap:8px; margin-top:6px; font-size:12px; font-weight:600; }
+#info span { background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.15); padding:2px 8px; border-radius:3px; }
+#quickSlots { display:flex; gap:4px; margin-top:6px; pointer-events:auto; }
+.quick-slot { width:36px; height:36px; background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.2); border-radius:4px;
+  display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; position:relative; }
+.quick-slot .qty { position:absolute; bottom:1px; right:2px; font-size:8px; color:#ffd43b; }
+.quick-slot .key { position:absolute; top:1px; left:2px; font-size:7px; color:rgba(255,255,255,0.4); }
 
-#startScreen, #levelUp, #gameOver {
-  position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  background:rgba(0,0,0,0.85); color:white; z-index:100;
-}
+/* 미니맵 */
+#minimap { position:fixed; top:10px; right:10px; width:140px; height:80px; background:rgba(0,0,0,0.6);
+  border:1px solid rgba(255,255,255,0.2); border-radius:4px; z-index:10; overflow:hidden; }
+
+/* 캐릭터 선택 */
+#charSelect { position:fixed; inset:0; background:linear-gradient(180deg,#1a1a3e,#0d1117); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:200; }
+#charSelect h1 { font-size:36px; margin-bottom:4px; }
+#charSelect > p { color:rgba(255,255,255,0.5); margin-bottom:24px; }
+.hint { font-size:12px; color:rgba(255,255,255,0.3); margin-top:24px; }
+#charOptions { display:flex; gap:16px; }
+.char-btn { width:200px; padding:20px 16px; background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.1);
+  border-radius:14px; text-align:center; cursor:pointer; transition:all 0.2s; }
+.char-btn:hover { border-color:#ff6b6b; background:rgba(255,107,107,0.1); transform:translateY(-4px); }
+.char-preview { height:80px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
+.char-name { font-size:16px; font-weight:700; margin-bottom:4px; }
+.char-desc { font-size:11px; color:rgba(255,255,255,0.5); margin-bottom:6px; }
+.char-stats { font-size:10px; color:rgba(255,255,255,0.35); }
+
+/* 패널 윈도우 */
+.panel-window { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:320px; background:rgba(10,10,30,0.95);
+  border:2px solid rgba(255,255,255,0.2); border-radius:8px; z-index:150; pointer-events:auto; }
+.panel-header { display:flex; justify-content:space-between; align-items:center; padding:8px 12px;
+  border-bottom:1px solid rgba(255,255,255,0.1); font-size:14px; font-weight:600; }
+.panel-header button { background:none; border:none; color:white; font-size:16px; cursor:pointer; }
+#statusContent { padding:12px; font-size:13px; line-height:2; }
+.stat-row { display:flex; justify-content:space-between; align-items:center; }
+.stat-row button { background:#339af0; border:none; color:white; width:20px; height:20px; border-radius:3px; cursor:pointer; font-size:12px; }
+#inventoryGrid { padding:8px; display:grid; grid-template-columns:repeat(6,1fr); gap:4px; }
+.inv-slot { width:44px; height:44px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+  border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:20px; cursor:pointer; position:relative; }
+.inv-slot:hover { border-color:#ff6b6b; }
+.inv-slot .inv-qty { position:absolute; bottom:1px; right:3px; font-size:9px; color:#ffd43b; }
+#shopContent { padding:12px; }
+.shop-item { display:flex; align-items:center; gap:10px; padding:8px; border-radius:6px; cursor:pointer; margin-bottom:4px; }
+.shop-item:hover { background:rgba(255,255,255,0.08); }
+.shop-item-icon { font-size:24px; }
+.shop-item-info { flex:1; }
+.shop-item-name { font-size:13px; font-weight:600; }
+.shop-item-desc { font-size:10px; color:rgba(255,255,255,0.4); }
+.shop-item-price { font-size:12px; color:#ffd43b; font-weight:600; }
+
+/* NPC 대화 */
+#npcDialog { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:500px; max-width:90vw;
+  background:rgba(10,10,30,0.95); border:2px solid rgba(255,255,255,0.2); border-radius:10px;
+  padding:16px; z-index:150; }
+#npcText { font-size:14px; line-height:1.7; margin-bottom:10px; }
+#npcOptions { display:flex; gap:8px; }
+#npcOptions button { padding:6px 16px; border:1px solid rgba(255,255,255,0.2); border-radius:6px;
+  background:rgba(255,255,255,0.05); color:white; font-size:12px; cursor:pointer; }
+#npcOptions button:hover { border-color:#ff6b6b; background:rgba(255,107,107,0.15); }
+
+/* 레벨업 */
+#levelUpNotice { position:fixed; top:30%; left:50%; transform:translateX(-50%); z-index:100; pointer-events:none; }
+.level-up-text { font-size:36px; font-weight:800; color:#ffd43b; text-shadow:0 0 20px rgba(255,212,59,0.5);
+  animation:levelPop 1.5s ease-out forwards; }
+@keyframes levelPop { 0%{opacity:0;transform:scale(0.5)translateY(20px)} 20%{opacity:1;transform:scale(1.2)translateY(-10px)}
+  40%{transform:scale(1)translateY(0)} 100%{opacity:0;transform:translateY(-40px)} }
+
+/* 게임 오버 */
+#gameOver { position:fixed; inset:0; background:rgba(0,0,0,0.85); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:200; }
 .hidden { display:none !important; }
-h1 { font-size:42px; margin-bottom:8px; }
 h2 { font-size:28px; margin-bottom:8px; }
-p { color:rgba(255,255,255,0.6); margin-bottom:16px; }
-.hint { font-size:13px; }
-button { padding:12px 32px; border:none; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;
-  background:linear-gradient(135deg,#ff6b6b,#ffa8a8); color:white; margin:4px; }
+#gameOver p { color:rgba(255,255,255,0.6); margin-bottom:16px; }
+button { padding:10px 28px; border:none; border-radius:10px; font-size:15px; font-weight:600; cursor:pointer;
+  background:linear-gradient(135deg,#ff6b6b,#ffa8a8); color:white; }
 button:hover { transform:scale(1.05); }
-
-#skills { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
-.skill-btn { width:180px; padding:16px; background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.15);
-  border-radius:14px; cursor:pointer; text-align:center; color:white; transition:all 0.2s; }
-.skill-btn:hover { border-color:#ff6b6b; background:rgba(255,107,107,0.15); transform:translateY(-2px); }
-.skill-icon { font-size:32px; margin-bottom:6px; }
-.skill-name { font-size:14px; font-weight:600; }
-.skill-desc { font-size:11px; color:rgba(255,255,255,0.5); margin-top:4px; }

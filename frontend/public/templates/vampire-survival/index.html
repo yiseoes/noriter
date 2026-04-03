@@ -8,27 +8,89 @@
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
+
+  <!-- UI 오버레이 -->
   <div id="ui">
-    <div id="hpBar"><div id="hpFill"></div><span id="hpText"></span></div>
-    <div id="xpBar"><div id="xpFill"></div><span id="xpText"></span></div>
-    <div id="info"><span id="level">Lv.1</span><span id="timer">0:00</span><span id="kills">0 KILLS</span></div>
+    <div id="bars">
+      <div id="hpBar"><div id="hpFill"></div><span id="hpText"></span></div>
+      <div id="mpBar"><div id="mpFill"></div><span id="mpText"></span></div>
+      <div id="xpBar"><div id="xpFill"></div><span id="xpText"></span></div>
+    </div>
+    <div id="info">
+      <span id="level">Lv.1</span>
+      <span id="mapName">🏘️ 마을</span>
+      <span id="goldText">💰 0</span>
+      <span id="kills">0 KILLS</span>
+    </div>
+    <div id="quickSlots"></div>
   </div>
-  <div id="levelUp" class="hidden">
-    <h2>⚡ 레벨 업!</h2>
-    <p>스킬을 선택하세요</p>
-    <div id="skills"></div>
+
+  <!-- 미니맵 -->
+  <div id="minimap"></div>
+
+  <!-- 캐릭터 선택 -->
+  <div id="charSelect">
+    <h1>🧛 뱀파이어 서바이벌</h1>
+    <p>캐릭터를 선택하세요</p>
+    <div id="charOptions">
+      <div class="char-btn" onclick="selectChar('warrior')">
+        <div class="char-preview" id="previewWarrior"></div>
+        <div class="char-name">⚔️ 전사</div>
+        <div class="char-desc">높은 HP · 근접 공격 · 강한 방어</div>
+        <div class="char-stats">STR 8 · DEX 3 · INT 2 · HP 150</div>
+      </div>
+      <div class="char-btn" onclick="selectChar('mage')">
+        <div class="char-preview" id="previewMage"></div>
+        <div class="char-name">🔮 마법사</div>
+        <div class="char-desc">높은 MP · 원거리 마법 · 광역기</div>
+        <div class="char-stats">STR 2 · DEX 3 · INT 8 · HP 80</div>
+      </div>
+      <div class="char-btn" onclick="selectChar('archer')">
+        <div class="char-preview" id="previewArcher"></div>
+        <div class="char-name">🏹 궁수</div>
+        <div class="char-desc">높은 DEX · 원거리 · 크리티컬</div>
+        <div class="char-stats">STR 3 · DEX 8 · INT 2 · HP 100</div>
+      </div>
+    </div>
+    <p class="hint">← → 이동 · ↑/Space 점프 · Z 공격 · X 스킬 · I 인벤토리 · S 상태창 · ↑ 포탈</p>
   </div>
+
+  <!-- 상태창 -->
+  <div id="statusWindow" class="panel-window hidden">
+    <div class="panel-header"><span>📊 상태창</span><button onclick="toggleStatus()">✕</button></div>
+    <div id="statusContent"></div>
+  </div>
+
+  <!-- 인벤토리 -->
+  <div id="inventoryWindow" class="panel-window hidden">
+    <div class="panel-header"><span>🎒 인벤토리</span><button onclick="toggleInventory()">✕</button></div>
+    <div id="inventoryGrid"></div>
+  </div>
+
+  <!-- 상점 -->
+  <div id="shopWindow" class="panel-window hidden">
+    <div class="panel-header"><span>🏪 상점</span><button onclick="toggleShop()">✕</button></div>
+    <div id="shopContent"></div>
+  </div>
+
+  <!-- 레벨업 -->
+  <div id="levelUpNotice" class="hidden">
+    <div class="level-up-text">⚡ LEVEL UP!</div>
+  </div>
+
+  <!-- 게임 오버 -->
   <div id="gameOver" class="hidden">
     <h2>💀 게임 오버</h2>
     <p id="finalScore"></p>
     <button onclick="location.reload()">다시 하기</button>
   </div>
-  <div id="startScreen">
-    <h1>🧛 뱀파이어 서바이벌</h1>
-    <p>뱀파이어 몬스터를 때려잡고 레벨업하세요!</p>
-    <p class="hint">← → 이동 · ↑/Space 점프 · Z/X 공격</p>
-    <button onclick="startGame()">게임 시작</button>
+
+  <!-- NPC 대화 -->
+  <div id="npcDialog" class="hidden">
+    <div id="npcText"></div>
+    <div id="npcOptions"></div>
   </div>
+
   <script src="game.js"></script>
 </body>
 </html>

@@ -7,11 +7,12 @@ interface GameCardProps {
   desc: string;
   date: string;
   isDemo?: boolean;
+  prompt?: string;
   onPlay?: () => void;
   onClick?: () => void;
 }
 
-export default function GameCard({ emoji, genre, genreColor, bgGradient, name, desc, date, isDemo, onPlay, onClick }: GameCardProps) {
+export default function GameCard({ emoji, genre, genreColor, bgGradient, name, desc, date, isDemo, prompt, onPlay, onClick }: GameCardProps) {
   return (
     <div
       onClick={onClick}
@@ -52,6 +53,14 @@ export default function GameCard({ emoji, genre, genreColor, bgGradient, name, d
             플레이 ▶
           </button>
         </div>
+        {prompt && (
+          <div className="mt-3 pt-3 border-t border-border-light">
+            <div className="text-[10px] font-semibold text-text-muted mb-1">💬 프롬프트 예시</div>
+            <div className="text-[11px] text-text-secondary leading-relaxed bg-bg-secondary rounded-lg px-3 py-2 italic">
+              "{prompt}"
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -14,9 +14,12 @@ const genreConfig: Record<string, { emoji: string; color: string; gradient: stri
 };
 
 const TEMPLATES = [
-  { id: 'tpl_vampire', name: '뱀파이어 서바이벌', desc: '사방에서 몰려오는 몬스터를 처치하는 서바이벌 액션', genre: 'ACTION', url: '/templates/vampire-survival/index.html', emoji: '🧛' },
-  { id: 'tpl_tetris', name: '테트리스', desc: '블록을 회전하고 쌓아 줄을 완성하는 클래식 퍼즐', genre: 'PUZZLE', url: '/templates/tetris/index.html', emoji: '🧱' },
-  { id: 'tpl_shooter', name: '스페이스 슈터', desc: '우주를 지켜라! 끝없는 적들을 물리치는 슈팅 게임', genre: 'SHOOTING', url: '/templates/space-shooter/index.html', emoji: '🚀' },
+  { id: 'tpl_vampire', name: '뱀파이어 서바이벌', desc: '횡스크롤 RPG — 캐릭터 선택, 6개 맵, 레벨업, 스킬, 보스전', genre: 'ACTION', url: '/templates/vampire-survival/index.html', emoji: '🧛',
+    prompt: '메이플스토리 같은 횡스크롤 RPG를 만들어줘. 뱀파이어 세계관, 캐릭터 선택, 맵 이동, 레벨업 시 스킬 선택, 보스 몬스터, 아이템 드롭, 인벤토리가 있었으면 좋겠어.' },
+  { id: 'tpl_tetris', name: '테트리스', desc: '클래식 퍼즐 — 홀드, 고스트, 하드드롭, 레벨 시스템', genre: 'PUZZLE', url: '/templates/tetris/index.html', emoji: '🧱',
+    prompt: '테트리스 게임을 만들어줘. 7종 블록, 홀드 기능, 고스트 피스, 하드드롭, 소프트드롭, 회전+벽차기, 라인 클리어 시 점수, 레벨별 속도 증가가 있었으면 좋겠어.' },
+  { id: 'tpl_shooter', name: '스페이스 슈터', desc: '종스크롤 슈팅 — 웨이브, 파워업, 보스전', genre: 'SHOOTING', url: '/templates/space-shooter/index.html', emoji: '🚀',
+    prompt: '우주 슈팅 게임을 만들어줘. 웨이브 시스템으로 점점 강해지는 적, 파워업 아이템(트리플샷, 쉴드, 스피드, 폭탄), 보스 몬스터, 라이프 시스템, 점수판이 있었으면 좋겠어.' },
 ];
 
 interface PlaygroundProps {
@@ -49,6 +52,7 @@ export default function Playground({ onCreateGame, onSelectProject, projects }: 
                 name={tpl.name}
                 desc={tpl.desc}
                 date="템플릿"
+                prompt={tpl.prompt}
                 onPlay={() => setPlayingGame({ url: tpl.url, title: tpl.name })}
                 onClick={() => setPlayingGame({ url: tpl.url, title: tpl.name })}
               />

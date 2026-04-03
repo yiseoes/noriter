@@ -356,12 +356,28 @@ let selectedCharImg=null, charSpriteImg=null;
       // UI 전환
       document.getElementById('step1').classList.add('hidden');
       document.getElementById('step2').classList.remove('hidden');
+      document.getElementById('stepTitle').textContent='직업을 선택하세요';
+      currentStep=2;
     };
     grid.appendChild(card);
   });
 })();
 
-let selectedJob=null;
+let selectedJob=null,currentStep=1;
+
+function goBack(){
+  if(currentStep===1){
+    document.getElementById('charSelect').classList.add('hidden');
+    document.getElementById('startScreen').classList.remove('hidden');
+  }else if(currentStep===2){
+    document.getElementById('step2').classList.add('hidden');
+    document.getElementById('step1').classList.remove('hidden');
+    document.getElementById('step3').classList.add('hidden');
+    currentStep=1;
+    document.getElementById('stepTitle').textContent='캐릭터를 선택하세요';
+  }
+}
+
 function pickJob(type){
   selectedJob=type;
   const names={warrior:'⚔️ 전사',mage:'🔮 마법사',archer:'🏹 궁수'};

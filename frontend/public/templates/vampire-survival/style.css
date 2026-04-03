@@ -97,6 +97,15 @@ canvas { display:block; }
 @keyframes levelPop { 0%{opacity:0;transform:scale(0.5)translateY(20px)} 20%{opacity:1;transform:scale(1.2)translateY(-10px)}
   40%{transform:scale(1)translateY(0)} 100%{opacity:0;transform:translateY(-40px)} }
 
+/* 스킬 선택 */
+#skillSelect { position:fixed; inset:0; background:rgba(0,0,0,0.8); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:180; }
+#skillSelect h2 { font-size:22px; margin-bottom:20px; color:#ffd43b; }
+.skill-options { display:flex; gap:12px; }
+.skill-choice { width:150px; padding:20px 12px; background:rgba(255,255,255,0.06); border:2px solid rgba(255,255,255,0.12);
+  border-radius:14px; text-align:center; cursor:pointer; color:white; transition:all 0.2s; }
+.skill-choice:hover { border-color:#ff6b6b; background:rgba(255,107,107,0.15); transform:translateY(-4px); }
+
 /* 게임 오버 */
 #gameOver { position:fixed; inset:0; background:rgba(0,0,0,0.85); display:flex; flex-direction:column;
   align-items:center; justify-content:center; z-index:200; }

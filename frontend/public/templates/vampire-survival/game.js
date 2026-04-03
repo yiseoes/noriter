@@ -263,13 +263,15 @@ function selectChar(type){
     archer:{str:3,dex:8,int_:2,hp:100,mp:50,atkRange:250,atkType:'ranged'},
   }[type];
   player={
-    type,x:200,y:0,w:40,h:52,vx:0,vy:0,speed:4,jumpForce:-12,
+    type,x:200,y:0,w:40,h:52,vx:0,vy:0,speed:4.5,jumpForce:-16,
     hp:stats.hp,maxHp:stats.hp,mp:stats.mp,maxMp:stats.mp,
     xp:0,xpToNext:20,level:1,
     str:stats.str,dex:stats.dex,int_:stats.int_,statPoints:0,
     atkRange:stats.atkRange,atkType:stats.atkType,atkCooldown:0,atkSpeed:400,
     attacking:false,atkTimer:0,facing:1,grounded:false,invincible:0,
     critChance:0.05+stats.dex*0.01,sprite:SPRITES[type],
+    _doubleAtk:false,_dashUnlocked:false,_ultPower:1,_lifesteal:false,
+    _hpRegen:1,_goldMult:1,_dashing:false,_dashTimer:0,_dashCool:0,_doubleAtkDone:false,_portalCooldown:false,
   };
   currentMap='village';
   loadMap();
@@ -323,9 +325,18 @@ function attack(){
       e.hp-=dmg;e.flash=0.12;e.knockback=player.facing*6;
       dmgTexts.push({x:e.x+e.w/2,y:e.y-8,text:crit?dmg+'!':String(dmg),color:crit?'#ffd43b':'#fff',size:crit?18:13,life:35});
       spawnP(e.x+e.w/2,e.y+e.h/2,e.color,4);
+      if(player._lifesteal) player.hp=Math.min(player.maxHp,player.hp+dmg*0.05);
       if(e.hp<=0) killEnemy(e);
     }
   });
+  // 더블어택 (Lv.3 해금) — 0.15초 후 2타
+  if(player._doubleAtk&&!player._doubleAtkDone){
+    player._doubleAtkDone=true;
+    setTimeout(()=>{
+      player.attacking=true;player.atkTimer=150;player._doubleAtkDone=false;
+      spawnP(player.x+player.w/2+player.facing*20,player.y+player.h/2,'#ffa8a8',3);
+    },150);
+  }
 }
 
 function useSkill(){
@@ -333,7 +344,8 @@ function useSkill(){
   player.mp-=15;
   // 광역 스킬
   const range=120;
-  const totalAtk=player.str*2+player.int_*4+(equipped.weapon?equipped.weapon.atk:0);
+  const ultMult=player._ultPower||1;
+  const totalAtk=(player.str*2+player.int_*4+(equipped.weapon?equipped.weapon.atk:0))*ultMult;
   enemies.forEach(e=>{
     if(e.dead)return;
     if(Math.abs(e.x+e.w/2-player.x-player.w/2)<range&&Math.abs(e.y+e.h/2-player.y-player.h/2)<range){
@@ -374,13 +386,65 @@ function killEnemy(e){
   },5000);
 }
 
+// ===== 스킬 목록 (3지선다) =====
+const LEVEL_SKILLS=[
+  {id:'atkUp',icon:'⚔️',name:'공격력 강화',desc:'공격력 20% 증가',apply:p=>{p.str=Math.floor(p.str*1.2);}},
+  {id:'spdUp',icon:'💨',name:'이동속도 강화',desc:'이동속도 15% 증가',apply:p=>{p.speed*=1.15;}},
+  {id:'jumpUp',icon:'🦘',name:'점프력 강화',desc:'점프력 15% 증가',apply:p=>{p.jumpForce*=1.15;}},
+  {id:'hpHeal',icon:'❤️',name:'체력 회복',desc:'HP 50% 회복',apply:p=>{p.hp=Math.min(p.maxHp,p.hp+p.maxHp*0.5);}},
+  {id:'maxHpUp',icon:'💖',name:'최대 체력 +',desc:'최대 HP 25% 증가',apply:p=>{p.maxHp=Math.floor(p.maxHp*1.25);p.hp+=30;}},
+  {id:'mpUp',icon:'💙',name:'최대 마나 +',desc:'최대 MP 30% 증가',apply:p=>{p.maxMp=Math.floor(p.maxMp*1.3);p.mp=p.maxMp;}},
+  {id:'critUp',icon:'💥',name:'크리티컬 강화',desc:'크리확률 +8%',apply:p=>{p.critChance=Math.min(0.8,p.critChance+0.08);}},
+  {id:'rangeUp',icon:'🎯',name:'공격 범위 +',desc:'공격 범위 25% 증가',apply:p=>{p.atkRange*=1.25;}},
+  {id:'goldUp',icon:'💰',name:'골드 보너스',desc:'골드 획득 50% 증가',apply:p=>{p._goldMult=(p._goldMult||1)*1.5;}},
+  {id:'regen',icon:'🌿',name:'자연 회복',desc:'HP 자연회복 속도 2배',apply:p=>{p._hpRegen=(p._hpRegen||1)*2;}},
+];
+
+// 해금 스킬 (레벨별 자동)
+const UNLOCK_SKILLS={
+  3:{name:'더블 어택',desc:'기본 공격이 2연타로!',icon:'⚡',apply:p=>{p._doubleAtk=true;}},
+  5:{name:'대시',desc:'C키로 무적 돌진!',icon:'💫',apply:p=>{p._dashUnlocked=true;}},
+  8:{name:'궁극기 강화',desc:'X키 스킬 데미지 2배!',icon:'🔥',apply:p=>{p._ultPower=(p._ultPower||1)*2;}},
+  12:{name:'흡혈',desc:'공격 시 HP 5% 회복!',icon:'🧛',apply:p=>{p._lifesteal=true;}},
+};
+
+let skillSelectPaused=false;
+
 function levelUp(){
   player.xp-=player.xpToNext;player.xpToNext=Math.floor(player.xpToNext*1.4);
-  player.level++;player.statPoints+=5;
+  player.level++;player.statPoints+=3;
   player.maxHp+=10;player.hp=player.maxHp;player.maxMp+=5;player.mp=player.maxMp;
+  spawnP(player.x+player.w/2,player.y,'#ffd43b',20);
+
+  // 해금 스킬 체크
+  const unlock=UNLOCK_SKILLS[player.level];
+  if(unlock){
+    unlock.apply(player);
+    document.getElementById('levelUpNotice').innerHTML=`<div class="level-up-text">⚡ Lv.${player.level} — ${unlock.icon} ${unlock.name} 해금!</div>`;
+  }else{
+    document.getElementById('levelUpNotice').innerHTML=`<div class="level-up-text">⚡ LEVEL UP! Lv.${player.level}</div>`;
+  }
   document.getElementById('levelUpNotice').classList.remove('hidden');
   setTimeout(()=>document.getElementById('levelUpNotice').classList.add('hidden'),1500);
-  spawnP(player.x+player.w/2,player.y,'#ffd43b',20);
+
+  // 3지선다 스킬 선택
+  showSkillSelect();
+}
+
+function showSkillSelect(){
+  skillSelectPaused=true;
+  const picks=[...LEVEL_SKILLS].sort(()=>Math.random()-0.5).slice(0,3);
+  const div=document.getElementById('skillSelectOptions');
+  if(!div) return;
+  div.innerHTML='';
+  picks.forEach(s=>{
+    const btn=document.createElement('div');
+    btn.className='skill-choice';
+    btn.innerHTML=`<div style="font-size:28px;margin-bottom:4px">${s.icon}</div><div style="font-size:13px;font-weight:700">${s.name}</div><div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px">${s.desc}</div>`;
+    btn.onclick=()=>{s.apply(player);skillSelectPaused=false;document.getElementById('skillSelect').classList.add('hidden');};
+    div.appendChild(btn);
+  });
+  document.getElementById('skillSelect').classList.remove('hidden');
 }
 
 // ===== 업데이트 =====
@@ -393,6 +457,16 @@ function update(dt){
   if((keys['w']||keys['ArrowUp']||keys[' '])&&player.grounded){player.vy=player.jumpForce;player.grounded=false;}
   if(keys['z']||keys['Z']) attack();
   if(keys['x']||keys['X']) useSkill();
+  // 대시 (C키, Lv.5 해금)
+  if((keys['c']||keys['C'])&&player._dashUnlocked&&!player._dashing&&player._dashCool<=0){
+    player._dashing=true;player._dashTimer=0.2;player._dashCool=1.5;player.invincible=0.3;
+    player.vx=player.facing*15;
+  }
+  if(player._dashing){player._dashTimer-=dt;if(player._dashTimer<=0)player._dashing=false;}
+  if(player._dashCool>0)player._dashCool-=dt;
+  // HP 자연회복
+  const regen=player._hpRegen||1;
+  player.hp=Math.min(player.maxHp,player.hp+dt*0.5*regen);
 
   // 포탈은 keydown 핸들러(E키)에서 처리
 
@@ -845,7 +919,7 @@ let lastTime=0;
 function gameLoop(now){
   if(!gameRunning)return;
   const dt=Math.min((now-lastTime)/1000,0.05);lastTime=now;
-  if(!statusOpen&&!invOpen&&!shopOpen) update(dt);
+  if(!statusOpen&&!invOpen&&!shopOpen&&!skillSelectPaused) update(dt);
   render();
   requestAnimationFrame(gameLoop);
 }

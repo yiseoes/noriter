@@ -248,22 +248,40 @@ let selectedCharImg=null, charSpriteImg=null;
       const img=new Image();
       img.src=ch.file;
       img.onload=()=>{
-        // 통일 크기 캔버스 (100x100)
+        // 통일 크기 캔버스
         const SIZE=100;
         const oc=document.createElement('canvas');
         oc.width=SIZE;oc.height=SIZE;
         const ox=oc.getContext('2d');
-        // 비율 유지하면서 중앙에 맞춤
-        const scale=Math.min(SIZE/img.width,SIZE/img.height)*0.9;
+        // 비율 유지 중앙 배치
+        const scale=Math.min(SIZE/img.width,SIZE/img.height)*0.92;
         const dw=img.width*scale, dh=img.height*scale;
-        const dx=(SIZE-dw)/2, dy=(SIZE-dh)/2;
+        const dx=(SIZE-dw)/2, dy=SIZE-dh; // 하단 정렬 (발 맞춤)
         ox.drawImage(img,dx,dy,dw,dh);
-        // 흰배경 제거
+        // flood fill로 가장자리 흰배경만 제거 (캐릭터 내부 색 보존)
         const id=ox.getImageData(0,0,SIZE,SIZE);
         const d=id.data;
-        for(let i=0;i<d.length;i+=4){
-          // 순수 흰색(254+)만 제거, 살색/회색 보존
-          if(d[i]>=254&&d[i+1]>=254&&d[i+2]>=254) d[i+3]=0;
+        const visited=new Uint8Array(SIZE*SIZE);
+        const isWhite=(idx)=>d[idx]>=248&&d[idx+1]>=248&&d[idx+2]>=248;
+        const queue=[];
+        // 네 변 가장자리에서 시작
+        for(let x=0;x<SIZE;x++){
+          if(isWhite(x*4)) queue.push([x,0]);
+          if(isWhite(((SIZE-1)*SIZE+x)*4)) queue.push([x,SIZE-1]);
+        }
+        for(let y=0;y<SIZE;y++){
+          if(isWhite((y*SIZE)*4)) queue.push([0,y]);
+          if(isWhite((y*SIZE+SIZE-1)*4)) queue.push([SIZE-1,y]);
+        }
+        while(queue.length){
+          const[x,y]=queue.pop();
+          const pi=y*SIZE+x;
+          if(x<0||x>=SIZE||y<0||y>=SIZE||visited[pi]) continue;
+          const idx=pi*4;
+          if(!isWhite(idx)) continue;
+          visited[pi]=1;
+          d[idx+3]=0; // 투명으로
+          queue.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);
         }
         ox.putImageData(id,0,0);
         charSpriteImg=oc;

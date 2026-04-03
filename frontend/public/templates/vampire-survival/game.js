@@ -191,10 +191,66 @@ const MAPS={
     ],
     enemies:['zombie','zombie','vampire','vampire','vampire','dracula'],
     npcs:[],
-    portals:[{x:30,y:820,target:'forest',tx:2750,ty:0,label:'← 다크우드 숲'}],
+    portals:[
+      {x:30,y:820,target:'forest',tx:2750,ty:0,label:'← 다크우드 숲'},
+      {x:2420,y:820,target:'graveyard',tx:150,ty:0,label:'묘지 →'},
+    ],
     trees:[],
     houses:[],
-  }
+  },
+  graveyard:{
+    name:'🪦 뱀파이어 묘지', bg1:'#0d0d1a',bg2:'#1a1a2e',groundColor:'#2a2a3a',
+    width:2800,height:900,
+    platforms:[
+      {x:0,y:860,w:2800,h:40},
+      {x:200,y:720,w:160,h:16},{x:500,y:640,w:140,h:16},{x:800,y:720,w:200,h:16},
+      {x:1100,y:580,w:160,h:16},{x:1400,y:680,w:180,h:16},{x:1700,y:600,w:150,h:16},
+      {x:2000,y:720,w:200,h:16},{x:2400,y:640,w:160,h:16},
+    ],
+    enemies:['ghost','ghost','ghost','skeleton','skeleton','skeleton','reaper'],
+    npcs:[],
+    portals:[
+      {x:30,y:820,target:'dungeon',tx:2300,ty:0,label:'← 드라큘라 성'},
+      {x:2720,y:820,target:'volcano',tx:150,ty:0,label:'화산 →'},
+    ],
+    trees:[200,600,1000,1400,1800,2200,2600],
+    houses:[],
+  },
+  volcano:{
+    name:'🌋 불의 화산', bg1:'#1a0a00',bg2:'#3d1a00',groundColor:'#4a2a10',
+    width:2500,height:900,
+    platforms:[
+      {x:0,y:860,w:2500,h:40},
+      {x:180,y:700,w:150,h:16},{x:450,y:600,w:160,h:16},{x:750,y:700,w:180,h:16},
+      {x:1050,y:560,w:140,h:16},{x:1350,y:680,w:200,h:16},{x:1650,y:580,w:160,h:16},
+      {x:1950,y:700,w:180,h:16},{x:2250,y:620,w:150,h:16},
+    ],
+    enemies:['fireslime','fireslime','lavagolem','lavagolem','lavagolem','firedragon'],
+    npcs:[],
+    portals:[
+      {x:30,y:820,target:'graveyard',tx:2600,ty:0,label:'← 묘지'},
+      {x:2420,y:820,target:'ice',tx:150,ty:0,label:'빙하 →'},
+    ],
+    trees:[],
+    houses:[],
+  },
+  ice:{
+    name:'❄️ 얼음 동굴', bg1:'#0a1a2e',bg2:'#1a2e4e',groundColor:'#2a3e5e',
+    width:2500,height:900,
+    platforms:[
+      {x:0,y:860,w:2500,h:40},
+      {x:200,y:720,w:160,h:16},{x:500,y:620,w:150,h:16},{x:800,y:720,w:200,h:16},
+      {x:1100,y:560,w:140,h:16},{x:1400,y:680,w:180,h:16},{x:1700,y:580,w:160,h:16},
+      {x:2000,y:700,w:180,h:16},{x:2300,y:640,w:150,h:16},
+    ],
+    enemies:['iceslime','iceslime','frostguard','frostguard','frostguard','iceking'],
+    npcs:[],
+    portals:[
+      {x:30,y:820,target:'volcano',tx:2300,ty:0,label:'← 화산'},
+    ],
+    trees:[300,700,1100,1500,1900,2300],
+    houses:[],
+  },
 };
 
 const ENEMY_TYPES={
@@ -204,6 +260,18 @@ const ENEMY_TYPES={
   zombie:{name:'좀비',w:26,h:34,hp:100,dmg:20,xp:15,gold:10,speed:1,color:'#868e96',dark:'#495057'},
   vampire:{name:'뱀파이어',w:28,h:36,hp:150,dmg:28,xp:22,gold:15,speed:1.8,color:'#e64980',dark:'#c2255c'},
   dracula:{name:'⭐드라큘라',w:40,h:48,hp:500,dmg:40,xp:100,gold:80,speed:1.3,color:'#fa5252',dark:'#c92a2a',boss:true},
+  // 묘지
+  ghost:{name:'유령',w:24,h:24,hp:60,dmg:15,xp:10,gold:8,speed:2,color:'#c3c3d5',dark:'#9090a5',flies:true},
+  skeleton:{name:'해골',w:24,h:32,hp:80,dmg:18,xp:12,gold:10,speed:1.6,color:'#e8e8e0',dark:'#c0c0b0'},
+  reaper:{name:'⭐사신',w:38,h:50,hp:700,dmg:45,xp:120,gold:100,speed:1.1,color:'#4a4a5a',dark:'#2a2a3a',boss:true},
+  // 화산
+  fireslime:{name:'불슬라임',w:24,h:20,hp:90,dmg:20,xp:14,gold:12,speed:1.4,color:'#ff6b35',dark:'#cc4400'},
+  lavagolem:{name:'용암골렘',w:30,h:38,hp:150,dmg:28,xp:20,gold:18,speed:0.9,color:'#ff4500',dark:'#cc3700'},
+  firedragon:{name:'⭐화염용',w:44,h:50,hp:900,dmg:50,xp:150,gold:120,speed:1,color:'#ff2200',dark:'#cc1100',boss:true},
+  // 빙하
+  iceslime:{name:'얼음슬라임',w:24,h:20,hp:100,dmg:22,xp:16,gold:14,speed:1.2,color:'#74c0fc',dark:'#339af0'},
+  frostguard:{name:'서리수호자',w:28,h:36,hp:180,dmg:30,xp:24,gold:20,speed:1.5,color:'#4dabf7',dark:'#1c7ed6'},
+  iceking:{name:'⭐얼음왕',w:44,h:52,hp:1200,dmg:55,xp:200,gold:150,speed:0.8,color:'#1864ab',dark:'#0b4a8a',boss:true},
 };
 
 const ITEMS=[

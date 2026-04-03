@@ -223,14 +223,14 @@ let statusOpen=false,invOpen=false,shopOpen=false;
 
 // ===== 캐릭터 선택 (이미지 스프라이트) =====
 const CHAR_IMAGES=[
-  {file:'girl1.jpg',label:'🌸 소녀'},
-  {file:'boy1.jpg',label:'🖤 소년'},
-  {file:'girl2.jpg',label:'🐰 바니'},
-  {file:'girl3.jpg',label:'👓 글래스'},
-  {file:'boy2.jpg',label:'😎 선글'},
-  {file:'boy3.jpg',label:'😈 데빌'},
-  {file:'girl4.jpg',label:'🌷 핑크'},
-  {file:'boy4.jpg',label:'💐 플라워'},
+  {file:'girl1.jpg',label:'🌸 소녀',scale:1.0},
+  {file:'boy1.jpg',label:'🖤 소년',scale:1.0},
+  {file:'girl2.jpg',label:'🐰 바니',scale:1.0},
+  {file:'girl3.jpg',label:'👓 글래스',scale:0.85},
+  {file:'boy2.jpg',label:'😎 선글',scale:0.9},
+  {file:'boy3.jpg',label:'😈 데빌',scale:1.0},
+  {file:'girl4.jpg',label:'🌷 핑크',scale:1.0},
+  {file:'boy4.jpg',label:'💐 플라워',scale:1.4},
 ];
 let selectedCharImg=null, charSpriteImg=null;
 
@@ -238,7 +238,7 @@ let selectedCharImg=null, charSpriteImg=null;
 (function initCharGrid(){
   const grid=document.getElementById('charGrid');
   if(!grid)return;
-  function removeWhiteBg(img,callback){
+  function removeWhiteBg(img,charScale,callback){
     // 1단계: 원본 크기로 flood fill 배경 제거
     const tw=img.width,th=img.height;
     const tc=document.createElement('canvas');tc.width=tw;tc.height=th;
@@ -268,16 +268,13 @@ let selectedCharImg=null, charSpriteImg=null;
       if(td[(y*tw+x)*4+3]>128){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
     }
     if(minX>=maxX||minY>=maxY){minX=0;minY=0;maxX=tw-1;maxY=th-1;}
-    // 5% 트리밍 — 가장자리 노이즈 추가 제거
-    const trimX=Math.floor((maxX-minX)*0.05), trimY=Math.floor((maxY-minY)*0.05);
-    minX+=trimX;maxX-=trimX;minY+=trimY;maxY-=trimY;
     const cw=maxX-minX+1,ch=maxY-minY+1;
 
-    // 3단계: 통일 캔버스에 크기 맞춰 배치 (목표 높이 85px, 하단 정렬)
+    // 3단계: 통일 캔버스에 크기 맞춰 배치 + 수동 스케일 보정
     const S=100, TARGET_H=85;
     const oc=document.createElement('canvas');oc.width=S;oc.height=S;
     const ox=oc.getContext('2d');
-    const sc=Math.min(TARGET_H/ch, (S-10)/cw);
+    const sc=Math.min(TARGET_H/ch, (S-10)/cw) * (charScale||1);
     const dw=cw*sc, dh=ch*sc;
     ox.drawImage(tc, minX,minY,cw,ch, (S-dw)/2, S-dh-2, dw, dh);
     callback(oc.toDataURL(), oc);
@@ -290,7 +287,7 @@ let selectedCharImg=null, charSpriteImg=null;
     imgEl.alt=ch.label;
     const tmpImg=new Image();
     tmpImg.src=ch.file;
-    tmpImg.onload=()=>removeWhiteBg(tmpImg,url=>{imgEl.src=url;});
+    tmpImg.onload=()=>removeWhiteBg(tmpImg,ch.scale,(url)=>{imgEl.src=url;});
     card.appendChild(imgEl);
     const label=document.createElement('div');label.className='char-label';label.textContent=ch.label;
     card.appendChild(label);
@@ -300,7 +297,7 @@ let selectedCharImg=null, charSpriteImg=null;
       const img=new Image();
       img.src=ch.file;
       img.onload=()=>{
-        removeWhiteBg(img,(url,oc)=>{charSpriteImg=oc;});
+        removeWhiteBg(img,ch.scale,(url,oc)=>{charSpriteImg=oc;});
       };
       // UI 전환
       document.getElementById('step1').classList.add('hidden');

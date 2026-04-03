@@ -268,6 +268,9 @@ let selectedCharImg=null, charSpriteImg=null;
       if(td[(y*tw+x)*4+3]>128){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
     }
     if(minX>=maxX||minY>=maxY){minX=0;minY=0;maxX=tw-1;maxY=th-1;}
+    // 5% 트리밍 — 가장자리 노이즈 추가 제거
+    const trimX=Math.floor((maxX-minX)*0.05), trimY=Math.floor((maxY-minY)*0.05);
+    minX+=trimX;maxX-=trimX;minY+=trimY;maxY-=trimY;
     const cw=maxX-minX+1,ch=maxY-minY+1;
 
     // 3단계: 통일 캔버스에 크기 맞춰 배치 (목표 높이 85px, 하단 정렬)

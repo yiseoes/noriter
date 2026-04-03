@@ -255,10 +255,8 @@ let selectedCharImg=null, charSpriteImg=null;
         const id=ox.getImageData(0,0,oc.width,oc.height);
         const d=id.data;
         for(let i=0;i<d.length;i+=4){
-          // 흰색/거의 흰색 → 투명
-          if(d[i]>230&&d[i+1]>230&&d[i+2]>230) d[i+3]=0;
-          // 밝은 회색도 반투명
-          else if(d[i]>210&&d[i+1]>210&&d[i+2]>210) d[i+3]=Math.floor(d[i+3]*0.3);
+          // 순수 흰색 배경만 제거 (250 이상)
+          if(d[i]>250&&d[i+1]>250&&d[i+2]>250) d[i+3]=0;
         }
         ox.putImageData(id,0,0);
         charSpriteImg=oc;

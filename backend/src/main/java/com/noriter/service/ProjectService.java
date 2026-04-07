@@ -31,19 +31,23 @@ public class ProjectService {
     private int maxDebugAttempts;
 
     @Transactional
-    public Project createProject(String name, String requirement, Genre genre, boolean demo, String guestId) {
-        log.info("[프로젝트 생성] 시작 - name={}, genre={}, demo={}, guestId={}, 요구사항 길이={}자",
-                name, genre, demo, guestId, requirement.length());
+    public Project createProject(String name, String requirement, Genre genre, boolean demo, String guestId, Long userId) {
+        log.info("[프로젝트 생성] 시작 - name={}, genre={}, demo={}, guestId={}, userId={}, 요구사항 길이={}자",
+                name, genre, demo, guestId, userId, requirement.length());
 
-        // 게스트 1개 제한 (비데모 프로젝트)
-        if (guestId != null && !demo) {
-            long count = projectRepository.countByGuestIdAndDemoFalse(guestId);
-            if (count >= 1) {
-                throw new NoriterException(ErrorCode.GUEST_LIMIT_EXCEEDED);
+        // 로그인 유저: userId 기반 제한 / 게스트: guestId 기반 제한
+        if (!demo) {
+            if (userId != null) {
+                // 로그인 유저도 제한 걸려면 여기서 (현재는 무제한)
+            } else if (guestId != null) {
+                long count = projectRepository.countByGuestIdAndDemoFalse(guestId);
+                if (count >= 1) {
+                    throw new NoriterException(ErrorCode.GUEST_LIMIT_EXCEEDED);
+                }
             }
         }
 
-        Project project = Project.create(name, requirement, genre, maxDebugAttempts, demo, guestId);
+        Project project = Project.create(name, requirement, genre, maxDebugAttempts, demo, guestId, userId);
         projectRepository.save(project);
         log.info("[프로젝트 생성] 프로젝트 저장 완료 - id={}", project.getId());
 
@@ -68,12 +72,24 @@ public class ProjectService {
                 });
     }
 
-    public Page<Project> getProjects(ProjectStatus status, Pageable pageable, String guestId) {
-        log.debug("[프로젝트 목록] 조회 시작 - status={}, guestId={}, page={}, size={}",
-                status, guestId, pageable.getPageNumber(), pageable.getPageSize());
+    public Project getProjectWithOwnerCheck(String projectId, Long userId, String guestId) {
+        Project project = getProject(projectId);
+        if (!project.isOwnedBy(userId, guestId)) {
+            throw new NoriterException(ErrorCode.PROJECT_ACCESS_DENIED);
+        }
+        return project;
+    }
+
+    public Page<Project> getProjects(ProjectStatus status, Pageable pageable, String guestId, Long userId) {
+        log.debug("[프로젝트 목록] 조회 시작 - status={}, guestId={}, userId={}, page={}, size={}",
+                status, guestId, userId, pageable.getPageNumber(), pageable.getPageSize());
 
         Page<Project> result;
-        if (guestId != null) {
+        if (userId != null) {
+            // 로그인 유저: userId 기반 조회
+            result = projectRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+        } else if (guestId != null) {
+            // 게스트: guestId 기반 조회
             result = projectRepository.findByGuestIdOrderByCreatedAtDesc(guestId, pageable);
         } else if (status != null) {
             result = projectRepository.findByStatus(status, pageable);
@@ -87,10 +103,10 @@ public class ProjectService {
     }
 
     @Transactional
-    public Project retryProject(String projectId, StageType fromStage) {
+    public Project retryProject(String projectId, StageType fromStage, Long userId, String guestId) {
         log.info("[프로젝트 재시도] 시작 - id={}, fromStage={}", projectId, fromStage);
 
-        Project project = getProject(projectId);
+        Project project = getProjectWithOwnerCheck(projectId, userId, guestId);
         if (!project.canRetry()) {
             log.warn("[프로젝트 재시도] 재시도 불가 - id={}, 현재 상태={}",
                     projectId, project.getStatus());
@@ -108,10 +124,10 @@ public class ProjectService {
     }
 
     @Transactional
-    public void deleteProject(String projectId) {
+    public void deleteProject(String projectId, Long userId, String guestId) {
         log.info("[프로젝트 삭제] 시작 - id={}", projectId);
 
-        Project project = getProject(projectId);
+        Project project = getProjectWithOwnerCheck(projectId, userId, guestId);
         if (!project.canDelete()) {
             log.warn("[프로젝트 삭제] 삭제 불가 - id={}, 현재 상태={}",
                     projectId, project.getStatus());
@@ -127,10 +143,10 @@ public class ProjectService {
     }
 
     @Transactional
-    public Project cancelProject(String projectId) {
+    public Project cancelProject(String projectId, Long userId, String guestId) {
         log.info("[프로젝트 중단] 시작 - id={}", projectId);
 
-        Project project = getProject(projectId);
+        Project project = getProjectWithOwnerCheck(projectId, userId, guestId);
         if (!project.canCancel()) {
             log.warn("[프로젝트 중단] 중단 불가 - id={}, 현재 상태={}",
                     projectId, project.getStatus());
@@ -147,10 +163,10 @@ public class ProjectService {
     }
 
     @Transactional
-    public Project requestFeedback(String projectId, String feedback) {
+    public Project requestFeedback(String projectId, String feedback, Long userId, String guestId) {
         log.info("[수정 요청] 시작 - id={}, 피드백 길이={}자", projectId, feedback.length());
 
-        Project project = getProject(projectId);
+        Project project = getProjectWithOwnerCheck(projectId, userId, guestId);
         if (!project.canFeedback()) {
             log.warn("[수정 요청] 수정 요청 불가 - id={}, 현재 상태={}",
                     projectId, project.getStatus());

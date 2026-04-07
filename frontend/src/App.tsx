@@ -11,6 +11,7 @@ import SlideUpModal from './components/modal/SlideUpModal';
 import ProjectDetail from './components/project/ProjectDetail';
 import { useModal } from './hooks/useModal';
 import { useTheme } from './hooks/useTheme';
+import { useAuth } from './hooks/useAuth';
 import { useProjects, useCreateProject, useDeleteProject, useCancelProject } from './hooks/useProjects';
 import type { Project } from './types';
 
@@ -18,6 +19,7 @@ import type { Project } from './types';
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
   const { theme, toggle: toggleTheme } = useTheme();
+  const { user, isLoggedIn, logout } = useAuth();
   const [activePage, setActivePage] = useState('home');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDemo, setIsDemo] = useState(false);
@@ -52,7 +54,7 @@ export default function App() {
   }, [slideUp]);
 
   const handleCreateDone = useCallback((data: { name?: string; genre?: string; requirement: string }) => {
-    createMutation.mutate({ ...data, demo: true }, {
+    createMutation.mutate({ ...data, demo: !isLoggedIn }, {
       onSuccess: (project) => {
         setSelectedProject(project);
         slideUp.open();
@@ -83,6 +85,8 @@ export default function App() {
         activePage={activePage}
         onNavigate={handleNavigate}
         onLogin={authModal.open}
+        user={user}
+        onLogout={logout}
       >
         <HomePage
           onCreateGame={() => { setIsDemo(false); createModal.open(); }}

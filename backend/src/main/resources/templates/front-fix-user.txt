@@ -1,0 +1,19 @@
+CTO 수정 지시:
+{{ctoInstruction}}
+
+현재 index.html:
+```html
+{{indexHtml}}
+```
+
+현재 style.css:
+```css
+{{styleCss}}
+```
+
+현재 렌더링 코드:
+```javascript
+{{renderCode}}
+```
+
+지시사항에 따라 수정된 전체 코드를 JSON 형식으로 반환해주세요.

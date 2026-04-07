@@ -150,25 +150,90 @@ public class PipelineOrchestrator {
             project.incrementDebugAttempts();
             projectRepository.save(project);
 
-            log.info("[파이프라인] 디버깅 루프 진입 - projectId={}, 시도 {}/{}",
-                    projectId, project.getDebugAttempts(), maxAttempts);
+            int attempt = project.getDebugAttempts();
+            log.info("[파이프라인] 디버깅 루프 #{} - projectId={}", attempt, projectId);
 
             logService.createLog(projectId, LogLevel.WARN, AgentRole.QA, StageType.QA,
-                    String.format("QA 테스트 실패 - 디버깅 시도 %d/%d회", project.getDebugAttempts(), maxAttempts));
+                    String.format("QA 테스트 실패 - 디버깅 시도 %d/%d회", attempt, maxAttempts));
 
-            // TODO: CTO 디버깅 배정 (PROMPT-CTO-DBG)
-            // TODO: 담당 에이전트 수정 (PROMPT-FRONT-FIX / PROMPT-BACK-FIX)
-            // TODO: QA 재테스트 (PROMPT-QA-RETEST)
+            project.updateProgress(80, StageType.DEBUG);
+            projectRepository.save(project);
 
-            // 현재는 디버깅 미구현으로 실패 처리
-            log.warn("[파이프라인] 디버깅 아직 미구현 - projectId={}, FAILED 처리", projectId);
-            handlePipelineFailure(project, "디버깅 미구현 (구현 예정)");
-            return;
+            try {
+                // 1) CTO가 버그 분석 + 수정 지시
+                String bugReport = artifacts.getOrDefault("test-report.json", "");
+                AgentContext debugContext = AgentContext.builder()
+                        .projectId(projectId)
+                        .stageType(StageType.DEBUG)
+                        .requirement(project.getRequirement())
+                        .previousArtifacts(new HashMap<>(artifacts))
+                        .bugReport(bugReport)
+                        .debugAttempt(attempt)
+                        .build();
+
+                AgentResult ctoDebugResult = ctoAgent.executeDebug(debugContext);
+                if (ctoDebugResult.getStatus() == AgentResult.Status.FAILED) {
+                    handlePipelineFailure(project, "CTO 디버그 분석 실패");
+                    return;
+                }
+                String ctoInstruction = ctoDebugResult.getArtifacts().getOrDefault("debug-instruction.json", "");
+
+                // 2) Frontend/Backend 수정
+                AgentContext fixContext = AgentContext.builder()
+                        .projectId(projectId)
+                        .stageType(StageType.DEBUG)
+                        .requirement(project.getRequirement())
+                        .previousArtifacts(new HashMap<>(artifacts))
+                        .ctoInstruction(ctoInstruction)
+                        .bugReport(bugReport)
+                        .debugAttempt(attempt)
+                        .build();
+
+                AgentResult frontFixResult = frontendAgent.executeFix(fixContext);
+                artifacts.putAll(frontFixResult.getArtifacts());
+
+                AgentResult backFixResult = backendAgent.executeFix(fixContext);
+                artifacts.putAll(backFixResult.getArtifacts());
+
+                // 코드 재병합
+                String backLogic = artifacts.getOrDefault("gameJsLogicSection", "");
+                String frontRender = artifacts.getOrDefault("gameJsRenderSection", "");
+                String mergedJs = codeMerger.mergeGameJs(backLogic, frontRender);
+                artifacts.put("game.js", mergedJs);
+                fileStorageService.saveGameFile(projectId, "game.js", mergedJs);
+
+                // 3) QA 재테스트
+                AgentContext retestContext = AgentContext.builder()
+                        .projectId(projectId)
+                        .stageType(StageType.QA)
+                        .requirement(project.getRequirement())
+                        .previousArtifacts(new HashMap<>(artifacts))
+                        .debugAttempt(attempt)
+                        .build();
+
+                AgentResult retestResult = qaAgent.execute(retestContext);
+
+                if (retestResult.getStatus() == AgentResult.Status.SUCCESS) {
+                    log.info("[파이프라인] 디버깅 성공! - projectId={}, {}회 만에 통과", projectId, attempt);
+                    artifacts.putAll(retestResult.getArtifacts());
+                    completeRelease(project, stages);
+                    return;
+                }
+
+                // 재테스트도 실패 → 다음 루프
+                artifacts.putAll(retestResult.getArtifacts());
+                log.warn("[파이프라인] 디버깅 #{} 재테스트 실패 - projectId={}", attempt, projectId);
+
+            } catch (Exception e) {
+                log.error("[파이프라인] 디버깅 #{} 중 예외 - projectId={}, error={}", attempt, projectId, e.getMessage());
+                handlePipelineFailure(project, "디버깅 중 오류: " + e.getMessage());
+                return;
+            }
         }
 
         log.warn("[파이프라인] 디버깅 최대 횟수 초과 - projectId={}, {}회 시도 후 FAILED",
                 projectId, maxAttempts);
-        handlePipelineFailure(project, String.format("디버깅 %d회 시도 후 실패", maxAttempts));
+        handlePipelineFailure(project, String.format("디버깅 %d회 시도 후에도 QA 통과 실패", maxAttempts));
     }
 
     /**

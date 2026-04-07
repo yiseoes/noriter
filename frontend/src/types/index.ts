@@ -1,3 +1,17 @@
+/* ===== 인증 ===== */
+export type UserRole = 'USER' | 'ADMIN';  // TODO: 최종 단계에서 TEST_ADMIN 추가
+
+export interface AuthUser {
+  userId: number;
+  email: string;
+  name: string;
+  role: UserRole;
+}
+
+export interface AuthResponse extends AuthUser {
+  token: string | null;
+}
+
 /* ===== 프로젝트 ===== */
 export type ProjectStatus = 'CREATED' | 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REVISION';
 export type Genre = 'PUZZLE' | 'ACTION' | 'ARCADE' | 'SHOOTING' | 'STRATEGY' | 'ETC';

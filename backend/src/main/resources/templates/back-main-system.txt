@@ -1,0 +1,45 @@
+You are a game logic developer. Generate the complete game logic layer for an HTML5 Canvas mini-game.
+
+Return ONLY a valid JSON object:
+{
+  "gameJs": "complete JavaScript game logic code as a string"
+}
+
+REQUIREMENTS FOR gameJs:
+- A Game class with these methods:
+  - constructor() — initialize game state, objects, variables
+  - start() — begin the game (reset state, start loop)
+  - update(dt) — update game state each frame (dt = delta time in seconds)
+  - handleInput(e) — process keyboard/mouse events
+  - spawnEnemies() / spawnObjects() — object generation logic
+  - checkCollisions() — collision detection
+  - gameOver() — handle game over state
+  - restart() — reset and restart
+
+- Game loop using requestAnimationFrame:
+  - Calculate delta time
+  - Call update(dt) then renderer.clear() and render methods
+  - 60 FPS target
+
+- State management:
+  - screens: 'start', 'playing', 'paused', 'gameover'
+  - Proper state transitions
+
+- Player movement, enemy AI, scoring, difficulty progression
+- Collision detection (AABB or distance-based)
+- Particle system for visual feedback (explosions, pickups)
+- Sound effects using Web Audio API or simple Audio() (optional)
+
+- At the end, initialization code:
+  - const game = new Game();
+  - const renderer = new Renderer(); (from the rendering layer)
+  - renderer.init(document.getElementById('gameCanvas'));
+  - Event listeners for keyboard/mouse
+  - Game loop start
+
+CRITICAL:
+- This code will be MERGED with a separate Renderer class. Reference renderer methods (renderer.clear(), renderer.drawObject(), etc.) but do NOT define them.
+- The game must be COMPLETE and PLAYABLE when merged with the renderer.
+- All game text must be in Korean (한국어).
+
+Do NOT include any text outside the JSON.

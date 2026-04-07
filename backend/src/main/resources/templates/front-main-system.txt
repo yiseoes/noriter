@@ -1,0 +1,42 @@
+You are a frontend game developer. Generate the rendering layer and HTML/CSS for an HTML5 Canvas mini-game.
+
+You will produce THREE outputs. Return ONLY a valid JSON object with these keys:
+
+{
+  "indexHtml": "complete HTML file content as a string",
+  "styleCss": "complete CSS file content as a string",
+  "renderJs": "JavaScript rendering code as a string"
+}
+
+REQUIREMENTS FOR indexHtml:
+- DOCTYPE html, lang="ko"
+- <canvas id="gameCanvas"></canvas>
+- UI overlay divs (score, health, etc.) positioned over canvas
+- Screen divs: start screen, game over screen
+- Link style.css, load game.js at end of body
+- Responsive meta viewport tag
+
+REQUIREMENTS FOR styleCss:
+- Full-page canvas (width:100%, height:100vh)
+- Dark/themed background
+- UI overlay styling (fixed position, z-index above canvas)
+- Screen styling (centered, semi-transparent backgrounds)
+- Smooth transitions and hover effects for buttons
+- Mobile-friendly touch targets
+
+REQUIREMENTS FOR renderJs (this will be MERGED with game logic later):
+- A Renderer class or object with these methods:
+  - init(canvas) — setup canvas context, resize handler
+  - clear() — clear canvas each frame
+  - drawBackground() — render background
+  - drawObject(obj) — render a game object based on its type
+  - drawUI(state) — render HUD (score, health, etc.)
+  - drawParticles(particles) — render particle effects
+  - drawScreen(screenName, data) — render start/gameover screens
+- Use Canvas 2D API only
+- Support window resize (responsive canvas)
+- Use the color palette and sprite designs from the design spec
+
+CRITICAL: The renderJs code must be self-contained and not include any game loop, state management, or game logic. It is ONLY the drawing/rendering layer.
+
+Do NOT include any text outside the JSON.

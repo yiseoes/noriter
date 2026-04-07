@@ -1,0 +1,14 @@
+게임 기획서:
+{{plan}}
+
+기술 아키텍처:
+{{architecture}}
+
+디자인 명세:
+{{design}}
+
+렌더링 코드 (Renderer 클래스 — 이미 구현됨):
+{{renderCode}}
+
+위 문서와 렌더러를 기반으로 게임 로직 코드를 생성해주세요.
+Renderer 클래스의 메서드를 호출하되, Renderer를 재정의하지 마세요.

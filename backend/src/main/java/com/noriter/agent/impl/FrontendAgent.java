@@ -1,20 +1,26 @@
 package com.noriter.agent.impl;
 
 import com.noriter.agent.core.*;
+import com.noriter.agent.prompt.PromptRegistry;
+import com.noriter.agent.prompt.PromptTemplate;
 import com.noriter.domain.enums.AgentRole;
+import com.noriter.infrastructure.claude.ClaudeApiClient;
+import com.noriter.infrastructure.claude.ClaudeApiClient.ClaudeResponse;
+import com.noriter.util.JsonParser;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.Map;
 
-/**
- * 프론트엔드팀 에이전트 (AGT-FRONT)
- * 참조: 04_에이전트 §2.4, 08_프롬프트 §10 PROMPT-FRONT-MAIN
- * 담당: STAGE 4 (병렬) — index.html, style.css, gameJsRenderSection
- */
 @Log4j2
 @Component
+@RequiredArgsConstructor
 public class FrontendAgent implements BaseAgent {
+
+    private final ClaudeApiClient claudeApiClient;
+    private final PromptRegistry promptRegistry;
 
     @Override
     public AgentRole getRole() {
@@ -25,52 +31,61 @@ public class FrontendAgent implements BaseAgent {
     public AgentResult execute(AgentContext context) {
         log.info("[프론트팀] HTML/CSS/렌더링 구현 시작 - projectId={}", context.getProjectId());
 
-        // TODO: Claude API 호출 (PROMPT-FRONT-MAIN)
-        String indexHtml = """
-                <!DOCTYPE html>
-                <html lang="ko">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>미니게임</title>
-                    <link rel="stylesheet" href="style.css">
-                </head>
-                <body>
-                    <canvas id="gameCanvas" width="800" height="600"></canvas>
-                    <script src="game.js"></script>
-                </body>
-                </html>
-                """;
+        String plan = context.getPreviousArtifacts().getOrDefault("plan.json", "");
+        String architecture = context.getPreviousArtifacts().getOrDefault("architecture.json", "");
+        String design = context.getPreviousArtifacts().getOrDefault("design.json", "");
 
-        String styleCss = """
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { display: flex; justify-content: center; align-items: center;
-                       min-height: 100vh; background: #0f3460; }
-                canvas { border: 2px solid #e94560; }
-                """;
+        String systemPrompt = promptRegistry.getSystemPrompt("front-main");
+        String userPrompt = PromptTemplate.render(
+                promptRegistry.getUserPrompt("front-main"),
+                Map.of("plan", plan, "architecture", architecture, "design", design)
+        );
 
-        String renderSection = """
-                // 렌더링 코드 (프론트팀 담당)
-                class Renderer {
-                    constructor(canvas) {
-                        this.canvas = canvas;
-                        this.ctx = canvas.getContext('2d');
-                    }
-                    clear() { this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
-                    drawPlayer(player) {
-                        this.ctx.fillStyle = '#e94560';
-                        this.ctx.beginPath();
-                        this.ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
-                        this.ctx.fill();
-                    }
-                }
-                """;
+        ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
+
+        // Claude 응답에서 indexHtml, styleCss, renderJs 파싱
+        Map<String, String> parsed = JsonParser.parseAsMap(response.content());
+        Map<String, String> artifacts = new HashMap<>();
+        artifacts.put("index.html", parsed.getOrDefault("indexHtml", response.content()));
+        artifacts.put("style.css", parsed.getOrDefault("styleCss", ""));
+        artifacts.put("gameJsRenderSection", parsed.getOrDefault("renderJs", ""));
 
         log.info("[프론트팀] HTML/CSS/렌더링 구현 완료 - projectId={}", context.getProjectId());
 
         return AgentResult.success(
-                Map.of("index.html", indexHtml, "style.css", styleCss, "gameJsRenderSection", renderSection),
-                "프론트엔드 구현 완료. 백엔드 코드와 통합 대기.",
-                600, 1200
+                artifacts,
+                "프론트엔드 구현 완료.",
+                response.inputTokens(), response.outputTokens()
+        );
+    }
+
+    public AgentResult executeFix(AgentContext context) {
+        log.info("[프론트팀] 버그 수정 시작 - projectId={}", context.getProjectId());
+
+        String ctoInstruction = context.getCtoInstruction() != null ? context.getCtoInstruction() : "";
+        String indexHtml = context.getPreviousArtifacts().getOrDefault("index.html", "");
+        String styleCss = context.getPreviousArtifacts().getOrDefault("style.css", "");
+        String renderCode = context.getPreviousArtifacts().getOrDefault("gameJsRenderSection", "");
+
+        String systemPrompt = promptRegistry.getSystemPrompt("front-fix");
+        String userPrompt = PromptTemplate.render(
+                promptRegistry.getUserPrompt("front-fix"),
+                Map.of("ctoInstruction", ctoInstruction, "indexHtml", indexHtml,
+                        "styleCss", styleCss, "renderCode", renderCode)
+        );
+
+        ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
+
+        Map<String, String> parsed = JsonParser.parseAsMap(response.content());
+        Map<String, String> artifacts = new HashMap<>();
+        artifacts.put("index.html", parsed.getOrDefault("indexHtml", ""));
+        artifacts.put("style.css", parsed.getOrDefault("styleCss", ""));
+        artifacts.put("gameJsRenderSection", parsed.getOrDefault("renderJs", ""));
+
+        return AgentResult.success(
+                artifacts,
+                "프론트엔드 버그 수정 완료.",
+                response.inputTokens(), response.outputTokens()
         );
     }
 }

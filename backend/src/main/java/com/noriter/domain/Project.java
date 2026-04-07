@@ -63,6 +63,9 @@ public class Project {
     @Column(name = "guest_id", length = 30)
     private String guestId;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stageOrder ASC")
     private List<Stage> stages = new ArrayList<>();
@@ -70,7 +73,7 @@ public class Project {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Artifact> artifacts = new ArrayList<>();
 
-    public static Project create(String name, String requirement, Genre genre, int maxDebugAttempts, boolean demo, String guestId) {
+    public static Project create(String name, String requirement, Genre genre, int maxDebugAttempts, boolean demo, String guestId, Long userId) {
         Project project = new Project();
         project.id = IdGenerator.generateProjectId();
         project.name = name;
@@ -82,9 +85,26 @@ public class Project {
         project.maxDebugAttempts = maxDebugAttempts;
         project.demo = demo;
         project.guestId = guestId;
+        project.userId = userId;
         project.createdAt = LocalDateTime.now();
         project.updatedAt = LocalDateTime.now();
         return project;
+    }
+
+    public boolean isOwnedBy(Long userId, String guestId) {
+        // 로그인 유저: userId로 매칭
+        if (this.userId != null && userId != null) {
+            return this.userId.equals(userId);
+        }
+        // 게스트: guestId로 매칭
+        if (this.userId == null && this.guestId != null && guestId != null) {
+            return this.guestId.equals(guestId);
+        }
+        // 소유자 정보 없는 레거시 프로젝트: 접근 허용
+        if (this.userId == null && this.guestId == null) {
+            return true;
+        }
+        return false;
     }
 
     public void updateStatus(ProjectStatus newStatus) {

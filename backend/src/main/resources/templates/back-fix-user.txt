@@ -1,0 +1,12 @@
+CTO 수정 지시:
+{{ctoInstruction}}
+
+QA 버그 리포트:
+{{bugReport}}
+
+현재 게임 로직 코드:
+```javascript
+{{gameJs}}
+```
+
+지시사항에 따라 수정된 전체 게임 로직 코드를 JSON 형식으로 반환해주세요.

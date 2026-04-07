@@ -1,0 +1,15 @@
+QA 버그 리포트:
+{{bugReport}}
+
+현재 게임 코드:
+game.js:
+```javascript
+{{gameJs}}
+```
+
+index.html:
+```html
+{{indexHtml}}
+```
+
+버그를 분석하고 수정 지시사항을 JSON 형식으로 작성해주세요.

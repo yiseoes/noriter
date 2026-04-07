@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.log4j.Log4j2;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
 /**
  * 에이전트 응답 JSON 파싱·검증
  * 참조: 08_프롬프트 §17 에러 처리 정책 — JSON 파싱 실패 시 재요청
@@ -55,6 +59,28 @@ public class JsonParser {
         if (node == null) return false;
         JsonNode field = node.get(fieldName);
         return field != null && !field.isNull() && !field.asText().isBlank();
+    }
+
+    /**
+     * JSON 문자열을 Map<String, String>으로 파싱
+     * 최상위 필드의 값을 문자열로 추출 (중첩 객체는 toString)
+     */
+    public static Map<String, String> parseAsMap(String json) {
+        Map<String, String> result = new HashMap<>();
+        JsonNode node = parse(json);
+        if (node == null || !node.isObject()) return result;
+
+        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            JsonNode value = entry.getValue();
+            if (value.isTextual()) {
+                result.put(entry.getKey(), value.asText());
+            } else {
+                result.put(entry.getKey(), value.toString());
+            }
+        }
+        return result;
     }
 
     /**

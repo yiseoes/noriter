@@ -34,6 +34,15 @@ public enum ErrorCode {
     API_KEY_NOT_CONFIGURED("NT-ERR-S001", 503, "API 키가 설정되지 않았습니다. 설정 페이지에서 API 키를 등록해주세요."),
     INTERNAL_SERVER_ERROR("NT-ERR-S002", 500, "내부 서버 오류가 발생했습니다."),
 
+    // Auth
+    EMAIL_ALREADY_EXISTS("NT-ERR-AU01", 409, "이미 사용 중인 이메일입니다."),
+    INVALID_CREDENTIALS("NT-ERR-AU02", 401, "이메일 또는 비밀번호가 올바르지 않습니다."),
+    INVALID_TOKEN("NT-ERR-AU03", 401, "유효하지 않은 토큰입니다."),
+    TOKEN_EXPIRED("NT-ERR-AU04", 401, "토큰이 만료되었습니다."),
+
+    // Ownership
+    PROJECT_ACCESS_DENIED("NT-ERR-O001", 403, "해당 프로젝트에 대한 접근 권한이 없습니다."),
+
     // Guest
     GUEST_LIMIT_EXCEEDED("NT-ERR-G002", 429, "게스트 모드에서는 1개의 게임만 생성할 수 있습니다. 회원가입하면 더 만들 수 있어요!");
 

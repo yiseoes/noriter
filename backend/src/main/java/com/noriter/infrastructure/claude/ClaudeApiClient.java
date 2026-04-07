@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -31,6 +34,7 @@ public class ClaudeApiClient {
     private static final Duration TIMEOUT = Duration.ofSeconds(120);
 
     private final SettingsService settingsService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(30))
             .build();
@@ -179,12 +183,34 @@ public class ClaudeApiClient {
     }
 
     private ClaudeResponse parseResponse(String responseBody) {
-        // 간단한 JSON 파싱 (Jackson 사용 시 교체 예정)
-        String content = extractJsonField(responseBody, "text");
-        int inputTokens = extractJsonInt(responseBody, "input_tokens");
-        int outputTokens = extractJsonInt(responseBody, "output_tokens");
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
 
-        return new ClaudeResponse(content, inputTokens, outputTokens);
+            // content[0].text 추출
+            String content = "";
+            JsonNode contentArray = root.get("content");
+            if (contentArray != null && contentArray.isArray() && !contentArray.isEmpty()) {
+                JsonNode firstBlock = contentArray.get(0);
+                if (firstBlock.has("text")) {
+                    content = firstBlock.get("text").asText();
+                }
+            }
+
+            // usage.input_tokens, usage.output_tokens 추출
+            int inputTokens = 0;
+            int outputTokens = 0;
+            JsonNode usage = root.get("usage");
+            if (usage != null) {
+                inputTokens = usage.has("input_tokens") ? usage.get("input_tokens").asInt() : 0;
+                outputTokens = usage.has("output_tokens") ? usage.get("output_tokens").asInt() : 0;
+            }
+
+            return new ClaudeResponse(content, inputTokens, outputTokens);
+        } catch (Exception e) {
+            log.error("[Claude API] 응답 파싱 실패 - error={}, body={}",
+                    e.getMessage(), responseBody.substring(0, Math.min(200, responseBody.length())));
+            throw new ClaudeApiException("NT-ERR-A004", "Claude API 응답 파싱 실패: " + e.getMessage(), e);
+        }
     }
 
     private void backoff(int attempt) {

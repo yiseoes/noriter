@@ -1,20 +1,24 @@
 package com.noriter.agent.impl;
 
 import com.noriter.agent.core.*;
+import com.noriter.agent.prompt.PromptRegistry;
+import com.noriter.agent.prompt.PromptTemplate;
 import com.noriter.domain.enums.AgentRole;
+import com.noriter.infrastructure.claude.ClaudeApiClient;
+import com.noriter.infrastructure.claude.ClaudeApiClient.ClaudeResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-/**
- * QA팀 에이전트 (AGT-QA)
- * 참조: 04_에이전트 §2.6, 08_프롬프트 §14 PROMPT-QA-MAIN
- * 담당: STAGE 5 — 코드 검증, test-report.json
- */
 @Log4j2
 @Component
+@RequiredArgsConstructor
 public class QaAgent implements BaseAgent {
+
+    private final ClaudeApiClient claudeApiClient;
+    private final PromptRegistry promptRegistry;
 
     @Override
     public AgentRole getRole() {
@@ -23,48 +27,54 @@ public class QaAgent implements BaseAgent {
 
     @Override
     public AgentResult execute(AgentContext context) {
-        log.info("[QA팀] 코드 검증 시작 - projectId={}, 디버깅 시도={}/3",
+        log.info("[QA팀] 코드 검증 시작 - projectId={}, debugAttempt={}",
                 context.getProjectId(), context.getDebugAttempt());
 
-        // TODO: Claude API 호출 (PROMPT-QA-MAIN / PROMPT-QA-RETEST)
-        String dummyReport = """
-                {
-                  "result": "PASS",
-                  "summary": "모든 테스트를 통과했습니다.",
-                  "testsRun": 8,
-                  "testsPassed": 8,
-                  "testsFailed": 0,
-                  "bugs": [],
-                  "codeQuality": {
-                    "syntaxErrors": 0,
-                    "logicIssues": [],
-                    "performanceConcerns": [],
-                    "securityIssues": []
-                  },
-                  "checklist": {
-                    "htmlValid": true, "cssValid": true, "jsNoErrors": true,
-                    "gameStartable": true, "controlsWorking": true,
-                    "scoreTracking": true, "gameOverCondition": true, "allScreensPresent": true
-                  }
-                }
-                """;
+        boolean isRetest = context.getDebugAttempt() > 0;
+        String promptId = isRetest ? "qa-retest" : "qa-main";
 
-        // 더미에서는 항상 PASS — 실제 구현 시 Claude 응답의 result 필드로 판단
-        boolean passed = true;
+        String plan = context.getPreviousArtifacts().getOrDefault("plan.json", "");
+        String indexHtml = context.getPreviousArtifacts().getOrDefault("index.html", "");
+        String styleCss = context.getPreviousArtifacts().getOrDefault("style.css", "");
+        String gameJs = context.getPreviousArtifacts().getOrDefault("game.js", "");
+
+        String systemPrompt = promptRegistry.getSystemPrompt(promptId);
+        String userPrompt;
+
+        if (isRetest) {
+            String previousReport = context.getPreviousArtifacts().getOrDefault("test-report.json", "");
+            userPrompt = PromptTemplate.render(
+                    promptRegistry.getUserPrompt(promptId),
+                    Map.of("previousReport", previousReport, "indexHtml", indexHtml,
+                            "styleCss", styleCss, "gameJs", gameJs)
+            );
+        } else {
+            userPrompt = PromptTemplate.render(
+                    promptRegistry.getUserPrompt(promptId),
+                    Map.of("plan", plan, "indexHtml", indexHtml,
+                            "styleCss", styleCss, "gameJs", gameJs)
+            );
+        }
+
+        ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
+        String report = response.content();
+
+        // result 필드에서 PASS/FAIL 판정
+        boolean passed = report.contains("\"result\"") && report.contains("\"PASS\"");
 
         log.info("[QA팀] 코드 검증 완료 - projectId={}, 결과={}", context.getProjectId(), passed ? "PASS" : "FAIL");
 
         if (passed) {
             return AgentResult.success(
-                    Map.of("test-report.json", dummyReport),
+                    Map.of("test-report.json", report),
                     "모든 테스트를 통과했습니다. 출시 준비 완료.",
-                    400, 600
+                    response.inputTokens(), response.outputTokens()
             );
         } else {
             return AgentResult.needsReview(
-                    Map.of("test-report.json", dummyReport),
+                    Map.of("test-report.json", report),
                     "테스트에서 버그가 발견되었습니다. 디버깅이 필요합니다.",
-                    400, 600
+                    response.inputTokens(), response.outputTokens()
             );
         }
     }

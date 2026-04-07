@@ -1,0 +1,21 @@
+다음 게임 코드를 검증해주세요.
+
+게임 기획서:
+{{plan}}
+
+index.html:
+```html
+{{indexHtml}}
+```
+
+style.css:
+```css
+{{styleCss}}
+```
+
+game.js:
+```javascript
+{{gameJs}}
+```
+
+위 코드가 기획서대로 동작하는 완성된 게임인지 검증하고, JSON 형식으로 테스트 결과를 반환해주세요.

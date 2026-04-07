@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class StageTest {
 
     private Project createProject() {
-        return Project.create("테스트", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
+        return Project.create("테스트", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null, null);
     }
 
     @Test

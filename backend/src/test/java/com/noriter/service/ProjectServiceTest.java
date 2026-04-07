@@ -49,7 +49,7 @@ class ProjectServiceTest {
         when(projectRepository.save(any(Project.class))).thenAnswer(i -> i.getArgument(0));
         when(stageRepository.saveAll(anyList())).thenAnswer(i -> i.getArgument(0));
 
-        Project project = projectService.createProject("테스트 게임", "뱀파이어 서바이벌 미니게임을 만들어줘", Genre.ACTION, false);
+        Project project = projectService.createProject("테스트 게임", "뱀파이어 서바이벌 미니게임을 만들어줘", Genre.ACTION, false, null, null);
 
         assertThat(project.getStatus()).isEqualTo(ProjectStatus.CREATED);
         assertThat(project.getName()).isEqualTo("테스트 게임");
@@ -72,11 +72,11 @@ class ProjectServiceTest {
     @Test
     @DisplayName("프로젝트 목록을 상태별로 필터링할 수 있다")
     void getProjects_withStatusFilter() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null, null);
         Page<Project> page = new PageImpl<>(List.of(project));
         when(projectRepository.findByStatus(eq(ProjectStatus.CREATED), any())).thenReturn(page);
 
-        Page<Project> result = projectService.getProjects(ProjectStatus.CREATED, PageRequest.of(0, 20), null);
+        Page<Project> result = projectService.getProjects(ProjectStatus.CREATED, PageRequest.of(0, 20), null, null);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
@@ -84,11 +84,11 @@ class ProjectServiceTest {
     @Test
     @DisplayName("FAILED 상태의 프로젝트를 재시도할 수 있다")
     void retryProject_whenFailed_success() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null, null);
         project.updateStatus(ProjectStatus.FAILED);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
-        Project result = projectService.retryProject(project.getId(), StageType.IMPLEMENTATION);
+        Project result = projectService.retryProject(project.getId(), StageType.IMPLEMENTATION, null, null);
 
         assertThat(result.getStatus()).isEqualTo(ProjectStatus.IN_PROGRESS);
     }
@@ -96,10 +96,10 @@ class ProjectServiceTest {
     @Test
     @DisplayName("FAILED가 아닌 프로젝트를 재시도하면 예외가 발생한다")
     void retryProject_whenNotFailed_throwsException() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null, null);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
-        assertThatThrownBy(() -> projectService.retryProject(project.getId(), null))
+        assertThatThrownBy(() -> projectService.retryProject(project.getId(), null, null, null))
                 .isInstanceOf(NoriterException.class)
                 .satisfies(e -> assertThat(((NoriterException) e).getErrorCode())
                         .isEqualTo(ErrorCode.RETRY_NOT_ALLOWED));
@@ -108,11 +108,11 @@ class ProjectServiceTest {
     @Test
     @DisplayName("진행 중인 프로젝트는 삭제할 수 없다")
     void deleteProject_whenInProgress_throwsException() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null, null);
         project.updateStatus(ProjectStatus.IN_PROGRESS);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
-        assertThatThrownBy(() -> projectService.deleteProject(project.getId()))
+        assertThatThrownBy(() -> projectService.deleteProject(project.getId(), null, null))
                 .isInstanceOf(NoriterException.class)
                 .satisfies(e -> assertThat(((NoriterException) e).getErrorCode())
                         .isEqualTo(ErrorCode.DELETE_NOT_ALLOWED));
@@ -121,10 +121,10 @@ class ProjectServiceTest {
     @Test
     @DisplayName("COMPLETED가 아닌 프로젝트에 피드백을 보내면 예외가 발생한다")
     void requestFeedback_whenNotCompleted_throwsException() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null, null);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
-        assertThatThrownBy(() -> projectService.requestFeedback(project.getId(), "속도가 너무 빨라요"))
+        assertThatThrownBy(() -> projectService.requestFeedback(project.getId(), "속도가 너무 빨라요", null, null))
                 .isInstanceOf(NoriterException.class)
                 .satisfies(e -> assertThat(((NoriterException) e).getErrorCode())
                         .isEqualTo(ErrorCode.FEEDBACK_NOT_ALLOWED));
@@ -133,11 +133,11 @@ class ProjectServiceTest {
     @Test
     @DisplayName("IN_PROGRESS 상태의 프로젝트를 중단할 수 있다")
     void cancelProject_whenInProgress_success() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null, null);
         project.updateStatus(ProjectStatus.IN_PROGRESS);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
-        Project result = projectService.cancelProject(project.getId());
+        Project result = projectService.cancelProject(project.getId(), null, null);
 
         assertThat(result.getStatus()).isEqualTo(ProjectStatus.CANCELLED);
     }

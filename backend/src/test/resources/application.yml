@@ -23,6 +23,9 @@ noriter:
     path: ./test-workspace
   claude:
     model: claude-sonnet-4-6
+  jwt:
+    secret: testSecretKeyForJwtTokenGeneration2026TestOnly!@#$
+    expiration: 3600000
   pipeline:
     timeout: 60000
     stage-timeout: 10000

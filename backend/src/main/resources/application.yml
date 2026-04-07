@@ -33,7 +33,7 @@ noriter:
     model: claude-sonnet-4-6
     api-key: ${CLAUDE_API_KEY:}  # 환경변수로 내장 키 설정
   jwt:
-    secret: ${JWT_SECRET:}
+    secret: ${JWT_SECRET:noriterLocalDevSecretKey2026ForJwtToken!@#}
     expiration: 86400000   # 24시간 (ms)
   pipeline:
     timeout: 1800000        # 전체 파이프라인 타임아웃 30분 (ms)

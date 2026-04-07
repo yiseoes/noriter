@@ -3,9 +3,9 @@ spring:
     name: noriter
 
   datasource:
-    url: jdbc:mysql://localhost:3306/noriter?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: noriter
-    password: noriter
+    url: ${DB_URL:jdbc:mysql://localhost:3306/noriter?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:noriter}
+    password: ${DB_PASSWORD:noriter}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -33,7 +33,7 @@ noriter:
     model: claude-sonnet-4-6
     api-key: ${CLAUDE_API_KEY:}  # 환경변수로 내장 키 설정
   jwt:
-    secret: ${JWT_SECRET:noriterSecretKeyForJwtTokenGeneration2026!@#$%^&*()}
+    secret: ${JWT_SECRET:}
     expiration: 86400000   # 24시간 (ms)
   pipeline:
     timeout: 1800000        # 전체 파이프라인 타임아웃 30분 (ms)

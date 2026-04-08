@@ -12,9 +12,9 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
 
     Page<Project> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    long countByGuestIdAndDemoFalse(String guestId);
+    long countByGuestIdAndUserIdIsNullAndDemoFalse(String guestId);
 
-    Page<Project> findByGuestIdOrderByCreatedAtDesc(String guestId, Pageable pageable);
+    Page<Project> findByGuestIdAndUserIdIsNullOrderByCreatedAtDesc(String guestId, Pageable pageable);
 
     Page<Project> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 

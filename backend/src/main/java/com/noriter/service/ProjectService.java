@@ -49,7 +49,7 @@ public class ProjectService {
                     throw new NoriterException(ErrorCode.USER_CREATE_LIMIT_EXCEEDED);
                 }
             } else if (guestId != null) {
-                long count = projectRepository.countByGuestIdAndDemoFalse(guestId);
+                long count = projectRepository.countByGuestIdAndUserIdIsNullAndDemoFalse(guestId);
                 if (count >= 1) {
                     throw new NoriterException(ErrorCode.GUEST_LIMIT_EXCEEDED);
                 }
@@ -99,7 +99,7 @@ public class ProjectService {
             result = projectRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
         } else if (guestId != null) {
             // 게스트: guestId 기반 조회
-            result = projectRepository.findByGuestIdOrderByCreatedAtDesc(guestId, pageable);
+            result = projectRepository.findByGuestIdAndUserIdIsNullOrderByCreatedAtDesc(guestId, pageable);
         } else if (status != null) {
             result = projectRepository.findByStatus(status, pageable);
         } else {

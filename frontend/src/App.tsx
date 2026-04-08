@@ -39,8 +39,8 @@ export default function App() {
 
   const projects = projectsData?.content ?? [];
 
-  // 선택된 프로젝트 실시간 갱신 (SSE invalidate → 자동 refetch)
-  const { data: liveProject } = useProject(selectedProject?.id ?? null);
+  // 선택된 프로젝트 실시간 갱신 — 모달 열려있을 때만
+  const { data: liveProject } = useProject(slideUp.isOpen ? selectedProject?.id ?? null : null);
   const currentProject = liveProject ?? selectedProject;
 
   const handleNavigate = useCallback((page: string) => {
@@ -99,7 +99,13 @@ export default function App() {
           projects={projects}
         />
 
-        <CreateGameModal isOpen={createModal.isOpen} onClose={createModal.close} onCreate={handleCreateDone} isDemo={isDemo} />
+        <CreateGameModal
+          isOpen={createModal.isOpen} onClose={createModal.close} onCreate={handleCreateDone}
+          isDemo={isDemo}
+          realProjectCount={projects.filter(p => !p.demo).length}
+          role={user?.role}
+          isLoggedIn={isLoggedIn}
+        />
         <ProjectListModal isOpen={projectsModal.isOpen} onClose={projectsModal.close} onSelect={handleSelectProject} projects={projects} />
         <AuditLogModal isOpen={auditModal.isOpen} onClose={auditModal.close} />
         <SettingsModal isOpen={settingsModal.isOpen} onClose={settingsModal.close} />

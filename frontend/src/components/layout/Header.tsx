@@ -84,13 +84,21 @@ export default function Header({ theme, onToggleTheme, onNavigate, activePage, o
                 {user.name.charAt(0)}
               </span>
               <span className="text-sm font-medium text-text-primary max-md:hidden">{user.name}</span>
+              {user.role === 'ADMIN' && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-brand/10 text-brand max-md:hidden">ADMIN</span>
+              )}
             </button>
 
             {dropdownOpen && (
               <div className="absolute right-0 top-full mt-1 w-44 bg-bg-primary border border-border
                               rounded-xl shadow-lg overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-border">
-                  <div className="text-sm font-semibold text-text-primary">{user.name}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-text-primary">{user.name}</span>
+                    {user.role === 'ADMIN' && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand/10 text-brand">ADMIN</span>
+                    )}
+                  </div>
                   <div className="text-xs text-text-muted truncate">{user.email}</div>
                 </div>
                 <button

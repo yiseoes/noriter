@@ -20,6 +20,7 @@ export function useAuth() {
     onSuccess: (data) => {
       if (data.token) setToken(data.token);
       queryClient.setQueryData(['auth', 'me'], { userId: data.userId, email: data.email, name: data.name, role: data.role });
+      queryClient.refetchQueries({ queryKey: ['projects'] });
     },
   });
 
@@ -28,13 +29,14 @@ export function useAuth() {
     onSuccess: (data) => {
       if (data.token) setToken(data.token);
       queryClient.setQueryData(['auth', 'me'], { userId: data.userId, email: data.email, name: data.name, role: data.role });
+      queryClient.refetchQueries({ queryKey: ['projects'] });
     },
   });
 
   const logout = () => {
     removeToken();
     queryClient.setQueryData(['auth', 'me'], null);
-    queryClient.invalidateQueries({ queryKey: ['projects'] });
+    queryClient.refetchQueries({ queryKey: ['projects'] });
   };
 
   return {

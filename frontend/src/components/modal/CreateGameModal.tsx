@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ModalOverlay from './ModalOverlay';
 import GenreTag from '../common/GenreTag';
+import type { UserRole } from '../../types';
 
 const genres = [
   { label: '퍼즐', value: 'PUZZLE' },
@@ -11,22 +12,30 @@ const genres = [
   { label: '기타', value: 'ETC' },
 ];
 
+const GUEST_LIMIT = 1;
+const USER_LIMIT = 3;
+
 interface CreateGameModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (data: { name?: string; genre?: string; requirement: string }) => void;
   isDemo?: boolean;
-  projectCount?: number;
-  onLogin?: () => void;
+  realProjectCount?: number;
+  role?: UserRole | null;
+  isLoggedIn?: boolean;
 }
 
-export default function CreateGameModal({ isOpen, onClose, onCreate, isDemo = false, projectCount = 0, onLogin }: CreateGameModalProps) {
-  const guestLimitReached = !isDemo && projectCount >= 1;
+export default function CreateGameModal({ isOpen, onClose, onCreate, isDemo = false, realProjectCount = 0, role, isLoggedIn }: CreateGameModalProps) {
   const [name, setName] = useState('');
   const [genre, setGenre] = useState('');
   const [desc, setDesc] = useState('');
 
-  const canSubmit = desc.length >= 10;
+  const isAdmin = role === 'ADMIN';
+  const limit = isAdmin ? Infinity : isLoggedIn ? USER_LIMIT : GUEST_LIMIT;
+  const remaining = isAdmin ? Infinity : Math.max(0, limit - realProjectCount);
+  const limitReached = !isDemo && remaining <= 0;
+
+  const canSubmit = desc.length >= 10 && !limitReached;
 
   const handleSubmit = () => {
     onClose();
@@ -38,17 +47,38 @@ export default function CreateGameModal({ isOpen, onClose, onCreate, isDemo = fa
     <ModalOverlay isOpen={isOpen} onClose={onClose} size="sm"
       title={<>🎮 새 게임 만들기{isDemo && <span className="inline-block ml-2 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-coral-bg text-coral align-middle">DEMO</span>}</>}
       footer={
-        <button
-          disabled={!canSubmit}
-          onClick={handleSubmit}
-          className="w-full py-3 bg-gradient-to-br from-brand to-[#a29bfe] text-white
-                     rounded-[10px] text-[15px] font-semibold cursor-pointer border-none
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          게임 생성 요청
-        </button>
+        <div>
+          <button
+            disabled={!canSubmit}
+            onClick={handleSubmit}
+            className="w-full py-3 bg-gradient-to-br from-brand to-[#a29bfe] text-white
+                       rounded-[10px] text-[15px] font-semibold cursor-pointer border-none
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            게임 생성 요청
+          </button>
+          {/* 남은 횟수 안내 */}
+          {!isDemo && !isAdmin && (
+            <div className={`text-center mt-2 text-xs ${remaining <= 1 ? 'text-danger' : 'text-text-muted'}`}>
+              {limitReached
+                ? (isLoggedIn ? '생성 가능 횟수를 모두 사용했습니다.' : '게스트 무료 체험을 모두 사용했습니다. 로그인해주세요!')
+                : `남은 생성 횟수: ${remaining}/${limit}`
+              }
+            </div>
+          )}
+        </div>
       }
     >
+      {/* 제한 도달 경고 */}
+      {limitReached && (
+        <div className="mb-4 p-3 rounded-lg bg-danger-bg text-danger text-sm font-medium">
+          {isLoggedIn
+            ? `게임은 최대 ${USER_LIMIT}개까지 생성할 수 있습니다.`
+            : '게스트 모드에서는 1개의 게임만 생성할 수 있습니다. 회원가입하면 더 만들 수 있어요!'
+          }
+        </div>
+      )}
+
       <div className="mb-5">
         <label className="block text-sm font-semibold text-text-secondary mb-1.5">
           프로젝트명 <span className="font-normal text-text-muted">(선택)</span>

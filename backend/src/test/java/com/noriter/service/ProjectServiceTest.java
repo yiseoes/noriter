@@ -121,13 +121,22 @@ class ProjectServiceTest {
     @Test
     @DisplayName("COMPLETED가 아닌 프로젝트에 피드백을 보내면 예외가 발생한다")
     void requestFeedback_whenNotCompleted_throwsException() {
-        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null, null);
+        Project project = Project.create("게임", "요구사항 10자 이상입니다", Genre.ACTION, 3, false, null, 1L);
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
 
-        assertThatThrownBy(() -> projectService.requestFeedback(project.getId(), "속도가 너무 빨라요", null, null))
+        assertThatThrownBy(() -> projectService.requestFeedback(project.getId(), "속도가 너무 빨라요", 1L, null))
                 .isInstanceOf(NoriterException.class)
                 .satisfies(e -> assertThat(((NoriterException) e).getErrorCode())
                         .isEqualTo(ErrorCode.FEEDBACK_NOT_ALLOWED));
+    }
+
+    @Test
+    @DisplayName("게스트는 수정 요청을 할 수 없다")
+    void requestFeedback_asGuest_throwsException() {
+        assertThatThrownBy(() -> projectService.requestFeedback("prj_test", "수정해주세요", null, "guest_123"))
+                .isInstanceOf(NoriterException.class)
+                .satisfies(e -> assertThat(((NoriterException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.GUEST_FEEDBACK_NOT_ALLOWED));
     }
 
     @Test

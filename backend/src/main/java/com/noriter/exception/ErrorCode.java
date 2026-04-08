@@ -43,8 +43,11 @@ public enum ErrorCode {
     // Ownership
     PROJECT_ACCESS_DENIED("NT-ERR-O001", 403, "해당 프로젝트에 대한 접근 권한이 없습니다."),
 
-    // Guest
-    GUEST_LIMIT_EXCEEDED("NT-ERR-G002", 429, "게스트 모드에서는 1개의 게임만 생성할 수 있습니다. 회원가입하면 더 만들 수 있어요!");
+    // Limit
+    GUEST_LIMIT_EXCEEDED("NT-ERR-L001", 429, "게스트 모드에서는 1개의 게임만 생성할 수 있습니다. 회원가입하면 더 만들 수 있어요!"),
+    USER_CREATE_LIMIT_EXCEEDED("NT-ERR-L002", 429, "게임은 최대 3개까지 생성할 수 있습니다."),
+    FEEDBACK_LIMIT_EXCEEDED("NT-ERR-L003", 429, "수정 요청은 프로젝트당 최대 2회까지 가능합니다."),
+    GUEST_FEEDBACK_NOT_ALLOWED("NT-ERR-L004", 403, "게스트 모드에서는 수정 요청을 할 수 없습니다. 회원가입 후 이용해주세요.");
 
     private final String code;
     private final int httpStatus;

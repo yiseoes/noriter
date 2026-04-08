@@ -66,6 +66,9 @@ public class Project {
     @Column(name = "user_id")
     private Long userId;
 
+    @Column(name = "feedback_count", nullable = false)
+    private Integer feedbackCount;
+
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stageOrder ASC")
     private List<Stage> stages = new ArrayList<>();
@@ -86,9 +89,15 @@ public class Project {
         project.demo = demo;
         project.guestId = guestId;
         project.userId = userId;
+        project.feedbackCount = 0;
         project.createdAt = LocalDateTime.now();
         project.updatedAt = LocalDateTime.now();
         return project;
+    }
+
+    public void incrementFeedbackCount() {
+        this.feedbackCount++;
+        this.updatedAt = LocalDateTime.now();
     }
 
     public boolean isOwnedBy(Long userId, String guestId) {

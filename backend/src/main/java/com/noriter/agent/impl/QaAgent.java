@@ -4,8 +4,10 @@ import com.noriter.agent.core.*;
 import com.noriter.agent.prompt.PromptRegistry;
 import com.noriter.agent.prompt.PromptTemplate;
 import com.noriter.domain.enums.AgentRole;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.noriter.infrastructure.claude.ClaudeApiClient;
 import com.noriter.infrastructure.claude.ClaudeApiClient.ClaudeResponse;
+import com.noriter.util.JsonParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
@@ -59,8 +61,12 @@ public class QaAgent implements BaseAgent {
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
         String report = response.content();
 
-        // result 필드에서 PASS/FAIL 판정
-        boolean passed = report.contains("\"result\"") && report.contains("\"PASS\"");
+        // result 필드 정확 파싱으로 PASS/FAIL 판정 (설계서 08_프롬프트 §14 기준)
+        boolean passed = false;
+        JsonNode reportNode = JsonParser.parse(report);
+        if (reportNode != null && reportNode.has("result")) {
+            passed = "PASS".equals(reportNode.get("result").asText());
+        }
 
         log.info("[QA팀] 코드 검증 완료 - projectId={}, 결과={}", context.getProjectId(), passed ? "PASS" : "FAIL");
 

@@ -19,7 +19,7 @@ export function useAuth() {
     mutationFn: login,
     onSuccess: (data) => {
       if (data.token) setToken(data.token);
-      queryClient.setQueryData(['auth', 'me'], { userId: data.userId, email: data.email, name: data.name });
+      queryClient.setQueryData(['auth', 'me'], { userId: data.userId, email: data.email, name: data.name, role: data.role });
     },
   });
 
@@ -27,7 +27,7 @@ export function useAuth() {
     mutationFn: signup,
     onSuccess: (data) => {
       if (data.token) setToken(data.token);
-      queryClient.setQueryData(['auth', 'me'], { userId: data.userId, email: data.email, name: data.name });
+      queryClient.setQueryData(['auth', 'me'], { userId: data.userId, email: data.email, name: data.name, role: data.role });
     },
   });
 

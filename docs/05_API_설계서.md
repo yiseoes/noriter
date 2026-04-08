@@ -58,6 +58,9 @@ API-[컨트롤러]-[번호]
 | API-SET-003 | POST | /api/settings/api-key/validate | API 키 유효성 검증 | NT-SYS-001 |
 | API-SYS-001 | GET | /api/health | 시스템 헬스체크 | NT-SYS-002 |
 | API-SSE-001 | GET | /api/projects/{id}/stream | 실시간 이벤트 스트림 | NT-MON-001, NT-MON-002 |
+| API-AUTH-001 | POST | /api/auth/signup | 회원가입 | - |
+| API-AUTH-002 | POST | /api/auth/login | 로그인 | - |
+| API-AUTH-003 | GET | /api/auth/me | 내 정보 조회 (JWT 필요) | - |
 
 ---
 

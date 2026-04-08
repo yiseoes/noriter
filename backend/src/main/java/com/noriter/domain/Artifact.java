@@ -27,7 +27,7 @@ public class Artifact {
     private ArtifactType type;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "agent_role", nullable = false, length = 20)
+    @Column(name = "agent_role", nullable = false, length = 30)
     private AgentRole agentRole;
 
     @Column(nullable = false)

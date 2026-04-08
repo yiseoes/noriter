@@ -69,6 +69,24 @@ public class StageExecutor {
                 log.info("[스테이지 실행] 에이전트 성공 - projectId={}, stage={}, agent={}",
                         projectId, stageType, role);
 
+                // 에이전트가 전달한 상세 메시지 로그
+                if (result.getMessage() != null && !result.getMessage().isBlank()) {
+                    logService.createLog(projectId, LogLevel.AGENT, role, stageType, result.getMessage());
+                }
+
+                // 산출물 목록 로그
+                if (result.getArtifacts() != null && !result.getArtifacts().isEmpty()) {
+                    String artifactNames = String.join(", ", result.getArtifacts().keySet());
+                    logService.createLog(projectId, LogLevel.INFO, role, stageType,
+                            String.format("산출물 생성 완료: %s", artifactNames));
+                }
+
+                // 토큰 사용량 로그
+                if (result.getInputTokens() > 0) {
+                    logService.createLog(projectId, LogLevel.DEBUG, role, stageType,
+                            String.format("토큰 사용: 입력 %d / 출력 %d", result.getInputTokens(), result.getOutputTokens()));
+                }
+
                 logService.createLog(projectId, LogLevel.INFO, role, stageType,
                         String.format("%s 에이전트 작업 완료.", getAgentDisplayName(role)));
 

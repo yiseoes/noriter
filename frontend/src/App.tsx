@@ -12,7 +12,7 @@ import ProjectDetail from './components/project/ProjectDetail';
 import { useModal } from './hooks/useModal';
 import { useTheme } from './hooks/useTheme';
 import { useAuth } from './hooks/useAuth';
-import { useProjects, useCreateProject, useDeleteProject, useCancelProject } from './hooks/useProjects';
+import { useProjects, useProject, useCreateProject, useDeleteProject, useCancelProject } from './hooks/useProjects';
 import type { Project } from './types';
 
 
@@ -38,6 +38,10 @@ export default function App() {
   const cancelMutation = useCancelProject();
 
   const projects = projectsData?.content ?? [];
+
+  // 선택된 프로젝트 실시간 갱신 (SSE invalidate → 자동 refetch)
+  const { data: liveProject } = useProject(selectedProject?.id ?? null);
+  const currentProject = liveProject ?? selectedProject;
 
   const handleNavigate = useCallback((page: string) => {
     setActivePage(page);
@@ -111,7 +115,7 @@ export default function App() {
             </div>
           }
         >
-          {selectedProject && <ProjectDetail project={selectedProject} isDemo={selectedProject.demo} onCreateReal={() => { slideUp.close(); setIsDemo(false); setTimeout(() => createModal.open(), 600); }} onLogin={authModal.open} />}
+          {currentProject && <ProjectDetail project={currentProject} isDemo={currentProject.demo} onCreateReal={() => { slideUp.close(); setIsDemo(false); setTimeout(() => createModal.open(), 600); }} onLogin={authModal.open} />}
         </SlideUpModal>
       </Layout>
     </>

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import Badge from '../common/Badge';
 import Pipeline from './Pipeline';
 import TabBar from './TabBar';
@@ -7,9 +8,9 @@ import LogTab from './LogTab';
 import ChatTab from './ChatTab';
 import PreviewTab from './PreviewTab';
 import SourceTab from './SourceTab';
+import { useSse } from '../../hooks/useSse';
+import { useLogs, useMessages } from '../../hooks/useLogs';
 import type { Project } from '../../types';
-
-import { mockLogs, mockMessages, mockArtifacts, mockTokenUsages, getMockSourceFiles } from '../../mock';
 
 const tabs = [
   { key: 'overview', label: '📋 개요' },
@@ -29,6 +30,54 @@ interface ProjectDetailProps {
 export default function ProjectDetail({ project, isDemo = true, onCreateReal, onLogin }: ProjectDetailProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [demoComplete, setDemoComplete] = useState(false);
+  const [sseStatus, setSseStatus] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const isInProgress = project.status === 'IN_PROGRESS' || project.status === 'REVISION';
+
+  // 실제 API 데이터 조회
+  const { data: logsData } = useLogs(project.id);
+  const { data: messagesData } = useMessages(project.id);
+  const logs = logsData?.content ?? [];
+  const messages = messagesData?.content ?? [];
+
+  // SSE 실시간 연동 — IN_PROGRESS일 때만 활성화
+  const handleSseEvent = useCallback((type: string, data: unknown) => {
+    const d = data as Record<string, unknown>;
+
+    const invalidateAll = () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['logs', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['messages', project.id] });
+    };
+
+    if (type === 'stage-update') {
+      invalidateAll();
+      setSseStatus(`${d.stageName || d.stageType || ''} 진행 중...`);
+    }
+
+    if (type === 'complete') {
+      invalidateAll();
+      setSseStatus('게임 생성 완료!');
+    }
+
+    if (type === 'error') {
+      invalidateAll();
+      setSseStatus(`오류 발생: ${d.message || '알 수 없는 오류'}`);
+    }
+
+    if (type === 'cancelled') {
+      invalidateAll();
+      setSseStatus('파이프라인이 중단되었습니다.');
+    }
+  }, [project.id, queryClient]);
+
+  useSse({
+    projectId: project.id,
+    onEvent: handleSseEvent,
+    enabled: isInProgress && !isDemo,
+  });
 
   return (
     <div>
@@ -45,7 +94,21 @@ export default function ProjectDetail({ project, isDemo = true, onCreateReal, on
         <span className="text-sm text-text-muted">{project.genre} · {project.progress}%</span>
       </div>
 
-      <Pipeline projectStatus={project.status} isDemo={isDemo} onDemoComplete={() => setDemoComplete(true)} />
+      {/* SSE 실시간 상태 메시지 */}
+      {sseStatus && isInProgress && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-info-bg text-info text-sm flex items-center gap-2">
+          <span className="inline-block w-2 h-2 bg-info rounded-full animate-pulse" />
+          {sseStatus}
+        </div>
+      )}
+
+      <Pipeline
+        projectStatus={project.status}
+        currentStage={project.currentStage}
+        progress={project.progress}
+        isDemo={isDemo}
+        onDemoComplete={() => setDemoComplete(true)}
+      />
 
       {/* 데모 완료 CTA */}
       {isDemo && demoComplete && (
@@ -80,12 +143,12 @@ export default function ProjectDetail({ project, isDemo = true, onCreateReal, on
       <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'overview' && (
-        <OverviewTab artifacts={mockArtifacts} tokenUsages={mockTokenUsages} totalTokens={9500} debugCount={0} />
+        <OverviewTab artifacts={[]} tokenUsages={[]} totalTokens={0} debugCount={0} />
       )}
-      {activeTab === 'log' && <LogTab logs={mockLogs} />}
-      {activeTab === 'chat' && <ChatTab messages={mockMessages} />}
+      {activeTab === 'log' && <LogTab logs={logs} />}
+      {activeTab === 'chat' && <ChatTab messages={messages} />}
       {activeTab === 'preview' && <PreviewTab projectId={project.id} />}
-      {activeTab === 'source' && <SourceTab files={getMockSourceFiles(project.name)} />}
+      {activeTab === 'source' && <SourceTab files={[]} />}
     </div>
   );
 }

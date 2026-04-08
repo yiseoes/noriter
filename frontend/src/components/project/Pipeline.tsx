@@ -3,20 +3,22 @@ import type { ProjectStatus } from '../../types';
 
 const stageConfig = [
   { key: 'PLANNING', label: '기획', emoji: '📋', color: '#ae3ec9' },
-  { key: 'CTO', label: 'CTO', emoji: '👔', color: '#4263eb' },
+  { key: 'ARCHITECTURE', label: 'CTO', emoji: '👔', color: '#4263eb' },
   { key: 'DESIGN', label: '디자인', emoji: '🎨', color: '#e64980' },
-  { key: 'IMPLEMENT', label: '구현', emoji: '💻', color: '#0ca678' },
+  { key: 'IMPLEMENTATION', label: '구현', emoji: '💻', color: '#0ca678' },
   { key: 'QA', label: 'QA', emoji: '🔍', color: '#f76707' },
   { key: 'RELEASE', label: '출시', emoji: '🎮', color: '#ff6b6b' },
 ];
 
 interface PipelineProps {
   projectStatus: ProjectStatus;
+  currentStage?: string | null;
+  progress?: number;
   isDemo?: boolean;
   onDemoComplete?: () => void;
 }
 
-export default function Pipeline({ projectStatus, isDemo = false, onDemoComplete }: PipelineProps) {
+export default function Pipeline({ projectStatus, currentStage, progress = 0, isDemo = false, onDemoComplete }: PipelineProps) {
   const [activeIdx, setActiveIdx] = useState(-1);
   const [completedSet, setCompletedSet] = useState<Set<number>>(new Set());
   const [allDone, setAllDone] = useState(false);
@@ -24,14 +26,12 @@ export default function Pipeline({ projectStatus, isDemo = false, onDemoComplete
 
   // 데모: 순차 애니메이션
   useEffect(() => {
-    if (!isDemo || projectStatus === 'COMPLETED') {
-      // 이미 완료된 프로젝트면 전부 완료 표시
-      if (projectStatus === 'COMPLETED') {
-        setCompletedSet(new Set(stageConfig.map((_, i) => i)));
-        setAllDone(true);
-        setActiveIdx(-1);
-        onDemoComplete?.();
-      }
+    if (!isDemo) return;
+    if (projectStatus === 'COMPLETED') {
+      setCompletedSet(new Set(stageConfig.map((_, i) => i)));
+      setAllDone(true);
+      setActiveIdx(-1);
+      onDemoComplete?.();
       return;
     }
 
@@ -59,7 +59,51 @@ export default function Pipeline({ projectStatus, isDemo = false, onDemoComplete
     };
   }, [projectStatus, isDemo]);
 
-  const progress = allDone ? 100 : activeIdx >= 0 ? ((activeIdx + 0.5) / stageConfig.length) * 100 : 0;
+  // 실제 모드: currentStage 기반 실시간 반영
+  useEffect(() => {
+    if (isDemo) return;
+
+    if (projectStatus === 'COMPLETED') {
+      setCompletedSet(new Set(stageConfig.map((_, i) => i)));
+      setAllDone(true);
+      setActiveIdx(-1);
+      return;
+    }
+
+    if (projectStatus === 'FAILED' || projectStatus === 'CANCELLED') {
+      // 현재 스테이지까지 표시, 마지막은 실패로
+      const stageIdx = stageConfig.findIndex(s => s.key === currentStage);
+      if (stageIdx >= 0) {
+        const done = new Set<number>();
+        for (let i = 0; i < stageIdx; i++) done.add(i);
+        setCompletedSet(done);
+        setActiveIdx(stageIdx);
+      }
+      setAllDone(false);
+      return;
+    }
+
+    if (projectStatus === 'IN_PROGRESS' || projectStatus === 'REVISION') {
+      const stageIdx = stageConfig.findIndex(s => s.key === currentStage);
+      if (stageIdx >= 0) {
+        const done = new Set<number>();
+        for (let i = 0; i < stageIdx; i++) done.add(i);
+        setCompletedSet(done);
+        setActiveIdx(stageIdx);
+      }
+      setAllDone(false);
+      return;
+    }
+
+    // CREATED 등 초기 상태
+    setActiveIdx(-1);
+    setCompletedSet(new Set());
+    setAllDone(false);
+  }, [projectStatus, currentStage, isDemo]);
+
+  const computedProgress = allDone ? 100 : progress > 0 ? progress : (activeIdx >= 0 ? ((activeIdx + 0.5) / stageConfig.length) * 100 : 0);
+
+  const isFailed = projectStatus === 'FAILED';
 
   return (
     <div>
@@ -67,21 +111,25 @@ export default function Pipeline({ projectStatus, isDemo = false, onDemoComplete
         {stageConfig.map((stage, i) => {
           const isDone = completedSet.has(i);
           const isActive = i === activeIdx;
+          const isFailedStage = isFailed && isActive;
           return (
             <div key={stage.key} className="flex flex-col items-center flex-1 relative">
               <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold
                               border-2 z-[1] transition-all duration-500
                               max-md:w-[30px] max-md:h-[30px] max-md:text-xs
                 ${isDone ? 'border-success bg-success-bg text-success' :
+                  isFailedStage ? 'border-danger bg-danger-bg text-danger scale-110' :
                   isActive ? 'border-info bg-info-bg text-info scale-110' :
                   'border-border bg-bg-primary text-text-muted'}`}
-                style={isActive ? { boxShadow: `0 0 12px ${stage.color}30` } : {}}>
-                {isDone ? '✓' : stage.emoji}
+                style={isActive && !isFailedStage ? { boxShadow: `0 0 12px ${stage.color}30` } : {}}>
+                {isDone ? '✓' : isFailedStage ? '✕' : stage.emoji}
               </div>
               <div className={`text-[11px] mt-1.5 font-medium transition-colors duration-300
                               max-md:text-[9px]
-                ${isDone ? 'text-success' : isActive ? 'text-text-primary' : 'text-text-muted'}`}
-                style={isActive ? { color: stage.color } : {}}>
+                ${isDone ? 'text-success' :
+                  isFailedStage ? 'text-danger' :
+                  isActive ? 'text-text-primary' : 'text-text-muted'}`}
+                style={isActive && !isFailedStage ? { color: stage.color } : {}}>
                 {stage.label}
               </div>
               {i < stageConfig.length - 1 && (
@@ -96,9 +144,26 @@ export default function Pipeline({ projectStatus, isDemo = false, onDemoComplete
       {/* 프로그레스 바 */}
       <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-1000 ease-out
-          ${allDone ? 'bg-success' : 'bg-brand'}`}
-          style={{ width: `${progress}%` }} />
+          ${allDone ? 'bg-success' : isFailed ? 'bg-danger' : 'bg-brand'}`}
+          style={{ width: `${computedProgress}%` }} />
       </div>
+
+      {/* 상태 텍스트 */}
+      {projectStatus === 'IN_PROGRESS' && activeIdx >= 0 && (
+        <div className="text-xs text-text-muted mt-2 text-center">
+          {stageConfig[activeIdx]?.emoji} {stageConfig[activeIdx]?.label} 단계 진행 중... ({Math.round(computedProgress)}%)
+        </div>
+      )}
+      {isFailed && (
+        <div className="text-xs text-danger mt-2 text-center">
+          파이프라인 실패 — {stageConfig[activeIdx]?.label || ''} 단계에서 오류 발생
+        </div>
+      )}
+      {projectStatus === 'COMPLETED' && (
+        <div className="text-xs text-success mt-2 text-center">
+          게임 생성 완료!
+        </div>
+      )}
     </div>
   );
 }

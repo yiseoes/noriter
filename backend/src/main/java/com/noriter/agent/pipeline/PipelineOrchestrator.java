@@ -138,6 +138,126 @@ public class PipelineOrchestrator {
     }
 
     /**
+     * 실패 지점부터 재시도 — 기존 산출물 재활용
+     */
+    @Async
+    public void resumePipeline(String projectId, StageType fromStage) {
+        log.info("[파이프라인] ===== 재시도 ===== projectId={}, fromStage={}", projectId, fromStage);
+
+        Project project = projectRepository.findById(projectId).orElse(null);
+        if (project == null) return;
+
+        project.updateStatus(ProjectStatus.IN_PROGRESS);
+        projectRepository.save(project);
+        auditService.log(AuditEventType.PROJECT_STATUS_CHANGED, projectId,
+                String.format("파이프라인 재시도 (%s부터)", fromStage), null);
+
+        List<Stage> stages = stageRepository.findByProjectIdOrderByStageOrderAsc(projectId);
+
+        // 기존 산출물 로드
+        Map<String, String> artifacts = loadExistingArtifacts(projectId);
+        log.info("[파이프라인] 기존 산출물 로드 완료 - {}개: {}", artifacts.size(), artifacts.keySet());
+
+        int fromOrder = getStageOrder(fromStage);
+
+        try {
+            // STAGE 1: 기획 (fromOrder 이전이면 건너뜀)
+            if (fromOrder <= 1) {
+                AgentResult planResult = executeStage(project, stages, StageType.PLANNING, planningAgent, artifacts);
+                if (!handleResult(project, planResult, stages, StageType.PLANNING, artifacts)) return;
+            }
+
+            if (fromOrder <= 2) {
+                AgentResult ctoResult = executeStage(project, stages, StageType.ARCHITECTURE, ctoAgent, artifacts);
+                if (!handleResult(project, ctoResult, stages, StageType.ARCHITECTURE, artifacts)) return;
+            }
+
+            if (fromOrder <= 3) {
+                AgentResult designResult = executeStage(project, stages, StageType.DESIGN, designAgent, artifacts);
+                if (!handleResult(project, designResult, stages, StageType.DESIGN, artifacts)) return;
+            }
+
+            if (fromOrder <= 4) {
+                project.updateProgress(57, StageType.IMPLEMENTATION);
+                projectRepository.save(project);
+
+                AgentResult frontResult = executeStage(project, stages, StageType.IMPLEMENTATION, frontendAgent, artifacts);
+                if (frontResult.getStatus() == AgentResult.Status.FAILED) {
+                    handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
+                    return;
+                }
+
+                AgentResult backResult = executeStage(project, stages, StageType.IMPLEMENTATION, backendAgent, artifacts);
+                if (backResult.getStatus() == AgentResult.Status.FAILED) {
+                    handlePipelineFailure(project, "백엔드 구현 실패: " + backResult.getErrorMessage());
+                    return;
+                }
+
+                mergeCode(projectId, frontResult, backResult, artifacts);
+                Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
+                if (implStage != null) { implStage.complete(null); stageRepository.save(implStage); }
+            }
+
+            if (fromOrder <= 5) {
+                AgentResult qaResult = executeStage(project, stages, StageType.QA, qaAgent, artifacts);
+                if (qaResult.getStatus() == AgentResult.Status.NEEDS_REVIEW) {
+                    handleQaFailure(project, stages, artifacts, qaResult);
+                } else if (qaResult.getStatus() == AgentResult.Status.SUCCESS) {
+                    handleResult(project, qaResult, stages, StageType.QA, artifacts);
+                    completeRelease(project, stages);
+                } else {
+                    handlePipelineFailure(project, "QA 실패: " + qaResult.getErrorMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("[파이프라인] 재시도 중 오류 - projectId={}, error={}", projectId, e.getMessage(), e);
+            handlePipelineFailure(project, "파이프라인 재시도 오류: " + e.getMessage());
+        }
+    }
+
+    /** 기존 산출물 파일 로드 */
+    private Map<String, String> loadExistingArtifacts(String projectId) {
+        Map<String, String> artifacts = new HashMap<>();
+        String[] artifactFiles = {"plan.json", "architecture.json", "design.json"};
+        for (String file : artifactFiles) {
+            try {
+                String content = fileStorageService.readArtifact(projectId, file);
+                if (content != null && !content.isBlank()) {
+                    artifacts.put(file, content);
+                }
+            } catch (Exception e) {
+                log.debug("[파이프라인] 산출물 없음 - {}", file);
+            }
+        }
+        // 게임 파일
+        String[] gameFiles = {"index.html", "style.css", "game.js"};
+        for (String file : gameFiles) {
+            try {
+                String content = fileStorageService.readGameFile(projectId, file);
+                if (content != null && !content.isBlank()) {
+                    artifacts.put(file, content);
+                }
+            } catch (Exception e) {
+                log.debug("[파이프라인] 게임 파일 없음 - {}", file);
+            }
+        }
+        return artifacts;
+    }
+
+    private int getStageOrder(StageType type) {
+        return switch (type) {
+            case PLANNING -> 1;
+            case ARCHITECTURE -> 2;
+            case DESIGN -> 3;
+            case IMPLEMENTATION -> 4;
+            case QA -> 5;
+            case DEBUG -> 5;
+            case RELEASE -> 6;
+        };
+    }
+
+    /**
      * QA 실패 → 디버깅 루프 (최대 3회)
      * 참조: 03_아키텍처 §4.3, NT-AGT-005
      */
@@ -156,11 +276,16 @@ public class PipelineOrchestrator {
             logService.createLog(projectId, LogLevel.WARN, AgentRole.QA, StageType.QA,
                     String.format("QA 테스트 실패 - 디버깅 시도 %d/%d회", attempt, maxAttempts));
 
-            project.updateProgress(80, StageType.DEBUG);
-            projectRepository.save(project);
-
             try {
                 // 1) CTO가 버그 분석 + 수정 지시
+                project.updateProgress(75 + (attempt * 2), StageType.DEBUG);
+                projectRepository.save(project);
+                sseEmitterService.sendEvent(projectId, SseEvent.stageUpdate(
+                        String.format("{\"stage\":\"DEBUG\",\"status\":\"CTO_ANALYZING\",\"attempt\":%d}", attempt)));
+
+                logService.createLog(projectId, LogLevel.INFO, AgentRole.CTO, StageType.DEBUG,
+                        String.format("CTO가 버그를 분석하고 있어요... (시도 %d/%d)", attempt, maxAttempts));
+
                 String bugReport = artifacts.getOrDefault("test-report.json", "");
                 AgentContext debugContext = AgentContext.builder()
                         .projectId(projectId)
@@ -179,6 +304,14 @@ public class PipelineOrchestrator {
                 String ctoInstruction = ctoDebugResult.getArtifacts().getOrDefault("debug-instruction.json", "");
 
                 // 2) Frontend/Backend 수정
+                project.updateProgress(80 + (attempt * 2), StageType.DEBUG);
+                projectRepository.save(project);
+                sseEmitterService.sendEvent(projectId, SseEvent.stageUpdate(
+                        String.format("{\"stage\":\"DEBUG\",\"status\":\"FIXING\",\"attempt\":%d}", attempt)));
+
+                logService.createLog(projectId, LogLevel.INFO, AgentRole.FRONTEND, StageType.DEBUG,
+                        "발견된 버그를 수정하고 있어요...");
+
                 AgentContext fixContext = AgentContext.builder()
                         .projectId(projectId)
                         .stageType(StageType.DEBUG)
@@ -203,6 +336,14 @@ public class PipelineOrchestrator {
                 fileStorageService.saveGameFile(projectId, "game.js", mergedJs);
 
                 // 3) QA 재테스트
+                project.updateProgress(85 + (attempt * 2), StageType.DEBUG);
+                projectRepository.save(project);
+                sseEmitterService.sendEvent(projectId, SseEvent.stageUpdate(
+                        String.format("{\"stage\":\"DEBUG\",\"status\":\"RETESTING\",\"attempt\":%d}", attempt)));
+
+                logService.createLog(projectId, LogLevel.INFO, AgentRole.QA, StageType.DEBUG,
+                        "수정된 코드를 다시 검증하고 있어요...");
+
                 AgentContext retestContext = AgentContext.builder()
                         .projectId(projectId)
                         .stageType(StageType.QA)

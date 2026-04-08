@@ -20,7 +20,9 @@ public class ProjectDetailResponse {
     private final String requirement;
     private final String genre;
     private final String status;
+    private final String currentStage;
     private final int progress;
+    private final boolean demo;
     private final LocalDateTime createdAt;
     private final LocalDateTime completedAt;
     private final List<StageResponse> stages;
@@ -37,7 +39,9 @@ public class ProjectDetailResponse {
         this.requirement = project.getRequirement();
         this.genre = project.getGenre() != null ? project.getGenre().name() : null;
         this.status = project.getStatus().name();
+        this.currentStage = project.getCurrentStage() != null ? project.getCurrentStage().name() : null;
         this.progress = project.getProgress();
+        this.demo = project.isDemo();
         this.createdAt = project.getCreatedAt();
         this.completedAt = project.getCompletedAt();
         this.stages = stages;

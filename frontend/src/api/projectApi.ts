@@ -13,9 +13,9 @@ export const getProjects = (status?: string, page = 0, size = 20) =>
 export const getProject = (id: string) =>
   client.get<Project>(`/projects/${id}`).then(r => r.data);
 
-/** API-PRJ-004: 재시도 */
-export const retryProject = (id: string) =>
-  client.post(`/projects/${id}/retry`).then(r => r.data);
+/** API-PRJ-004: 재시도 (fromStage 있으면 이어서 재시도) */
+export const retryProject = (id: string, fromStage?: string) =>
+  client.post(`/projects/${id}/retry`, fromStage ? { fromStage } : {}).then(r => r.data);
 
 /** API-PRJ-005: 삭제 */
 export const deleteProject = (id: string) =>

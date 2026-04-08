@@ -86,6 +86,9 @@ public class ProjectService {
         if (!project.isOwnedBy(userId, guestId)) {
             throw new NoriterException(ErrorCode.PROJECT_ACCESS_DENIED);
         }
+        // Lazy 컬렉션 강제 초기화 (open-in-view: false 대응)
+        project.getStages().size();
+        project.getArtifacts().size();
         return project;
     }
 

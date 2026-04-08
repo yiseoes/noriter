@@ -10,7 +10,8 @@ import PreviewTab from './PreviewTab';
 import SourceTab from './SourceTab';
 import { useSse } from '../../hooks/useSse';
 import { useLogs, useMessages } from '../../hooks/useLogs';
-import type { Project } from '../../types';
+import { useProject, useRetryProject } from '../../hooks/useProjects';
+import type { Project, AuthUser, TokenUsage } from '../../types';
 
 const tabs = [
   { key: 'overview', label: '📋 개요' },
@@ -25,21 +26,34 @@ interface ProjectDetailProps {
   isDemo?: boolean;
   onCreateReal?: () => void;
   onLogin?: () => void;
+  user?: AuthUser | null;
 }
 
-export default function ProjectDetail({ project, isDemo = true, onCreateReal, onLogin }: ProjectDetailProps) {
+export default function ProjectDetail({ project, isDemo = false, onCreateReal, onLogin, user }: ProjectDetailProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [demoComplete, setDemoComplete] = useState(false);
   const [sseStatus, setSseStatus] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const isInProgress = project.status === 'IN_PROGRESS' || project.status === 'REVISION';
+  const isFailed = project.status === 'FAILED';
+  const retryMutation = useRetryProject();
 
   // 실제 API 데이터 조회
+  const { data: projectDetail } = useProject(project.id);
   const { data: logsData } = useLogs(project.id);
   const { data: messagesData } = useMessages(project.id);
   const logs = logsData?.content ?? [];
   const messages = messagesData?.content ?? [];
+
+  // 상세 데이터 (산출물, 토큰)
+  const artifacts = projectDetail?.artifacts ?? [];
+  const tokenUsage = projectDetail?.tokenUsage;
+  const totalTokens = tokenUsage?.total ?? 0;
+  const tokenUsages: TokenUsage[] = tokenUsage?.byAgent
+    ? Object.entries(tokenUsage.byAgent).map(([agentRole, tokens]) => ({ agentRole: agentRole as TokenUsage['agentRole'], tokens }))
+    : [];
+  const debugCount = projectDetail?.debugAttempts ?? 0;
 
   // SSE 실시간 연동 — IN_PROGRESS일 때만 활성화
   const handleSseEvent = useCallback((type: string, data: unknown) => {
@@ -110,6 +124,27 @@ export default function ProjectDetail({ project, isDemo = true, onCreateReal, on
         onDemoComplete={() => setDemoComplete(true)}
       />
 
+      {/* 실패 시 이어서 재시도 버튼 */}
+      {isFailed && !isDemo && (
+        <div className="my-4 p-4 rounded-xl bg-danger-bg/30 border border-danger/20 flex items-center justify-between max-md:flex-col max-md:gap-3">
+          <div>
+            <div className="text-sm font-semibold text-danger">게임 만들기에 실패했어요 😢</div>
+            <div className="text-xs text-text-muted mt-0.5">
+              {project.currentStage ? '이미 완료된 단계는 건너뛰고 이어서 다시 시도할 수 있어요.' : '처음부터 다시 시도할 수 있어요.'}
+            </div>
+          </div>
+          <button
+            onClick={() => retryMutation.mutate({ id: project.id, fromStage: project.currentStage || undefined })}
+            disabled={retryMutation.isPending}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-brand to-[#ffa8a8] text-white
+                       text-sm font-bold cursor-pointer border-none hover:scale-105 transition-transform
+                       disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {retryMutation.isPending ? '재시도 중...' : `🔄 ${project.currentStage || ''} 부터 이어서 재시도`}
+          </button>
+        </div>
+      )}
+
       {/* 데모 완료 CTA */}
       {isDemo && demoComplete && (
         <div className="my-6 p-6 rounded-2xl bg-gradient-to-r from-brand/5 to-[#ffa8a8]/10 border border-brand/20 text-center"
@@ -143,11 +178,19 @@ export default function ProjectDetail({ project, isDemo = true, onCreateReal, on
       <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'overview' && (
-        <OverviewTab artifacts={[]} tokenUsages={[]} totalTokens={0} debugCount={0} />
+        <OverviewTab artifacts={artifacts} tokenUsages={tokenUsages} totalTokens={totalTokens} debugCount={debugCount} />
       )}
       {activeTab === 'log' && <LogTab logs={logs} />}
       {activeTab === 'chat' && <ChatTab messages={messages} />}
-      {activeTab === 'preview' && <PreviewTab projectId={project.id} />}
+      {activeTab === 'preview' && (
+        <PreviewTab
+          projectId={project.id}
+          projectStatus={project.status}
+          isGuest={!user}
+          feedbackCount={0}
+          isAdmin={user?.role === 'ADMIN'}
+        />
+      )}
       {activeTab === 'source' && <SourceTab files={[]} />}
     </div>
   );

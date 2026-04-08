@@ -132,6 +132,14 @@ public class ProjectController {
         }
 
         Project project = projectService.retryProject(id, fromStage, userId, guestId);
+
+        // 파이프라인 재시작 (fromStage 있으면 이어서, 없으면 처음부터)
+        if (fromStage != null) {
+            pipelineService.resumePipeline(id, fromStage);
+        } else {
+            pipelineService.startPipeline(id);
+        }
+
         String message = fromStage != null
                 ? fromStage + " 스테이지부터 재시도합니다."
                 : "처음부터 재시도합니다.";

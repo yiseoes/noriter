@@ -156,7 +156,7 @@ export default function Pipeline({ projectStatus, currentStage, progress = 0, is
       )}
       {isFailed && (
         <div className="text-xs text-danger mt-2 text-center">
-          파이프라인 실패 — {stageConfig[activeIdx]?.label || ''} 단계에서 오류 발생
+          {stageConfig[activeIdx]?.label || ''} 단계에서 문제가 발생했어요
         </div>
       )}
       {projectStatus === 'COMPLETED' && (

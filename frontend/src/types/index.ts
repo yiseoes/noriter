@@ -34,6 +34,17 @@ export interface Project {
   demo: boolean;
 }
 
+export interface ProjectDetail extends Project {
+  stages: Stage[];
+  artifacts: Artifact[];
+  debugAttempts: number;
+  maxDebugAttempts: number;
+  tokenUsage: {
+    total: number;
+    byAgent: Record<string, number>;
+  };
+}
+
 export interface Stage {
   id: string;
   type: StageType;

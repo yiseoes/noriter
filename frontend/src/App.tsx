@@ -121,7 +121,7 @@ export default function App() {
             </div>
           }
         >
-          {currentProject && <ProjectDetail project={currentProject} isDemo={currentProject.demo} onCreateReal={() => { slideUp.close(); setIsDemo(false); setTimeout(() => createModal.open(), 600); }} onLogin={authModal.open} />}
+          {currentProject && <ProjectDetail project={currentProject} isDemo={currentProject.demo} onCreateReal={() => { slideUp.close(); setIsDemo(false); setTimeout(() => createModal.open(), 600); }} onLogin={authModal.open} user={user} />}
         </SlideUpModal>
       </Layout>
     </>

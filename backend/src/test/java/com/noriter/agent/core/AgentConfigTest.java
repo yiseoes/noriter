@@ -9,11 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AgentConfigTest {
 
     @Test
-    @DisplayName("기획팀은 temperature 0.7이다 (04_에이전트 §4)")
+    @DisplayName("기획팀은 temperature 0.7, maxTokens 8192이다")
     void planningAgent_hasCorrectConfig() {
         AgentConfig config = AgentConfig.forRole(AgentRole.PLANNING);
         assertThat(config.getTemperature()).isEqualTo(0.7);
-        assertThat(config.getMaxTokens()).isEqualTo(4096);
+        assertThat(config.getMaxTokens()).isEqualTo(8192);
     }
 
     @Test
@@ -31,27 +31,27 @@ class AgentConfigTest {
     }
 
     @Test
-    @DisplayName("프론트팀은 maxTokens 8192이다 (코드 생성)")
+    @DisplayName("프론트팀은 maxTokens 32768이다 (고퀄 코드 생성)")
     void frontendAgent_hasCorrectConfig() {
         AgentConfig config = AgentConfig.forRole(AgentRole.FRONTEND);
-        assertThat(config.getMaxTokens()).isEqualTo(8192);
+        assertThat(config.getMaxTokens()).isEqualTo(32768);
         assertThat(config.getTemperature()).isEqualTo(0.4);
     }
 
     @Test
-    @DisplayName("백엔드팀은 maxTokens 8192이다 (코드 생성)")
+    @DisplayName("백엔드팀은 maxTokens 32768이다 (고퀄 코드 생성)")
     void backendAgent_hasCorrectConfig() {
         AgentConfig config = AgentConfig.forRole(AgentRole.BACKEND);
-        assertThat(config.getMaxTokens()).isEqualTo(8192);
+        assertThat(config.getMaxTokens()).isEqualTo(32768);
         assertThat(config.getTemperature()).isEqualTo(0.3);
     }
 
     @Test
-    @DisplayName("QA팀은 temperature 0.2이다 (엄격한 검증)")
+    @DisplayName("QA팀은 temperature 0.2, maxTokens 8192이다")
     void qaAgent_hasCorrectConfig() {
         AgentConfig config = AgentConfig.forRole(AgentRole.QA);
         assertThat(config.getTemperature()).isEqualTo(0.2);
-        assertThat(config.getMaxTokens()).isEqualTo(4096);
+        assertThat(config.getMaxTokens()).isEqualTo(8192);
     }
 
     @Test

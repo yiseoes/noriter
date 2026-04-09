@@ -19,12 +19,12 @@ public class AgentConfig {
     private final double temperature;
 
     private static final Map<AgentRole, AgentConfig> CONFIGS = Map.of(
-            AgentRole.PLANNING, new AgentConfig("claude-sonnet-4-6", 4096, 0.7),
-            AgentRole.CTO,      new AgentConfig("claude-sonnet-4-6", 4096, 0.3),
-            AgentRole.DESIGN,   new AgentConfig("claude-sonnet-4-6", 4096, 0.8),
-            AgentRole.FRONTEND, new AgentConfig("claude-sonnet-4-6", 8192, 0.4),
-            AgentRole.BACKEND,  new AgentConfig("claude-sonnet-4-6", 8192, 0.3),
-            AgentRole.QA,       new AgentConfig("claude-sonnet-4-6", 4096, 0.2)
+            AgentRole.PLANNING, new AgentConfig("claude-sonnet-4-6", 8192, 0.7),
+            AgentRole.CTO,      new AgentConfig("claude-sonnet-4-6", 8192, 0.3),
+            AgentRole.DESIGN,   new AgentConfig("claude-sonnet-4-6", 8192, 0.8),
+            AgentRole.FRONTEND, new AgentConfig("claude-sonnet-4-6", 32768, 0.4),
+            AgentRole.BACKEND,  new AgentConfig("claude-sonnet-4-6", 32768, 0.3),
+            AgentRole.QA,       new AgentConfig("claude-sonnet-4-6", 8192, 0.2)
     );
 
     public static AgentConfig forRole(AgentRole role) {

@@ -2,6 +2,7 @@ package com.noriter.agent.pipeline;
 
 import com.noriter.agent.core.*;
 import com.noriter.agent.impl.*;
+import com.noriter.agent.message.MessageBus;
 import com.noriter.domain.Project;
 import com.noriter.domain.Stage;
 import com.noriter.domain.enums.*;
@@ -42,6 +43,7 @@ public class PipelineOrchestrator {
     private final AuditService auditService;
     private final LogService logService;
     private final SseEmitterService sseEmitterService;
+    private final MessageBus messageBus;
 
     // 에이전트 구현체들 (Spring Bean으로 주입)
     private final PlanningAgent planningAgent;
@@ -78,18 +80,21 @@ public class PipelineOrchestrator {
             AgentResult planResult = executeStage(project, stages, StageType.PLANNING,
                     planningAgent, artifacts);
             if (!handleResult(project, planResult, stages, StageType.PLANNING, artifacts)) return;
+            sendHandoff(projectId, AgentRole.PLANNING, AgentRole.CTO, "게임 기획서를 전달합니다.", "plan.json");
 
             // STAGE 2: CTO 검토
             AgentResult ctoResult = executeStage(project, stages, StageType.ARCHITECTURE,
                     ctoAgent, artifacts);
             if (!handleResult(project, ctoResult, stages, StageType.ARCHITECTURE, artifacts)) return;
+            sendHandoff(projectId, AgentRole.CTO, AgentRole.DESIGN, "기술 아키텍처를 전달합니다.", "architecture.json");
 
             // STAGE 3: 디자인
             AgentResult designResult = executeStage(project, stages, StageType.DESIGN,
                     designAgent, artifacts);
             if (!handleResult(project, designResult, stages, StageType.DESIGN, artifacts)) return;
+            sendHandoff(projectId, AgentRole.DESIGN, AgentRole.FRONTEND, "디자인 스펙을 전달합니다. 구현 시작해주세요!", "design.json");
 
-            // STAGE 4: 구현 (프론트+백엔드 순차 — TODO: 병렬 전환)
+            // STAGE 4: 구현 (프론트+백엔드 순차)
             log.info("[파이프라인] STAGE 4 구현 진입 - projectId={}", projectId);
             project.updateProgress(57, StageType.IMPLEMENTATION);
             projectRepository.save(project);
@@ -100,6 +105,7 @@ public class PipelineOrchestrator {
                 handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
                 return;
             }
+            sendHandoff(projectId, AgentRole.FRONTEND, AgentRole.BACKEND, "HTML/CSS/렌더링 구현 완료. 게임 로직 부탁드립니다!", null);
 
             AgentResult backResult = executeStage(project, stages, StageType.IMPLEMENTATION,
                     backendAgent, artifacts);
@@ -107,8 +113,9 @@ public class PipelineOrchestrator {
                 handlePipelineFailure(project, "백엔드 구현 실패: " + backResult.getErrorMessage());
                 return;
             }
+            sendHandoff(projectId, AgentRole.BACKEND, AgentRole.QA, "게임 로직 구현 완료. 코드 병합 후 검증 부탁드립니다!", null);
 
-            // 코드 병합 (08_프롬프트 §12)
+            // 코드 병합
             mergeCode(projectId, frontResult, backResult, artifacts);
 
             Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
@@ -121,10 +128,12 @@ public class PipelineOrchestrator {
             AgentResult qaResult = executeStage(project, stages, StageType.QA,
                     qaAgent, artifacts);
 
-            // QA 결과 처리 — PASS면 출시, FAIL이면 디버깅 루프
+            // QA 결과 처리
             if (qaResult.getStatus() == AgentResult.Status.NEEDS_REVIEW) {
+                sendHandoff(projectId, AgentRole.QA, AgentRole.CTO, "테스트에서 버그가 발견되었습니다. 디버깅이 필요합니다.", "test-report.json");
                 handleQaFailure(project, stages, artifacts, qaResult);
             } else if (qaResult.getStatus() == AgentResult.Status.SUCCESS) {
+                sendHandoff(projectId, AgentRole.QA, AgentRole.SYSTEM, "모든 테스트를 통과했습니다! 출시 준비 완료.", "test-report.json");
                 handleResult(project, qaResult, stages, StageType.QA, artifacts);
                 completeRelease(project, stages);
             } else {
@@ -443,12 +452,17 @@ public class PipelineOrchestrator {
             return false;
         }
 
-        // 산출물 저장
+        // 산출물 저장 (파일 + DB)
         if (result.getArtifacts() != null) {
+            AgentRole agentRole = mapStageToAgent(stageType);
             for (Map.Entry<String, String> entry : result.getArtifacts().entrySet()) {
                 artifacts.put(entry.getKey(), entry.getValue());
                 String filePath = fileStorageService.saveArtifact(project.getId(), entry.getKey(), entry.getValue());
-                log.debug("[파이프라인] 산출물 저장 - projectId={}, file={}", project.getId(), entry.getKey());
+                ArtifactType artifactType = mapArtifactType(entry.getKey());
+                if (artifactType != null) {
+                    artifactService.saveArtifact(project, artifactType, agentRole, filePath);
+                }
+                log.debug("[파이프라인] 산출물 저장 - projectId={}, file={}, type={}", project.getId(), entry.getKey(), artifactType);
             }
         }
 
@@ -470,9 +484,13 @@ public class PipelineOrchestrator {
         auditService.log(AuditEventType.PROJECT_STATUS_CHANGED, project.getId(),
                 "파이프라인 실패 (FAILED): " + reason, null);
 
-        sseEmitterService.sendEvent(project.getId(), SseEvent.error(
-                String.format("{\"message\":\"%s\"}", reason)));
-        sseEmitterService.completeAll(project.getId());
+        try {
+            sseEmitterService.sendEvent(project.getId(), SseEvent.error(
+                    String.format("{\"message\":\"%s\"}", reason)));
+            sseEmitterService.completeAll(project.getId());
+        } catch (Exception e) {
+            log.debug("[파이프라인] SSE 전송 실패 (무시) - projectId={}", project.getId());
+        }
     }
 
     private void mergeCode(String projectId, AgentResult frontResult, AgentResult backResult,
@@ -501,6 +519,14 @@ public class PipelineOrchestrator {
         log.info("[파이프라인] 코드 병합 완료 - projectId={}", projectId);
     }
 
+    private void sendHandoff(String projectId, AgentRole from, AgentRole to, String content, String artifactRef) {
+        try {
+            messageBus.send(projectId, from, to, MessageType.HANDOFF, content, artifactRef);
+        } catch (Exception e) {
+            log.debug("[파이프라인] 메시지 전송 실패 (무시) - {} → {}", from, to);
+        }
+    }
+
     private Stage findStage(List<Stage> stages, StageType type) {
         return stages.stream()
                 .filter(s -> s.getType() == type)
@@ -517,6 +543,28 @@ public class PipelineOrchestrator {
             case QA -> 71;
             case DEBUG -> 80;
             case RELEASE -> 100;
+        };
+    }
+
+    private ArtifactType mapArtifactType(String fileName) {
+        if (fileName.equals("plan.json")) return ArtifactType.PLAN;
+        if (fileName.equals("architecture.json")) return ArtifactType.ARCHITECTURE;
+        if (fileName.equals("design.json")) return ArtifactType.DESIGN;
+        if (fileName.equals("test-report.json")) return ArtifactType.TEST_REPORT;
+        if (fileName.endsWith(".html") || fileName.endsWith(".css") || fileName.endsWith(".js")
+                || fileName.contains("Section")) return ArtifactType.CODE;
+        return null;
+    }
+
+    private AgentRole mapStageToAgent(StageType stageType) {
+        return switch (stageType) {
+            case PLANNING -> AgentRole.PLANNING;
+            case ARCHITECTURE -> AgentRole.CTO;
+            case DESIGN -> AgentRole.DESIGN;
+            case IMPLEMENTATION -> AgentRole.FRONTEND;
+            case QA -> AgentRole.QA;
+            case DEBUG -> AgentRole.CTO;
+            case RELEASE -> AgentRole.SYSTEM;
         };
     }
 }

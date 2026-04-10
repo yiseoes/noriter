@@ -10,6 +10,7 @@ import PreviewTab from './PreviewTab';
 import SourceTab from './SourceTab';
 import { useSse } from '../../hooks/useSse';
 import { useLogs, useMessages } from '../../hooks/useLogs';
+import { useGameFiles } from '../../hooks/useGameFiles';
 import { useProject, useRetryProject } from '../../hooks/useProjects';
 import type { Project, AuthUser, TokenUsage } from '../../types';
 
@@ -43,6 +44,7 @@ export default function ProjectDetail({ project, isDemo = false, onCreateReal, o
   const { data: projectDetail } = useProject(project.id);
   const { data: logsData } = useLogs(project.id);
   const { data: messagesData } = useMessages(project.id);
+  const { data: gameFiles } = useGameFiles(project.id, project.status === 'COMPLETED' || project.status === 'FAILED');
   const logs = logsData?.content ?? [];
   const messages = messagesData?.content ?? [];
 
@@ -235,7 +237,7 @@ export default function ProjectDetail({ project, isDemo = false, onCreateReal, o
           isAdmin={user?.role === 'ADMIN'}
         />
       )}
-      {activeTab === 'source' && <SourceTab files={[]} />}
+      {activeTab === 'source' && <SourceTab files={gameFiles ?? []} />}
     </div>
   );
 }

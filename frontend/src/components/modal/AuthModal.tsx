@@ -79,11 +79,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       )}
 
       <div className="mb-5">
-        <label className="block text-sm font-semibold text-text-secondary mb-1.5">이메일</label>
+        <label className="block text-sm font-semibold text-text-secondary mb-1.5">{isLogin ? '아이디' : '이메일'}</label>
         <input
-          type="email"
+          type={isLogin ? 'text' : 'email'}
           value={email} onChange={(e) => setEmail(e.target.value)}
-          placeholder="이메일을 입력하세요"
+          placeholder={isLogin ? '아이디를 입력하세요' : '이메일을 입력하세요'}
           className="w-full bg-bg-primary border border-border rounded-[10px] px-3.5 py-2.5
                      text-sm outline-none focus:border-brand focus:ring-3 focus:ring-brand/10"
         />

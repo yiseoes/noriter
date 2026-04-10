@@ -108,7 +108,7 @@ export default function App() {
         />
         <ProjectListModal isOpen={projectsModal.isOpen} onClose={projectsModal.close} onSelect={handleSelectProject} projects={projects} />
         <AuditLogModal isOpen={auditModal.isOpen} onClose={auditModal.close} />
-        <SettingsModal isOpen={settingsModal.isOpen} onClose={settingsModal.close} />
+        <SettingsModal isOpen={settingsModal.isOpen} onClose={settingsModal.close} user={user} />
         <AuthModal isOpen={authModal.isOpen} onClose={authModal.close} />
 
         <SlideUpModal

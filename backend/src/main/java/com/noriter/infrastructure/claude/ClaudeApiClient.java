@@ -31,7 +31,7 @@ public class ClaudeApiClient {
     private static final String API_URL = "https://api.anthropic.com/v1/messages";
     private static final String API_VERSION = "2023-06-01";
     private static final int MAX_RETRIES = 3;
-    private static final Duration TIMEOUT = Duration.ofSeconds(120);
+    private static final Duration TIMEOUT = Duration.ofSeconds(300);
 
     private final SettingsService settingsService;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -172,14 +172,24 @@ public class ClaudeApiClient {
     }
 
     private String buildRequestBody(String systemPrompt, String userPrompt, AgentConfig config) {
-        // JSON 이스케이프 처리
-        String escapedSystem = escapeJson(systemPrompt);
-        String escapedUser = escapeJson(userPrompt);
+        try {
+            var body = objectMapper.createObjectNode();
+            body.put("model", config.getModel());
+            body.put("max_tokens", config.getMaxTokens());
+            body.put("temperature", config.getTemperature());
+            body.put("system", systemPrompt);
 
-        return String.format("""
-                {"model":"%s","max_tokens":%d,"temperature":%.1f,"system":"%s","messages":[{"role":"user","content":"%s"}]}
-                """, config.getModel(), config.getMaxTokens(), config.getTemperature(),
-                escapedSystem, escapedUser);
+            var messages = objectMapper.createArrayNode();
+            var userMsg = objectMapper.createObjectNode();
+            userMsg.put("role", "user");
+            userMsg.put("content", userPrompt);
+            messages.add(userMsg);
+            body.set("messages", messages);
+
+            return objectMapper.writeValueAsString(body);
+        } catch (Exception e) {
+            throw new ClaudeApiException("NT-ERR-A004", "요청 본문 생성 실패: " + e.getMessage(), e);
+        }
     }
 
     private ClaudeResponse parseResponse(String responseBody) {

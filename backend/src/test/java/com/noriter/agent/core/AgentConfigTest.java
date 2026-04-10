@@ -31,18 +31,18 @@ class AgentConfigTest {
     }
 
     @Test
-    @DisplayName("프론트팀은 maxTokens 32768이다 (고퀄 코드 생성)")
+    @DisplayName("프론트팀은 maxTokens 16384이다 (코드 생성, 분할 전략 대비)")
     void frontendAgent_hasCorrectConfig() {
         AgentConfig config = AgentConfig.forRole(AgentRole.FRONTEND);
-        assertThat(config.getMaxTokens()).isEqualTo(32768);
+        assertThat(config.getMaxTokens()).isEqualTo(16384);
         assertThat(config.getTemperature()).isEqualTo(0.4);
     }
 
     @Test
-    @DisplayName("백엔드팀은 maxTokens 32768이다 (고퀄 코드 생성)")
+    @DisplayName("백엔드팀은 maxTokens 16384이다 (코드 생성, 분할 전략 대비)")
     void backendAgent_hasCorrectConfig() {
         AgentConfig config = AgentConfig.forRole(AgentRole.BACKEND);
-        assertThat(config.getMaxTokens()).isEqualTo(32768);
+        assertThat(config.getMaxTokens()).isEqualTo(16384);
         assertThat(config.getTemperature()).isEqualTo(0.3);
     }
 

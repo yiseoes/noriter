@@ -14,7 +14,7 @@ export interface AuthResponse extends AuthUser {
 
 /* ===== 프로젝트 ===== */
 export type ProjectStatus = 'CREATED' | 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REVISION';
-export type Genre = 'PUZZLE' | 'ACTION' | 'ARCADE' | 'SHOOTING' | 'STRATEGY' | 'ETC';
+export type Genre = 'PUZZLE' | 'ACTION' | 'ARCADE' | 'SHOOTING' | 'STRATEGY' | 'OTHER';
 export type StageType = 'PLANNING' | 'CTO' | 'DESIGN' | 'FRONTEND' | 'BACKEND' | 'QA' | 'RELEASE';
 export type StageStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'SKIPPED' | 'RETRYING';
 export type AgentRole = 'CTO' | 'PLANNING' | 'DESIGN' | 'FRONTEND' | 'BACKEND' | 'QA' | 'SYSTEM';

@@ -22,8 +22,8 @@ public class AgentConfig {
             AgentRole.PLANNING, new AgentConfig("claude-sonnet-4-6", 8192, 0.7),
             AgentRole.CTO,      new AgentConfig("claude-sonnet-4-6", 8192, 0.3),
             AgentRole.DESIGN,   new AgentConfig("claude-sonnet-4-6", 8192, 0.8),
-            AgentRole.FRONTEND, new AgentConfig("claude-sonnet-4-6", 32768, 0.4),
-            AgentRole.BACKEND,  new AgentConfig("claude-sonnet-4-6", 32768, 0.3),
+            AgentRole.FRONTEND, new AgentConfig("claude-sonnet-4-6", 16384, 0.4),
+            AgentRole.BACKEND,  new AgentConfig("claude-sonnet-4-6", 16384, 0.3),
             AgentRole.QA,       new AgentConfig("claude-sonnet-4-6", 8192, 0.2)
     );
 

@@ -43,9 +43,15 @@ public class BackendAgent implements BaseAgent {
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
 
-        // Claude 응답에서 gameJs 파싱
+        // Claude 응답에서 gameJs 파싱 (실패 시 원본 사용 + 코드블록 제거)
         Map<String, String> parsed = JsonParser.parseAsMap(response.content());
-        String gameLogic = parsed.getOrDefault("gameJs", response.content());
+        String gameLogic;
+        if (parsed.containsKey("gameJs")) {
+            gameLogic = parsed.get("gameJs");
+        } else {
+            log.warn("[백엔드팀] JSON 파싱 실패, 원본 코드 사용 - projectId={}", context.getProjectId());
+            gameLogic = JsonParser.stripCodeBlock(response.content());
+        }
 
         log.info("[백엔드팀] 게임 로직 구현 완료 - projectId={}", context.getProjectId());
 

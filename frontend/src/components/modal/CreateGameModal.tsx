@@ -9,7 +9,7 @@ const genres = [
   { label: '아케이드', value: 'ARCADE' },
   { label: '슈팅', value: 'SHOOTING' },
   { label: '전략', value: 'STRATEGY' },
-  { label: '기타', value: 'ETC' },
+  { label: '기타', value: 'OTHER' },
 ];
 
 const GUEST_LIMIT = 1;

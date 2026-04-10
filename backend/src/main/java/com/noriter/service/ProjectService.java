@@ -127,7 +127,8 @@ public class ProjectService {
         }
 
         project.updateStatus(ProjectStatus.IN_PROGRESS);
-        log.info("[프로젝트 재시도] 상태 변경 완료 - id={}, IN_PROGRESS", projectId);
+        project.resetDebugAttempts();
+        log.info("[프로젝트 재시도] 상태 변경 완료 - id={}, IN_PROGRESS, 디버그 카운트 초기화", projectId);
 
         auditService.log(AuditEventType.USER_ACTION, projectId,
                 String.format("프로젝트 재시도 (fromStage: %s)", fromStage), null);

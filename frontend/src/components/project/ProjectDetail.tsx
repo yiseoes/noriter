@@ -131,23 +131,36 @@ export default function ProjectDetail({ project, isDemo = false, onCreateReal, o
         const warnLogs = logs.filter(l => l.level === 'WARN').slice(0, 3);
         return (
           <div className="my-4 rounded-xl bg-danger-bg/30 border border-danger/20 overflow-hidden">
-            {/* 헤더 + 재시도 */}
-            <div className="p-4 flex items-center justify-between max-md:flex-col max-md:gap-3">
-              <div>
+            {/* 헤더 + 재시도 버튼들 */}
+            <div className="p-4">
+              <div className="mb-3">
                 <div className="text-sm font-semibold text-danger">게임 만들기에 실패했어요 😢</div>
                 <div className="text-xs text-text-muted mt-0.5">
-                  {project.currentStage ? '이미 완료된 단계는 건너뛰고 이어서 다시 시도할 수 있어요.' : '처음부터 다시 시도할 수 있어요.'}
+                  다시 시도할 수 있어요. 이어서 재시도하면 이미 완료된 단계를 건너뛰어 비용을 절약할 수 있어요.
                 </div>
               </div>
-              <button
-                onClick={() => retryMutation.mutate({ id: project.id, fromStage: project.currentStage || undefined })}
-                disabled={retryMutation.isPending}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-brand to-[#ffa8a8] text-white
-                           text-sm font-bold cursor-pointer border-none hover:scale-105 transition-transform
-                           disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                {retryMutation.isPending ? '재시도 중...' : `🔄 ${project.currentStage || ''} 부터 이어서 재시도`}
-              </button>
+              <div className="flex gap-2 max-md:flex-col">
+                {project.currentStage && (
+                  <button
+                    onClick={() => retryMutation.mutate({ id: project.id, fromStage: project.currentStage || undefined })}
+                    disabled={retryMutation.isPending}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-br from-brand to-[#ffa8a8] text-white
+                               text-sm font-bold cursor-pointer border-none hover:scale-105 transition-transform
+                               disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {retryMutation.isPending ? '재시도 중...' : `🔄 ${project.currentStage} 부터 이어서 재시도`}
+                  </button>
+                )}
+                <button
+                  onClick={() => retryMutation.mutate({ id: project.id })}
+                  disabled={retryMutation.isPending}
+                  className="flex-1 py-2.5 rounded-xl border-2 border-border bg-bg-primary text-text-primary
+                             text-sm font-bold cursor-pointer hover:border-brand hover:text-brand transition-colors
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {retryMutation.isPending ? '재시도 중...' : '🔁 처음부터 다시 시도'}
+                </button>
+              </div>
             </div>
 
             {/* 상세 실패 사유 */}

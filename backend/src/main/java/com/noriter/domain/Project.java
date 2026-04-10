@@ -135,6 +135,11 @@ public class Project {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public void resetDebugAttempts() {
+        this.debugAttempts = 0;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public boolean canRetry() {
         return this.status == ProjectStatus.FAILED;
     }

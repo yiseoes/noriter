@@ -101,7 +101,35 @@ export default function Pipeline({ projectStatus, currentStage, progress = 0, is
     setAllDone(false);
   }, [projectStatus, currentStage, isDemo]);
 
-  const computedProgress = allDone ? 100 : progress > 0 ? progress : (activeIdx >= 0 ? ((activeIdx + 0.5) / stageConfig.length) * 100 : 0);
+  const targetProgress = allDone ? 100 : progress > 0 ? progress : (activeIdx >= 0 ? ((activeIdx + 0.5) / stageConfig.length) * 100 : 0);
+
+  // 숫자 카운트업 애니메이션
+  const [displayProgress, setDisplayProgress] = useState(0);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const start = displayProgress;
+    const end = targetProgress;
+    if (start === end) return;
+
+    const duration = 1200; // ms
+    const startTime = performance.now();
+
+    function tick(now: number) {
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = start + (end - start) * eased;
+      setDisplayProgress(Math.round(current));
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [targetProgress]);
 
   const isFailed = projectStatus === 'FAILED';
 
@@ -142,26 +170,33 @@ export default function Pipeline({ projectStatus, currentStage, progress = 0, is
       </div>
 
       {/* 프로그레스 바 */}
-      <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-1000 ease-out
+      <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-300 ease-out
           ${allDone ? 'bg-success' : isFailed ? 'bg-danger' : 'bg-brand'}`}
-          style={{ width: `${computedProgress}%` }} />
+          style={{ width: `${displayProgress}%` }} />
       </div>
 
-      {/* 상태 텍스트 */}
+      {/* 상태 텍스트 + 퍼센트 */}
       {projectStatus === 'IN_PROGRESS' && activeIdx >= 0 && (
-        <div className="text-xs text-text-muted mt-2 text-center">
-          {stageConfig[activeIdx]?.emoji} {stageConfig[activeIdx]?.label} 단계 진행 중... ({Math.round(computedProgress)}%)
+        <div className="flex justify-between items-center mt-2">
+          <div className="text-xs text-text-muted">
+            {stageConfig[activeIdx]?.emoji} {stageConfig[activeIdx]?.label} 단계 진행 중...
+          </div>
+          <div className="text-sm font-bold text-brand">{displayProgress}%</div>
         </div>
       )}
       {isFailed && (
-        <div className="text-xs text-danger mt-2 text-center">
-          {stageConfig[activeIdx]?.label || ''} 단계에서 문제가 발생했어요
+        <div className="flex justify-between items-center mt-2">
+          <div className="text-xs text-danger">
+            {stageConfig[activeIdx]?.label || ''} 단계에서 문제가 발생했어요
+          </div>
+          <div className="text-sm font-bold text-danger">{displayProgress}%</div>
         </div>
       )}
       {projectStatus === 'COMPLETED' && (
-        <div className="text-xs text-success mt-2 text-center">
-          게임 생성 완료!
+        <div className="flex justify-between items-center mt-2">
+          <div className="text-xs text-success">게임 생성 완료!</div>
+          <div className="text-sm font-bold text-success">100%</div>
         </div>
       )}
     </div>

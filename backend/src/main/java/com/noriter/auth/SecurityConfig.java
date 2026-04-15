@@ -23,6 +23,7 @@ public class SecurityConfig {
         http
             .cors(cors -> {})  // WebConfig의 CORS 설정 사용
             .csrf(csrf -> csrf.disable())
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // 인증 불필요 엔드포인트

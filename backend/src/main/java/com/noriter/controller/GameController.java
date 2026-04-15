@@ -47,6 +47,23 @@ public class GameController {
     }
 
     /**
+     * 게임 리소스 파일 서빙 (preview에서 참조하는 js/css)
+     */
+    @GetMapping("/game/{fileName:.+}")
+    public ResponseEntity<String> getGameFile(@PathVariable String id, @PathVariable String fileName) {
+        String content = fileStorageService.readGameFile(id, fileName);
+        if (content == null) {
+            throw new NoriterException(ErrorCode.GAME_NOT_FOUND);
+        }
+        MediaType mediaType;
+        if (fileName.endsWith(".js")) mediaType = new MediaType("application", "javascript", StandardCharsets.UTF_8);
+        else if (fileName.endsWith(".css")) mediaType = new MediaType("text", "css", StandardCharsets.UTF_8);
+        else mediaType = MediaType.TEXT_PLAIN;
+
+        return ResponseEntity.ok().contentType(mediaType).body(content);
+    }
+
+    /**
      * API-GAM-002: 게임 소스 코드 목록
      * GET /api/projects/{id}/source
      */

@@ -43,14 +43,29 @@ public class BackendAgent implements BaseAgent {
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
 
-        // Claude 응답에서 gameJs 파싱 (실패 시 원본 사용 + 코드블록 제거)
-        Map<String, String> parsed = JsonParser.parseAsMap(response.content());
+        // Claude 응답에서 gameJs 파싱
+        String content = response.content();
+        Map<String, String> parsed = JsonParser.parseAsMap(content);
         String gameLogic;
         if (parsed.containsKey("gameJs")) {
             gameLogic = parsed.get("gameJs");
         } else {
-            log.warn("[백엔드팀] JSON 파싱 실패, 원본 코드 사용 - projectId={}", context.getProjectId());
-            gameLogic = JsonParser.stripCodeBlock(response.content());
+            log.warn("[백엔드팀] JSON 파싱 실패, 코드 추출 시도 - projectId={}", context.getProjectId());
+            // JSON 래퍼에서 gameJs 값 수동 추출 시도
+            String stripped = JsonParser.stripCodeBlock(content);
+            if (stripped.contains("\"gameJs\"")) {
+                int start = stripped.indexOf("\"gameJs\"");
+                int codeStart = stripped.indexOf("\"", start + 8) + 1;
+                int codeEnd = stripped.lastIndexOf("\"");
+                if (codeStart > 0 && codeEnd > codeStart) {
+                    gameLogic = stripped.substring(codeStart, codeEnd)
+                            .replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
+                } else {
+                    gameLogic = stripped;
+                }
+            } else {
+                gameLogic = stripped;
+            }
         }
 
         log.info("[백엔드팀] 게임 로직 구현 완료 - projectId={}", context.getProjectId());

@@ -12,6 +12,8 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Log4j2
 @Component
@@ -20,6 +22,9 @@ public class BackendAgent implements BaseAgent {
 
     private final ClaudeApiClient claudeApiClient;
     private final PromptRegistry promptRegistry;
+
+    private static final Pattern GAME_JS_PATTERN =
+            Pattern.compile("===GAME_JS===\\s*```[a-z]*\\s*([\\s\\S]*?)```", Pattern.MULTILINE);
 
     @Override
     public AgentRole getRole() {
@@ -34,39 +39,17 @@ public class BackendAgent implements BaseAgent {
         String architecture = context.getPreviousArtifacts().getOrDefault("architecture.json", "");
         String design = context.getPreviousArtifacts().getOrDefault("design.json", "");
         String renderCode = context.getPreviousArtifacts().getOrDefault("gameJsRenderSection", "");
+        String contentData = context.getPreviousArtifacts().getOrDefault("content.json", "");
 
         String systemPrompt = promptRegistry.getSystemPrompt("back-main");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("back-main"),
-                Map.of("plan", plan, "architecture", architecture, "design", design, "renderCode", renderCode)
+                Map.of("plan", plan, "architecture", architecture, "design", design,
+                       "renderCode", renderCode, "contentData", contentData)
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
-
-        // Claude 응답에서 gameJs 파싱
-        String content = response.content();
-        Map<String, String> parsed = JsonParser.parseAsMap(content);
-        String gameLogic;
-        if (parsed.containsKey("gameJs")) {
-            gameLogic = parsed.get("gameJs");
-        } else {
-            log.warn("[백엔드팀] JSON 파싱 실패, 코드 추출 시도 - projectId={}", context.getProjectId());
-            // JSON 래퍼에서 gameJs 값 수동 추출 시도
-            String stripped = JsonParser.stripCodeBlock(content);
-            if (stripped.contains("\"gameJs\"")) {
-                int start = stripped.indexOf("\"gameJs\"");
-                int codeStart = stripped.indexOf("\"", start + 8) + 1;
-                int codeEnd = stripped.lastIndexOf("\"");
-                if (codeStart > 0 && codeEnd > codeStart) {
-                    gameLogic = stripped.substring(codeStart, codeEnd)
-                            .replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
-                } else {
-                    gameLogic = stripped;
-                }
-            } else {
-                gameLogic = stripped;
-            }
-        }
+        String gameLogic = parseGameJs(response.content());
 
         log.info("[백엔드팀] 게임 로직 구현 완료 - projectId={}", context.getProjectId());
 
@@ -75,6 +58,19 @@ public class BackendAgent implements BaseAgent {
                 "게임 로직 구현 완료.",
                 response.inputTokens(), response.outputTokens()
         );
+    }
+
+    /**
+     * ===GAME_JS=== ```javascript ... ``` 블록 파싱.
+     * 없으면 stripCodeBlock으로 fallback.
+     */
+    private String parseGameJs(String content) {
+        Matcher matcher = GAME_JS_PATTERN.matcher(content);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        log.warn("[백엔드팀] GAME_JS 섹션 없음, 코드블록 추출 시도");
+        return JsonParser.stripCodeBlock(content);
     }
 
     public AgentResult executeFix(AgentContext context) {
@@ -91,12 +87,10 @@ public class BackendAgent implements BaseAgent {
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
-
-        Map<String, String> parsed = JsonParser.parseAsMap(response.content());
-        String fixedGameLogic = parsed.getOrDefault("gameJs", response.content());
+        String fixedLogic = parseGameJs(response.content());
 
         return AgentResult.success(
-                Map.of("gameJsLogicSection", fixedGameLogic),
+                Map.of("gameJsLogicSection", fixedLogic),
                 "게임 로직 버그 수정 완료.",
                 response.inputTokens(), response.outputTokens()
         );

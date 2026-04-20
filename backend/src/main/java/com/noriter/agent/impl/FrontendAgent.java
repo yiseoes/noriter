@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Log4j2
 @Component
@@ -21,6 +23,10 @@ public class FrontendAgent implements BaseAgent {
 
     private final ClaudeApiClient claudeApiClient;
     private final PromptRegistry promptRegistry;
+
+    // ===SECTION=== 블록 파싱 패턴
+    private static final Pattern SECTION_PATTERN =
+            Pattern.compile("===([A-Z_]+)===\\s*```[a-z]*\\s*([\\s\\S]*?)```", Pattern.MULTILINE);
 
     @Override
     public AgentRole getRole() {
@@ -35,7 +41,6 @@ public class FrontendAgent implements BaseAgent {
         String architecture = context.getPreviousArtifacts().getOrDefault("architecture.json", "");
         String design = context.getPreviousArtifacts().getOrDefault("design.json", "");
 
-        // 1차 시도: 한번에 생성
         String systemPrompt = promptRegistry.getSystemPrompt("front-main");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("front-main"),
@@ -43,56 +48,66 @@ public class FrontendAgent implements BaseAgent {
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
-        int totalInput = response.inputTokens();
-        int totalOutput = response.outputTokens();
+        String content = response.content();
 
-        Map<String, String> parsed = JsonParser.parseAsMap(response.content());
-        Map<String, String> artifacts = new HashMap<>();
+        Map<String, String> artifacts = parseSectionBlocks(content);
 
-        // JSON 파싱 성공하면 그대로 사용
-        if (!parsed.isEmpty() && parsed.containsKey("indexHtml")) {
-            artifacts.put("index.html", parsed.getOrDefault("indexHtml", ""));
-            artifacts.put("style.css", parsed.getOrDefault("styleCss", ""));
-            artifacts.put("gameJsRenderSection", parsed.getOrDefault("renderJs", ""));
-            log.info("[프론트팀] 통합 생성 성공 - projectId={}", context.getProjectId());
-        } else {
-            // JSON 파싱 실패 (토큰 초과로 잘림) → 분할 생성
-            log.warn("[프론트팀] 통합 생성 실패, 분할 생성 전환 - projectId={}", context.getProjectId());
+        // 섹션 블록 파싱 실패 시 분할 생성으로 fallback
+        if (!artifacts.containsKey("gameJsRenderSection") || artifacts.get("gameJsRenderSection").isBlank()) {
+            log.warn("[프론트팀] 섹션 파싱 실패, 분할 생성 전환 - projectId={}", context.getProjectId());
             Map<String, String> baseContext = Map.of("plan", plan, "architecture", architecture, "design", design);
 
-            artifacts.put("index.html", generateSingleFile(baseContext, "index.html",
-                    "HTML 파일만 생성해주세요. 완성된 index.html 코드만 반환하세요. JSON 없이 순수 HTML 코드만."));
-            totalInput += 500; totalOutput += 2000;
-
-            artifacts.put("style.css", generateSingleFile(baseContext, "style.css",
-                    "CSS 파일만 생성해주세요. 완성된 style.css 코드만 반환하세요. JSON 없이 순수 CSS 코드만."));
-            totalInput += 500; totalOutput += 2000;
-
-            artifacts.put("gameJsRenderSection", generateSingleFile(baseContext, "renderJs",
-                    "렌더링 JavaScript 코드만 생성해주세요. Renderer 클래스를 포함한 순수 JS 코드만 반환하세요. JSON 없이."));
-            totalInput += 500; totalOutput += 4000;
+            if (!artifacts.containsKey("index.html") || artifacts.get("index.html").isBlank()) {
+                artifacts.put("index.html", generateSingleFile(baseContext,
+                        "index.html만 생성하세요. ```html ... ``` 코드블록으로 반환. Game 클래스나 JS 로직 없이 순수 HTML만."));
+            }
+            if (!artifacts.containsKey("style.css") || artifacts.get("style.css").isBlank()) {
+                artifacts.put("style.css", generateSingleFile(baseContext,
+                        "style.css만 생성하세요. ```css ... ``` 코드블록으로 반환. 순수 CSS만."));
+            }
+            artifacts.put("gameJsRenderSection", generateSingleFile(baseContext,
+                    "Renderer 클래스만 생성하세요. ```javascript ... ``` 코드블록으로 반환. " +
+                    "architecture의 gameInterface.rendererClass.publicMethods를 모두 구현하세요. " +
+                    "Game 클래스, 초기화 코드, 게임 루프 절대 포함 금지."));
         }
 
         log.info("[프론트팀] HTML/CSS/렌더링 구현 완료 - projectId={}", context.getProjectId());
-
-        return AgentResult.success(artifacts, "프론트엔드 구현 완료.", totalInput, totalOutput);
+        return AgentResult.success(artifacts, "프론트엔드 구현 완료.", response.inputTokens(), response.outputTokens());
     }
 
-    private String generateSingleFile(Map<String, String> baseContext, String fileType, String instruction) {
-        log.info("[프론트팀] 분할 생성 - fileType={}", fileType);
+    /**
+     * ===SECTION_NAME=== ```lang ... ``` 형식 파싱
+     */
+    private Map<String, String> parseSectionBlocks(String content) {
+        Map<String, String> result = new HashMap<>();
+        Matcher matcher = SECTION_PATTERN.matcher(content);
+        while (matcher.find()) {
+            String section = matcher.group(1);
+            String code = matcher.group(2).trim();
+            switch (section) {
+                case "INDEX_HTML" -> result.put("index.html", code);
+                case "STYLE_CSS"  -> result.put("style.css", code);
+                case "RENDER_JS"  -> result.put("gameJsRenderSection", code);
+            }
+        }
+        // 섹션 없으면 전체를 코드블록으로 시도 (단일 파일 fallback)
+        if (result.isEmpty()) {
+            String stripped = JsonParser.stripCodeBlock(content);
+            if (!stripped.isBlank()) {
+                result.put("gameJsRenderSection", stripped);
+            }
+        }
+        return result;
+    }
 
-        String systemPrompt = "You are a frontend game developer. " + instruction + " Do NOT wrap in markdown code blocks.";
+    private String generateSingleFile(Map<String, String> baseContext, String instruction) {
+        String systemPrompt = "You are a frontend game developer. " + instruction;
         String userPrompt = PromptTemplate.render(
                 "게임 기획서:\n{{plan}}\n\n기술 아키텍처:\n{{architecture}}\n\n디자인 명세:\n{{design}}\n\n" + instruction,
                 baseContext
         );
-
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
-        String content = response.content();
-
-        // 마크다운 코드블록 제거
-        content = JsonParser.stripCodeBlock(content);
-        return content;
+        return JsonParser.stripCodeBlock(response.content());
     }
 
     public AgentResult executeFix(AgentContext context) {
@@ -111,16 +126,16 @@ public class FrontendAgent implements BaseAgent {
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
+        String content = response.content();
 
-        Map<String, String> parsed = JsonParser.parseAsMap(response.content());
-        Map<String, String> artifacts = new HashMap<>();
-        artifacts.put("index.html", parsed.getOrDefault("indexHtml", indexHtml));
-        artifacts.put("style.css", parsed.getOrDefault("styleCss", styleCss));
-        artifacts.put("gameJsRenderSection", parsed.getOrDefault("renderJs", renderCode));
+        Map<String, String> artifacts = parseSectionBlocks(content);
 
-        return AgentResult.success(
-                artifacts, "프론트엔드 버그 수정 완료.",
-                response.inputTokens(), response.outputTokens()
-        );
+        // fallback: 기존 파일 유지
+        artifacts.putIfAbsent("index.html", indexHtml);
+        artifacts.putIfAbsent("style.css", styleCss);
+        artifacts.putIfAbsent("gameJsRenderSection", renderCode);
+
+        return AgentResult.success(artifacts, "프론트엔드 버그 수정 완료.",
+                response.inputTokens(), response.outputTokens());
     }
 }

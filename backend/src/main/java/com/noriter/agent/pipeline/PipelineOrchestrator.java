@@ -2,6 +2,7 @@ package com.noriter.agent.pipeline;
 
 import com.noriter.agent.core.*;
 import com.noriter.agent.impl.*;
+import com.noriter.util.JsSyntaxValidator;
 import com.noriter.agent.message.MessageBus;
 import com.noriter.domain.Project;
 import com.noriter.domain.Stage;
@@ -47,6 +48,7 @@ public class PipelineOrchestrator {
 
     // 에이전트 구현체들 (Spring Bean으로 주입)
     private final PlanningAgent planningAgent;
+    private final ContentAgent contentAgent;
     private final CtoAgent ctoAgent;
     private final DesignAgent designAgent;
     private final FrontendAgent frontendAgent;
@@ -80,7 +82,23 @@ public class PipelineOrchestrator {
             AgentResult planResult = executeStage(project, stages, StageType.PLANNING,
                     planningAgent, artifacts);
             if (!handleResult(project, planResult, stages, StageType.PLANNING, artifacts)) return;
-            sendHandoff(projectId, AgentRole.PLANNING, AgentRole.CTO, "게임 기획서를 전달합니다.", "plan.json");
+            sendHandoff(projectId, AgentRole.PLANNING, AgentRole.CONTENT, "게임 기획서를 전달합니다. 콘텐츠 데이터를 생성해주세요.", "plan.json");
+
+            // STAGE 1.5: 콘텐츠 데이터 생성 (DB 스테이지 없음 — artifacts에만 저장)
+            AgentContext contentContext = AgentContext.builder()
+                    .projectId(projectId)
+                    .stageType(StageType.PLANNING)
+                    .requirement(project.getRequirement())
+                    .previousArtifacts(new HashMap<>(artifacts))
+                    .build();
+            AgentResult contentResult = contentAgent.execute(contentContext);
+            if (contentResult.getArtifacts() != null && !contentResult.getArtifacts().isEmpty()) {
+                artifacts.putAll(contentResult.getArtifacts());
+                fileStorageService.saveArtifact(projectId, "content.json",
+                        artifacts.getOrDefault("content.json", ""));
+                log.info("[파이프라인] 콘텐츠 데이터 생성 완료 - projectId={}", projectId);
+            }
+            sendHandoff(projectId, AgentRole.CONTENT, AgentRole.CTO, "콘텐츠 데이터 생성 완료. 아키텍처 설계 시작해주세요.", "content.json");
 
             // STAGE 2: CTO 검토
             AgentResult ctoResult = executeStage(project, stages, StageType.ARCHITECTURE,
@@ -117,6 +135,27 @@ public class PipelineOrchestrator {
 
             // 코드 병합
             mergeCode(projectId, frontResult, backResult, artifacts);
+
+            // JS 문법 검증 — 실패 시 BackendAgent 1회 재시도
+            String mergedJs = artifacts.getOrDefault("game.js", "");
+            JsSyntaxValidator.ValidationResult jsValidation = JsSyntaxValidator.validate(mergedJs);
+            if (!jsValidation.valid()) {
+                log.warn("[파이프라인] JS 문법 검증 실패, BackendAgent 재시도 - errors={}", jsValidation.errors());
+                logService.createLog(projectId, LogLevel.WARN, AgentRole.QA, StageType.IMPLEMENTATION,
+                        "코드 구조 오류 감지, 자동 수정 중: " + jsValidation.errors());
+
+                AgentResult backRetryResult = executeStage(project, stages, StageType.IMPLEMENTATION,
+                        backendAgent, artifacts);
+                if (backRetryResult.getStatus() != AgentResult.Status.FAILED) {
+                    mergeCode(projectId, frontResult, backRetryResult, artifacts);
+                    JsSyntaxValidator.ValidationResult retryValidation =
+                            JsSyntaxValidator.validate(artifacts.getOrDefault("game.js", ""));
+                    if (!retryValidation.valid()) {
+                        log.warn("[파이프라인] 재시도 후에도 JS 오류 - 계속 진행 (QA에서 처리): {}",
+                                retryValidation.errors());
+                    }
+                }
+            }
 
             Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
             if (implStage != null) {
@@ -174,6 +213,18 @@ public class PipelineOrchestrator {
             if (fromOrder <= 1) {
                 AgentResult planResult = executeStage(project, stages, StageType.PLANNING, planningAgent, artifacts);
                 if (!handleResult(project, planResult, stages, StageType.PLANNING, artifacts)) return;
+
+                // 콘텐츠 데이터 재생성
+                AgentContext contentContext = AgentContext.builder()
+                        .projectId(projectId).stageType(StageType.PLANNING)
+                        .requirement(project.getRequirement())
+                        .previousArtifacts(new HashMap<>(artifacts)).build();
+                AgentResult contentResult = contentAgent.execute(contentContext);
+                if (contentResult.getArtifacts() != null && !contentResult.getArtifacts().isEmpty()) {
+                    artifacts.putAll(contentResult.getArtifacts());
+                    fileStorageService.saveArtifact(projectId, "content.json",
+                            artifacts.getOrDefault("content.json", ""));
+                }
             }
 
             if (fromOrder <= 2) {
@@ -340,7 +391,8 @@ public class PipelineOrchestrator {
                 // 코드 재병합
                 String backLogic = artifacts.getOrDefault("gameJsLogicSection", "");
                 String frontRender = artifacts.getOrDefault("gameJsRenderSection", "");
-                String mergedJs = codeMerger.mergeGameJs(backLogic, frontRender);
+                String archJson = artifacts.getOrDefault("architecture.json", "");
+                String mergedJs = codeMerger.mergeGameJs(backLogic, frontRender, archJson);
                 artifacts.put("game.js", mergedJs);
                 fileStorageService.saveGameFile(projectId, "game.js", mergedJs);
 
@@ -501,8 +553,9 @@ public class PipelineOrchestrator {
                 ? frontResult.getArtifacts().get("gameJsRenderSection") : "";
         String backLogic = backResult.getArtifacts() != null
                 ? backResult.getArtifacts().get("gameJsLogicSection") : "";
+        String architectureJson = artifacts.getOrDefault("architecture.json", "");
 
-        String mergedGameJs = codeMerger.mergeGameJs(backLogic, frontRender);
+        String mergedGameJs = codeMerger.mergeGameJs(backLogic, frontRender, architectureJson);
         fileStorageService.saveGameFile(projectId, "game.js", mergedGameJs);
         artifacts.put("game.js", mergedGameJs);
 

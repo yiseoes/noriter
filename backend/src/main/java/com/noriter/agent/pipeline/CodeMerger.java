@@ -5,45 +5,100 @@ import org.springframework.stereotype.Component;
 
 /**
  * FRONT + BACK 코드 병합기
- * 참조: 08_프롬프트 §12 통합 프로세스
  *
- * STAGE 4 완료 후 PipelineOrchestrator가 호출:
- * game.js = BACK(로직) + FRONT(렌더링) + 초기화 코드
+ * game.js = BACK(Game 클래스) + FRONT(Renderer 클래스) + 초기화 코드(architecture.json에서)
+ * 초기화 코드는 중복 방지를 위해 항상 마지막에 1번만 추가.
  */
 @Log4j2
 @Component
 public class CodeMerger {
 
+    private static final String DEFAULT_INIT_CODE =
+            "window.addEventListener('load', () => {\n" +
+            "  const canvas = document.getElementById('gameCanvas');\n" +
+            "  const renderer = new Renderer();\n" +
+            "  renderer.init(canvas);\n" +
+            "  const game = new Game(canvas, renderer);\n" +
+            "});\n";
+
     /**
-     * 프론트엔드 렌더링 코드 + 백엔드 게임 로직 코드 → game.js 병합
+     * 백엔드 로직 + 프론트 렌더링 + 초기화 코드 병합
+     * @param architectureJson CTO 아키텍처 JSON (initializationCode 필드 추출용)
      */
-    public String mergeGameJs(String backendLogicSection, String frontendRenderSection) {
+    public String mergeGameJs(String backendLogicSection, String frontendRenderSection, String architectureJson) {
         log.info("[코드 병합] game.js 병합 시작 - 백엔드={}자, 프론트={}자",
                 backendLogicSection != null ? backendLogicSection.length() : 0,
                 frontendRenderSection != null ? frontendRenderSection.length() : 0);
 
+        String initCode = extractInitCode(architectureJson);
+
+        // 백엔드/프론트 코드에서 초기화 코드 중복 제거
+        String cleanBackend = removeInitCode(backendLogicSection != null ? backendLogicSection : "");
+        String cleanFront = removeInitCode(frontendRenderSection != null ? frontendRenderSection : "");
+
         StringBuilder merged = new StringBuilder();
-
-        // 1. 백엔드: 게임 로직, 오브젝트 클래스, 상태 관리
-        merged.append("// === 게임 로직 (백엔드팀) ===\n");
-        if (backendLogicSection != null) {
-            merged.append(backendLogicSection);
-        }
+        merged.append("// === Game 로직 ===\n");
+        merged.append(cleanBackend);
         merged.append("\n\n");
-
-        // 2. 프론트엔드: 렌더링, 입력 처리, UI, 이펙트
-        merged.append("// === 렌더링·UI (프론트팀) ===\n");
-        if (frontendRenderSection != null) {
-            merged.append(frontendRenderSection);
-        }
+        merged.append("// === Renderer ===\n");
+        merged.append(cleanFront);
         merged.append("\n\n");
-
-        // 3. 게임 시작 코드
-        merged.append("// === 게임 시작 ===\n");
-        merged.append("window.addEventListener('load', () => { const game = new Game(); });\n");
+        merged.append("// === 초기화 ===\n");
+        merged.append(initCode);
 
         String result = merged.toString();
         log.info("[코드 병합] game.js 병합 완료 - 전체 크기={}자", result.length());
         return result;
+    }
+
+    /** 하위 호환: architectureJson 없이 호출 시 기본 초기화 코드 사용 */
+    public String mergeGameJs(String backendLogicSection, String frontendRenderSection) {
+        return mergeGameJs(backendLogicSection, frontendRenderSection, "");
+    }
+
+    /**
+     * architecture.json의 initializationCode 필드 추출.
+     * 없으면 기본 초기화 코드 반환.
+     */
+    private String extractInitCode(String architectureJson) {
+        if (architectureJson == null || architectureJson.isBlank()) {
+            return DEFAULT_INIT_CODE;
+        }
+        try {
+            int idx = architectureJson.indexOf("\"initializationCode\"");
+            if (idx < 0) return DEFAULT_INIT_CODE;
+            int start = architectureJson.indexOf("\"", idx + 20) + 1;
+            int end = findJsonStringEnd(architectureJson, start);
+            if (start <= 0 || end <= start) return DEFAULT_INIT_CODE;
+            String raw = architectureJson.substring(start, end);
+            return raw.replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
+        } catch (Exception e) {
+            log.warn("[코드 병합] initializationCode 추출 실패, 기본 코드 사용");
+            return DEFAULT_INIT_CODE;
+        }
+    }
+
+    /**
+     * window.addEventListener('load', ...) 또는 DOMContentLoaded 초기화 블록 제거.
+     * 에이전트가 실수로 포함시킨 중복 초기화 코드 방지.
+     */
+    private String removeInitCode(String code) {
+        // window.addEventListener('load'|'DOMContentLoaded', ...) 패턴 제거
+        String result = code.replaceAll(
+                "window\\.addEventListener\\s*\\(\\s*['\"](?:load|DOMContentLoaded)['\"].*?\\}\\s*\\);?",
+                "/* [초기화 코드는 시스템이 자동 추가] */"
+        );
+        // const game = new Game() 단독 실행 라인 제거
+        result = result.replaceAll("(?m)^\\s*const\\s+game\\s*=\\s*new\\s+Game\\(.*?\\);\\s*$", "");
+        return result;
+    }
+
+    private int findJsonStringEnd(String json, int start) {
+        for (int i = start; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (c == '\\') { i++; continue; }
+            if (c == '"') return i;
+        }
+        return -1;
     }
 }

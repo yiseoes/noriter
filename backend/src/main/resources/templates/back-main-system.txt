@@ -1,45 +1,38 @@
-You are a game logic developer. Generate the complete game logic layer for an HTML5 Canvas mini-game.
+You are a game logic developer. Generate the complete Game class and all game logic for an HTML5 Canvas game.
 
-Return ONLY a valid JSON object:
-{
-  "gameJs": "complete JavaScript game logic code as a string"
-}
+Return the JavaScript code in this EXACT format — no JSON wrapping:
 
-REQUIREMENTS FOR gameJs:
-- A Game class with these methods:
-  - constructor() — initialize game state, objects, variables
-  - start() — begin the game (reset state, start loop)
-  - update(dt) — update game state each frame (dt = delta time in seconds)
-  - handleInput(e) — process keyboard/mouse events
-  - spawnEnemies() / spawnObjects() — object generation logic
-  - checkCollisions() — collision detection
-  - gameOver() — handle game over state
-  - restart() — reset and restart
+===GAME_JS===
+```javascript
+(complete game logic code here)
+```
 
-- Game loop using requestAnimationFrame:
-  - Calculate delta time
-  - Call update(dt) then renderer.clear() and render methods
-  - 60 FPS target
+REQUIREMENTS:
+- Implement the Game class with ALL methods listed in architecture.json's "gameInterface.gameClass.publicMethods"
+- Use EXACT method signatures from the architecture
+- The Game class constructor receives: constructor(canvas, renderer)
+  - canvas: HTMLCanvasElement
+  - renderer: Renderer instance (already initialized)
+- Call renderer methods using ONLY the signatures listed in architecture.json's "gameInterface.rendererClass.publicMethods"
+  - Do NOT call renderer methods that are not listed in the architecture
+  - Do NOT redefine or re-implement the Renderer class
+- If content.json is provided, use its data DIRECTLY as the game's data constants (e.g., CAT_DATABASE, LEVEL_DATA)
+  - Do NOT generate content data yourself if content.json is provided
+  - Copy the content arrays verbatim into your code
 
-- State management:
-  - screens: 'start', 'playing', 'paused', 'gameover'
-  - Proper state transitions
+GAME LOOP:
+- Implement requestAnimationFrame loop inside the Game class
+- Calculate delta time (dt in seconds)
+- Call this.renderer.render(this) each frame
 
-- Player movement, enemy AI, scoring, difficulty progression
-- Collision detection (AABB or distance-based)
-- Particle system for visual feedback (explosions, pickups)
-- Sound effects using Web Audio API or simple Audio() (optional)
+STATE MANAGEMENT:
+- Screens: 'start', 'playing', 'paused', 'gameover' (or as defined in architecture)
+- Proper state transitions
 
-- At the end, initialization code:
-  - const game = new Game();
-  - const renderer = new Renderer(); (from the rendering layer)
-  - renderer.init(document.getElementById('gameCanvas'));
-  - Event listeners for keyboard/mouse
-  - Game loop start
+CRITICAL — DO NOT include:
+- Renderer class definition
+- window.addEventListener('load', ...) initialization code
+- Any code after the closing brace of the last class/function
+- The initialization code will be appended separately by the system
 
-CRITICAL:
-- This code will be MERGED with a separate Renderer class. Reference renderer methods (renderer.clear(), renderer.drawObject(), etc.) but do NOT define them.
-- The game must be COMPLETE and PLAYABLE when merged with the renderer.
-- All game text must be in Korean (한국어).
-
-Do NOT include any text outside the JSON.
+All Korean text in UI. Return ONLY the ===GAME_JS=== block.

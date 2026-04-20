@@ -7,8 +7,17 @@
 디자인 명세:
 {{design}}
 
-렌더링 코드 (Renderer 클래스 — 이미 구현됨):
+렌더링 코드 (Renderer 클래스 — 이미 구현됨, 참고용):
 {{renderCode}}
 
-위 문서와 렌더러를 기반으로 게임 로직 코드를 생성해주세요.
-Renderer 클래스의 메서드를 호출하되, Renderer를 재정의하지 마세요.
+콘텐츠 데이터:
+{{contentData}}
+
+위 문서를 기반으로 Game 클래스와 게임 로직 코드를 생성해주세요.
+
+반드시 지켜야 할 규칙:
+1. architecture의 "gameInterface.gameClass.publicMethods"에 정의된 모든 메서드를 구현하세요
+2. renderer 호출 시 architecture의 "gameInterface.rendererClass.publicMethods"에 있는 메서드만 사용하세요
+3. contentData가 제공된 경우, 그 데이터를 그대로 코드의 상수로 사용하세요 (임의로 변경하지 말 것)
+4. 초기화 코드(window.addEventListener 등)는 절대 포함하지 마세요 — 시스템이 자동으로 추가합니다
+5. Renderer 클래스를 재정의하지 마세요

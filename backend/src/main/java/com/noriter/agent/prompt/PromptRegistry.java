@@ -28,7 +28,7 @@ public class PromptRegistry {
         log.info("[프롬프트 레지스트리] 초기화 시작");
 
         String[] promptIds = {
-                "plan-main", "cto-main", "cto-debug", "cto-feedback",
+                "plan-main", "content-main", "cto-main", "cto-debug", "cto-feedback",
                 "design-main", "front-main", "front-fix",
                 "back-main", "back-fix", "qa-main", "qa-retest"
         };

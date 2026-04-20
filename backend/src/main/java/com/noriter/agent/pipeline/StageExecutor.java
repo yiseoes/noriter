@@ -141,6 +141,7 @@ public class StageExecutor {
             case FRONTEND -> "프론트팀";
             case BACKEND -> "백엔드팀";
             case QA -> "QA팀";
+            case CONTENT -> "콘텐츠팀";
             case SYSTEM -> "시스템";
         };
     }

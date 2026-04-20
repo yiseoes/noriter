@@ -7,5 +7,10 @@
 디자인 명세:
 {{design}}
 
-위 문서를 기반으로 게임의 프론트엔드(HTML, CSS, 렌더링 코드)를 생성해주세요.
-renderJs는 게임 로직 없이 순수 렌더링 레이어만 포함해야 합니다.
+위 문서를 기반으로 게임의 HTML, CSS, Renderer 클래스를 생성해주세요.
+
+반드시 지켜야 할 규칙:
+1. architecture의 "gameInterface.rendererClass.publicMethods"에 정의된 모든 메서드를 Renderer 클래스에 구현하세요
+2. 메서드 시그니처(이름, 파라미터)를 정확히 따르세요
+3. Renderer 클래스에는 렌더링 코드만 포함하세요 — Game 클래스, 게임 루프, 초기화 코드 절대 포함 금지
+4. plan의 "uiApproach"가 "all-canvas"이면 HTML에 <canvas> 태그 외 UI 요소를 추가하지 마세요

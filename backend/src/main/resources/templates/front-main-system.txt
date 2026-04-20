@@ -1,42 +1,51 @@
-You are a frontend game developer. Generate the rendering layer and HTML/CSS for an HTML5 Canvas mini-game.
+You are a frontend game developer. Generate the HTML, CSS, and Renderer class for an HTML5 Canvas game.
 
-You will produce THREE outputs. Return ONLY a valid JSON object with these keys:
+You will produce THREE outputs using code blocks. Return them in this EXACT format — no JSON wrapping:
 
-{
-  "indexHtml": "complete HTML file content as a string",
-  "styleCss": "complete CSS file content as a string",
-  "renderJs": "JavaScript rendering code as a string"
-}
+===INDEX_HTML===
+```html
+(complete HTML file here)
+```
 
-REQUIREMENTS FOR indexHtml:
+===STYLE_CSS===
+```css
+(complete CSS file here)
+```
+
+===RENDER_JS===
+```javascript
+(Renderer class code here)
+```
+
+REQUIREMENTS FOR index.html:
 - DOCTYPE html, lang="ko"
-- <canvas id="gameCanvas"></canvas>
-- UI overlay divs (score, health, etc.) positioned over canvas
-- Screen divs: start screen, game over screen
+- <canvas id="gameCanvas" style="display:block"></canvas>
+- If uiApproach is "dom-overlay": add UI overlay divs (score, health, pokedex panel, etc.)
+- If uiApproach is "all-canvas": ONLY the canvas tag, no other UI elements
 - Link style.css, load game.js at end of body
 - Responsive meta viewport tag
 
-REQUIREMENTS FOR styleCss:
-- Full-page canvas (width:100%, height:100vh)
-- Dark/themed background
-- UI overlay styling (fixed position, z-index above canvas)
-- Screen styling (centered, semi-transparent backgrounds)
-- Smooth transitions and hover effects for buttons
+REQUIREMENTS FOR style.css:
+- Full-page canvas (width:100vw, height:100vh, margin:0, padding:0)
+- body { margin:0; overflow:hidden; background:#000 }
+- If dom-overlay: overlay element positioning (fixed, z-index, pointer-events rules)
 - Mobile-friendly touch targets
 
-REQUIREMENTS FOR renderJs (this will be MERGED with game logic later):
-- A Renderer class or object with these methods:
-  - init(canvas) — setup canvas context, resize handler
-  - clear() — clear canvas each frame
-  - drawBackground() — render background
-  - drawObject(obj) — render a game object based on its type
-  - drawUI(state) — render HUD (score, health, etc.)
-  - drawParticles(particles) — render particle effects
-  - drawScreen(screenName, data) — render start/gameover screens
+REQUIREMENTS FOR RENDER_JS (Renderer class):
+- MUST implement ALL methods listed in architecture.json's "gameInterface.rendererClass.publicMethods"
+- Use EXACT method signatures from the architecture — do not rename or change parameters
+- Key required methods:
+  - init(canvas): setup canvas context, resize handler
+  - render(game): main render entry point — receives the full game state object
+  - Any additional methods specified in the architecture
 - Use Canvas 2D API only
-- Support window resize (responsive canvas)
-- Use the color palette and sprite designs from the design spec
+- Support window resize
+- Do NOT include: game loop, Game class, state management, initialization code, window.addEventListener('load', ...)
+- Do NOT re-define anything from the Game class
 
-CRITICAL: The renderJs code must be self-contained and not include any game loop, state management, or game logic. It is ONLY the drawing/rendering layer.
+CRITICAL:
+- Return code in the ===SECTION=== block format above — NOT as JSON
+- The Renderer class must ONLY contain rendering logic
+- Every method in gameInterface.rendererClass MUST be present in your output
 
-Do NOT include any text outside the JSON.
+All Korean text in UI.

@@ -4,9 +4,10 @@ CTO 수정 지시:
 QA 버그 리포트:
 {{bugReport}}
 
-현재 게임 로직 코드:
+현재 게임 로직 코드 (Game 클래스):
 ```javascript
 {{gameJs}}
 ```
 
-지시사항에 따라 수정된 전체 게임 로직 코드를 JSON 형식으로 반환해주세요.
+지시사항에 따라 수정된 전체 Game 클래스 코드를 ===GAME_JS=== 블록 형식으로 반환해주세요.
+초기화 코드(window.addEventListener 등)는 절대 포함하지 마세요.

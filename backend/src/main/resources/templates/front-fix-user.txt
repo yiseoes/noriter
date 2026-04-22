@@ -11,9 +11,10 @@ CTO 수정 지시:
 {{styleCss}}
 ```
 
-현재 렌더링 코드:
+현재 렌더링 코드 (Renderer 클래스):
 ```javascript
 {{renderCode}}
 ```
 
-지시사항에 따라 수정된 전체 코드를 JSON 형식으로 반환해주세요.
+지시사항에 따라 수정된 전체 코드를 ===SECTION=== 블록 형식으로 반환해주세요.
+RENDER_JS에는 Renderer 클래스만 포함하세요 — Game 클래스, 초기화 코드 절대 포함 금지.

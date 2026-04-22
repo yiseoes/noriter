@@ -100,7 +100,7 @@ public class ClaudeApiClient {
                 }
 
                 log.warn("[Claude API] 예상치 못한 응답 - statusCode={}, body={}",
-                        statusCode, response.body().substring(0, Math.min(200, response.body().length())));
+                        statusCode, response.body().substring(0, Math.min(1000, response.body().length())));
 
                 if (attempt < MAX_RETRIES) {
                     backoff(attempt);

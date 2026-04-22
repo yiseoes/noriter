@@ -558,6 +558,9 @@ public class PipelineOrchestrator {
         String mergedGameJs = codeMerger.mergeGameJs(backLogic, frontRender, architectureJson);
         fileStorageService.saveGameFile(projectId, "game.js", mergedGameJs);
         artifacts.put("game.js", mergedGameJs);
+        // debug fix 때 올바른 컨텍스트 제공을 위해 섹션도 저장
+        if (frontRender != null && !frontRender.isBlank()) artifacts.put("gameJsRenderSection", frontRender);
+        if (backLogic != null && !backLogic.isBlank())    artifacts.put("gameJsLogicSection", backLogic);
 
         // 프론트 산출물 파일 저장 (index.html, style.css)
         if (frontResult.getArtifacts() != null) {

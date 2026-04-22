@@ -44,10 +44,23 @@ public class JsSyntaxValidator {
             errors.add("Renderer 클래스가 없습니다.");
         }
 
-        // 3. 초기화 코드 중복 감지
-        long initCount = countOccurrences(gameJs, "addEventListener");
+        // 3. 초기화 코드 중복 감지 (load/DOMContentLoaded 이벤트만 카운트 — 클릭/터치/키보드 이벤트는 정상)
+        long initCount = countOccurrences(gameJs, "addEventListener('load'")
+                + countOccurrences(gameJs, "addEventListener(\"load\"")
+                + countOccurrences(gameJs, "addEventListener('DOMContentLoaded'")
+                + countOccurrences(gameJs, "addEventListener(\"DOMContentLoaded\"");
         if (initCount > 1) {
-            errors.add("addEventListener가 " + initCount + "번 중복 — 초기화 코드 중복 의심.");
+            errors.add("초기화 addEventListener('load')가 " + initCount + "번 중복 — 초기화 코드 중복 의심.");
+        }
+
+        // 3-1. 클래스 중복 감지
+        long gameClassCount = countOccurrences(gameJs, "class Game");
+        if (gameClassCount > 1) {
+            errors.add("class Game이 " + gameClassCount + "번 중복 선언되어 있습니다.");
+        }
+        long rendererClassCount = countOccurrences(gameJs, "class Renderer");
+        if (rendererClassCount > 1) {
+            errors.add("class Renderer가 " + rendererClassCount + "번 중복 선언되어 있습니다.");
         }
 
         // 4. 코드 잘림 감지 (응답이 truncated 된 경우 마지막이 불완전)

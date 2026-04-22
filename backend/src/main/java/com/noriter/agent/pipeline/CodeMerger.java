@@ -46,7 +46,7 @@ public class CodeMerger {
         merged.append("// === 초기화 ===\n");
         merged.append(initCode);
 
-        String result = merged.toString();
+        String result = deduplicateClasses(merged.toString());
         log.info("[코드 병합] game.js 병합 완료 - 전체 크기={}자", result.length());
         return result;
     }
@@ -91,6 +91,36 @@ public class CodeMerger {
         // const game = new Game() 단독 실행 라인 제거
         result = result.replaceAll("(?m)^\\s*const\\s+game\\s*=\\s*new\\s+Game\\(.*?\\);\\s*$", "");
         return result;
+    }
+
+    /**
+     * 중복 class 정의 제거 — 같은 클래스가 2번 이상 선언된 경우 마지막 것만 유지.
+     * AI가 Renderer 또는 Game 클래스를 두 번 생성하는 케이스 대응.
+     */
+    private String deduplicateClasses(String code) {
+        String result = deduplicateClass(code, "Renderer");
+        result = deduplicateClass(result, "Game");
+        return result;
+    }
+
+    private String deduplicateClass(String code, String className) {
+        String marker = "class " + className;
+        int firstIdx = code.indexOf(marker);
+        int lastIdx = code.lastIndexOf(marker);
+
+        if (firstIdx == lastIdx || firstIdx < 0) {
+            return code; // 중복 없음
+        }
+
+        // 첫 번째 class 선언부터 두 번째 class 선언 직전까지 제거
+        // (첫 번째 블록을 지우고 마지막 블록만 남김)
+        String before = code.substring(0, firstIdx);
+        String from = code.substring(lastIdx);
+
+        // 구분자 주석도 함께 정리 (바로 앞의 // === ... === 라인 제거)
+        String cleaned = (before + from).replaceAll("(?m)^// === " + className + " ===\\s*\\n", "");
+        log.warn("[코드 병합] class {} 중복 감지 — 첫 번째 정의 제거 후 마지막만 유지", className);
+        return cleaned;
     }
 
     private int findJsonStringEnd(String json, int start) {

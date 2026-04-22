@@ -13,6 +13,7 @@ export function useAuth() {
     enabled: hasToken,
     retry: false,
     staleTime: 5 * 60 * 1000,
+    throwOnError: false,
   });
 
   const loginMutation = useMutation({

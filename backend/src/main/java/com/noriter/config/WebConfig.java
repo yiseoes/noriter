@@ -17,7 +17,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         log.info("[WebConfig] CORS 설정 등록 - /api/** 허용");
         registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:5173", "http://localhost:8080")  // Vite dev + 프로덕션
+                .allowedOriginPatterns("http://localhost:*")  // 로컬 개발 전체 허용
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)

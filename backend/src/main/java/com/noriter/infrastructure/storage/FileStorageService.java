@@ -140,9 +140,19 @@ public class FileStorageService {
             return null;
         }
 
+        // 상대경로 → 절대 API 경로 교체 (MIME 타입 오류 방지)
+        String base = "/api/projects/" + projectId + "/game/";
+        String rewritten = indexHtml
+                .replace("href=\"style.css\"",  "href=\"" + base + "style.css\"")
+                .replace("href='style.css'",    "href='" + base + "style.css'")
+                .replace("src=\"game.js\"",     "src=\"" + base + "game.js\"")
+                .replace("src='game.js'",       "src='" + base + "game.js'")
+                .replace("src=\"style.css\"",   "src=\"" + base + "style.css\"")
+                .replace("src='style.css'",     "src='" + base + "style.css'");
+
         log.info("[미리보기] HTML 조합 완료 - projectId={}, 크기={}bytes",
-                projectId, indexHtml.length());
-        return indexHtml;
+                projectId, rewritten.length());
+        return rewritten;
     }
 
     /**

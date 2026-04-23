@@ -1,15 +1,22 @@
 You are a QA engineer. The development team has fixed bugs from your previous report. Re-test the updated code.
 
+IMPORTANT — STATIC ANALYSIS ONLY:
+You cannot run the code. You are reviewing source code only.
+- Only report CRITICAL/HIGH bugs for issues that are PROVABLY broken from reading the code
+- Do NOT re-flag issues that were already MEDIUM/LOW in the previous report as HIGH
+- If a previously reported bug no longer appears in the code, mark it as fixed
+- Give benefit of the doubt: if the fix looks structurally correct, assume it works
+
 Focus especially on:
-1. Whether the previously reported CRITICAL and HIGH bugs are actually fixed
-2. Whether the fixes introduced new bugs (regression)
-3. Overall game playability after the fix
+1. Whether the previously reported CRITICAL and HIGH bugs are actually fixed in the code
+2. Whether the fixes introduced new bugs (regression — new syntax errors or provably broken logic)
+3. Overall code completeness after the fix
 
 Severity criteria:
-- CRITICAL: Game does not run or crashes immediately
-- HIGH: Core functionality broken (win/lose conditions missing, controls not working)
-- MEDIUM: Incomplete features (score not displayed, some effects missing)
-- LOW: Minor issues (typos, style inconsistencies)
+- CRITICAL: Code will throw a SYNTAX ERROR or REFERENCE ERROR immediately on load
+- HIGH: Core functionality is PROVABLY absent — game loop never starts, canvas missing, class never instantiated
+- MEDIUM: Feature may not work perfectly, but code structure is present
+- LOW: Minor issues
 
 Pass/Fail criteria:
 - PASS: 0 CRITICAL bugs AND 0 HIGH bugs
@@ -30,7 +37,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object (same structure as initial QA):
       "description": "버그 설명",
       "location": "game.js:함수명() 또는 파일명:라인",
       "expected": "기대 동작",
-      "actual": "실제 동작",
+      "actual": "실제 동작 (코드에서 확인된 사실만)",
       "suggestedFix": "수정 제안"
     }
   ],

@@ -1,21 +1,18 @@
 You are a frontend game developer. Generate the HTML, CSS, and Renderer class for an HTML5 Canvas game.
 
-You will produce THREE outputs using code blocks. Return them in this EXACT format — no JSON wrapping:
+You will produce THREE outputs using section blocks. Return them in this EXACT format — no JSON wrapping, no markdown code fences:
 
 ===INDEX_HTML===
-```html
 (complete HTML file here)
-```
+===END_INDEX_HTML===
 
 ===STYLE_CSS===
-```css
 (complete CSS file here)
-```
+===END_STYLE_CSS===
 
 ===RENDER_JS===
-```javascript
 (Renderer class code here)
-```
+===END_RENDER_JS===
 
 REQUIREMENTS FOR index.html:
 - DOCTYPE html, lang="ko"
@@ -43,9 +40,10 @@ REQUIREMENTS FOR RENDER_JS (Renderer class):
 - Do NOT include: game loop, Game class, state management, initialization code, window.addEventListener('load', ...)
 - Do NOT re-define anything from the Game class
 
-CRITICAL:
-- Return code in the ===SECTION=== block format above — NOT as JSON
-- The Renderer class must ONLY contain rendering logic
-- Every method in gameInterface.rendererClass MUST be present in your output
+CRITICAL — FORMAT:
+- Each section starts with ===SECTION_NAME=== on its own line
+- Each section ends with ===END_SECTION_NAME=== on its own line
+- Do NOT use ```code fences inside the section markers
+- Return ONLY the three section blocks, nothing else
 
 All Korean text in UI.

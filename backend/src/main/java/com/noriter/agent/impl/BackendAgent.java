@@ -23,6 +23,10 @@ public class BackendAgent implements BaseAgent {
     private final ClaudeApiClient claudeApiClient;
     private final PromptRegistry promptRegistry;
 
+    // 신규 포맷: ===GAME_JS=== ... ===END_GAME_JS===
+    private static final Pattern GAME_JS_END_PATTERN =
+            Pattern.compile("===GAME_JS===\\s*([\\s\\S]*?)===END_GAME_JS===", Pattern.MULTILINE);
+    // 구 포맷 (폴백): ===GAME_JS=== ```javascript ... ```
     private static final Pattern GAME_JS_PATTERN =
             Pattern.compile("===GAME_JS===\\s*```[a-z]*\\s*([\\s\\S]*?)```", Pattern.MULTILINE);
 
@@ -61,17 +65,35 @@ public class BackendAgent implements BaseAgent {
     }
 
     /**
-     * ===GAME_JS=== ```javascript ... ``` 블록 파싱.
-     * 없으면 JSON { "gameJs": "..." } 형식 시도, 최후엔 stripCodeBlock.
+     * ===GAME_JS=== ... ===END_GAME_JS=== 블록 파싱 (신규 포맷 우선).
+     * 구 포맷(코드펜스), JSON 형식 순으로 폴백.
      */
     private String parseGameJs(String content) {
-        // 1. ===GAME_JS=== 섹션 블록
+        // 1. 신규 포맷: ===GAME_JS=== ... ===END_GAME_JS===
+        Matcher endMatcher = GAME_JS_END_PATTERN.matcher(content);
+        if (endMatcher.find()) {
+            return endMatcher.group(1).trim();
+        }
+
+        // 2. 구 포맷: ===GAME_JS=== ```javascript ... ``` (닫는 ``` 있는 경우)
         Matcher matcher = GAME_JS_PATTERN.matcher(content);
         if (matcher.find()) {
+            log.warn("[백엔드팀] 구 포맷(코드펜스) 감지 — 신규 포맷(===END_GAME_JS===)으로 전환 권고");
             return matcher.group(1).trim();
         }
 
-        // 2. JSON { "gameJs": "..." } 형식 — 구버전 응답 또는 모델이 JSON 형식으로 반환한 경우
+        // 3. ===GAME_JS=== 있지만 종료 마커 없는 경우 (마커 이후 내용 추출)
+        int markerIdx = content.indexOf("===GAME_JS===");
+        if (markerIdx >= 0) {
+            String afterMarker = content.substring(markerIdx + "===GAME_JS===".length()).trim();
+            String extracted = JsonParser.stripCodeBlock(afterMarker);
+            if (!extracted.isBlank()) {
+                log.warn("[백엔드팀] GAME_JS 종료 마커 없음 — 마커 이후 내용으로 추출");
+                return extracted;
+            }
+        }
+
+        // 4. JSON { "gameJs": "..." } 형식 폴백
         String stripped = JsonParser.stripCodeBlock(content);
         Map<String, String> jsonMap = JsonParser.parseAsMap(stripped);
         if (jsonMap.containsKey("gameJs") && !jsonMap.get("gameJs").isBlank()) {
@@ -88,7 +110,11 @@ public class BackendAgent implements BaseAgent {
 
         String ctoInstruction = context.getCtoInstruction() != null ? context.getCtoInstruction() : "";
         String bugReport = context.getBugReport() != null ? context.getBugReport() : "";
-        String gameJs = context.getPreviousArtifacts().getOrDefault("game.js", "");
+        // game.js(병합본) 대신 Game 클래스 섹션만 전달해 프롬프트 크기 절감
+        Map<String, String> arts = context.getPreviousArtifacts();
+        String gameJs = arts.containsKey("gameJsLogicSection") && !arts.get("gameJsLogicSection").isBlank()
+                ? arts.get("gameJsLogicSection")
+                : arts.getOrDefault("game.js", "");
 
         String systemPrompt = promptRegistry.getSystemPrompt("back-fix");
         String userPrompt = PromptTemplate.render(

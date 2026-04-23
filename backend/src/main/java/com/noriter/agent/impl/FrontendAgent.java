@@ -11,7 +11,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,7 +26,10 @@ public class FrontendAgent implements BaseAgent {
     private final ClaudeApiClient claudeApiClient;
     private final PromptRegistry promptRegistry;
 
-    // ===SECTION=== 블록 파싱 패턴
+    // 신규 포맷: ===SECTION=== ... ===END_SECTION===
+    private static final Pattern SECTION_END_PATTERN =
+            Pattern.compile("===([A-Z_]+)===\\s*([\\s\\S]*?)===END_\\1===", Pattern.MULTILINE);
+    // 구 포맷 (폴백): ===SECTION=== ```lang ... ```
     private static final Pattern SECTION_PATTERN =
             Pattern.compile("===([A-Z_]+)===\\s*```[a-z]*\\s*([\\s\\S]*?)```", Pattern.MULTILINE);
 
@@ -76,28 +81,74 @@ public class FrontendAgent implements BaseAgent {
     }
 
     /**
-     * ===SECTION_NAME=== ```lang ... ``` 형식 파싱
+     * 섹션 블록 파싱.
+     * 신규 포맷(===END_SECTION===) → 구 포맷(코드펜스) → 마커 위치 기반 분리 순으로 시도.
      */
+    private static final Pattern SECTION_MARKER_PATTERN =
+            Pattern.compile("===([A-Z_]+)===");
+
     private Map<String, String> parseSectionBlocks(String content) {
         Map<String, String> result = new HashMap<>();
+
+        // 1. 신규 포맷: ===SECTION=== ... ===END_SECTION===
+        Matcher endMatcher = SECTION_END_PATTERN.matcher(content);
+        while (endMatcher.find()) {
+            String section = endMatcher.group(1);
+            // END_ 접두사가 붙은 종료 마커는 섹션명이 아니므로 제외
+            if (section.startsWith("END_")) continue;
+            String code = endMatcher.group(2).trim();
+            mapSection(result, section, code);
+        }
+        if (!result.isEmpty()) return result;
+
+        // 2. 구 포맷: ===SECTION=== ```lang ... ```
         Matcher matcher = SECTION_PATTERN.matcher(content);
         while (matcher.find()) {
             String section = matcher.group(1);
+            if (section.startsWith("END_")) continue;
             String code = matcher.group(2).trim();
-            switch (section) {
-                case "INDEX_HTML" -> result.put("index.html", code);
-                case "STYLE_CSS"  -> result.put("style.css", code);
-                case "RENDER_JS"  -> result.put("gameJsRenderSection", code);
+            log.warn("[프론트팀] 구 포맷(코드펜스) 감지 — 신규 포맷(===END_SECTION===)으로 전환 권고");
+            mapSection(result, section, code);
+        }
+        if (!result.isEmpty()) return result;
+
+        // 3. 섹션 마커는 있지만 종료 마커 없는 경우 — 마커 위치 기반으로 분리 추출
+        Matcher markerMatcher = SECTION_MARKER_PATTERN.matcher(content);
+        List<int[]> positions = new ArrayList<>();
+        List<String> sections = new ArrayList<>();
+        while (markerMatcher.find()) {
+            String name = markerMatcher.group(1);
+            if (!name.startsWith("END_")) {
+                positions.add(new int[]{markerMatcher.start(), markerMatcher.end()});
+                sections.add(name);
             }
         }
-        // 섹션 없으면 전체를 코드블록으로 시도 (단일 파일 fallback)
-        if (result.isEmpty()) {
-            String stripped = JsonParser.stripCodeBlock(content);
-            if (!stripped.isBlank()) {
-                result.put("gameJsRenderSection", stripped);
+        if (!positions.isEmpty()) {
+            log.warn("[프론트팀] 섹션 종료 마커 없음 — 마커 위치 기반으로 분리 추출");
+            for (int i = 0; i < sections.size(); i++) {
+                int contentStart = positions.get(i)[1];
+                int contentEnd = (i + 1 < positions.size()) ? positions.get(i + 1)[0] : content.length();
+                String raw = content.substring(contentStart, contentEnd).trim();
+                String code = JsonParser.stripCodeBlock(raw);
+                mapSection(result, sections.get(i), code);
             }
+        }
+        if (!result.isEmpty()) return result;
+
+        // 4. 섹션 자체가 없으면 전체를 코드블록으로 시도 (단일 파일 fallback)
+        String stripped = JsonParser.stripCodeBlock(content);
+        if (!stripped.isBlank()) {
+            result.put("gameJsRenderSection", stripped);
         }
         return result;
+    }
+
+    private void mapSection(Map<String, String> result, String section, String code) {
+        switch (section) {
+            case "INDEX_HTML" -> result.put("index.html", code);
+            case "STYLE_CSS"  -> result.put("style.css", code);
+            case "RENDER_JS"  -> result.put("gameJsRenderSection", code);
+        }
     }
 
     private String generateSingleFile(Map<String, String> baseContext, String instruction) {

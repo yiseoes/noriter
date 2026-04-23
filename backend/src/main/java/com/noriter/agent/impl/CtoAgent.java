@@ -48,12 +48,20 @@ public class CtoAgent implements BaseAgent {
         );
     }
 
+    /** game.js 프롬프트 포함 최대 글자 수 — 초과 시 앞뒤 발췌로 대체 */
+    private static final int MAX_GAME_JS_CHARS = 30_000;
+
     public AgentResult executeDebug(AgentContext context) {
         log.info("[CTO] 디버그 분석 시작 - projectId={}, attempt={}", context.getProjectId(), context.getDebugAttempt());
 
         String bugReport = context.getBugReport() != null ? context.getBugReport() : "";
-        String gameJs = context.getPreviousArtifacts().getOrDefault("game.js", "");
-        String indexHtml = context.getPreviousArtifacts().getOrDefault("index.html", "");
+        Map<String, String> arts = context.getPreviousArtifacts();
+        // gameJsLogicSection(Game 클래스만) 우선 사용, 없으면 병합본 사용하되 크기 제한
+        String rawGameJs = arts.containsKey("gameJsLogicSection") && !arts.get("gameJsLogicSection").isBlank()
+                ? arts.get("gameJsLogicSection")
+                : arts.getOrDefault("game.js", "");
+        String gameJs = truncateGameJs(rawGameJs);
+        String indexHtml = arts.getOrDefault("index.html", "");
 
         String systemPrompt = promptRegistry.getSystemPrompt("cto-debug");
         String userPrompt = PromptTemplate.render(
@@ -68,5 +76,18 @@ public class CtoAgent implements BaseAgent {
                 "디버그 분석을 완료했습니다.",
                 response.inputTokens(), response.outputTokens()
         );
+    }
+
+    /**
+     * game.js가 너무 길면 앞 15000자 + 생략 안내 + 뒤 15000자로 대체.
+     * HTTP 400 및 타임아웃 방지.
+     */
+    private String truncateGameJs(String gameJs) {
+        if (gameJs.length() <= MAX_GAME_JS_CHARS) return gameJs;
+        int half = MAX_GAME_JS_CHARS / 2;
+        String head = gameJs.substring(0, half);
+        String tail = gameJs.substring(gameJs.length() - half);
+        log.warn("[CTO] game.js 크기 초과 ({}자) — 앞뒤 {}자씩 발췌하여 전달", gameJs.length(), half);
+        return head + "\n\n// ... (중략 — 코드 크기 초과로 생략) ...\n\n" + tail;
     }
 }

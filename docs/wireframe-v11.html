@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>놀이터 NoriTer — v11 (파이프라인+에이전트 통합)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary:#ffffff;--bg-secondary:#f8f9fb;--bg-tertiary:#f1f3f5;
+            --bg-hover:#e9ecef;--border:#dee2e6;--border-light:#e9ecef;
+            --text-primary:#212529;--text-secondary:#495057;--text-muted:#868e96;
+            --brand:#ff6b6b;--brand-light:#ff8787;--brand-bg:#fff5f5;
+            --brand-gradient:linear-gradient(135deg,#ff6b6b,#ffa8a8);
+            --coral:#ff6b6b;--coral-light:#ff8787;--coral-bg:#fff5f5;
+            --success:#12b886;--success-bg:#e6fcf5;--warning:#f59f00;--warning-bg:#fff9db;
+            --danger:#fa5252;--danger-bg:#fff5f5;--info:#339af0;--info-bg:#e7f5ff;
+            --agent-cto:#4263eb;--agent-cto-bg:#edf2ff;
+            --agent-planning:#ae3ec9;--agent-planning-bg:#f8f0fc;
+            --agent-design:#e64980;--agent-design-bg:#fff0f6;
+            --agent-frontend:#0ca678;--agent-frontend-bg:#e6fcf5;
+            --agent-backend:#e67700;--agent-backend-bg:#fff4e6;
+            --agent-qa:#f76707;--agent-qa-bg:#fff4e6;
+            --spec-bg:#fff3bf;--spec-border:#ffd43b;--spec-text:#664d03;
+        }
+        *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+        body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg-primary);color:var(--text-primary);line-height:1.6;}
+
+        /* ===== 풀페이지 스냅 (히어로 + 에이전트까지만) ===== */
+        .snap-container{
+            height:100vh;overflow-y:hidden;
+            scroll-behavior:smooth;
+        }
+        .snap-section{
+            min-height:100vh;
+            display:flex;flex-direction:column;justify-content:center;align-items:center;
+        }
+        /* 마지막 섹션: 스냅 포인트이되 내부에서 자유 스크롤 */
+        .snap-section-scroll{
+            height:100vh;
+            scroll-snap-align:start;
+            overflow-y:auto;
+            -webkit-overflow-scrolling:touch;
+        }
+
+        /* 정의서 모드 */
+        .spec-toggle{position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 24px;border-radius:12px;background:var(--spec-bg);border:2px solid var(--spec-border);color:var(--spec-text);font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.15);}
+        .spec-toggle.active{background:var(--spec-text);color:white;border-color:var(--spec-text);}
+        .spec-note{display:none;position:absolute;background:var(--spec-bg);border:2px solid var(--spec-border);border-radius:8px;padding:8px 12px;font-size:11px;font-weight:600;color:var(--spec-text);z-index:50;max-width:280px;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+        .spec-note::before{content:'📌';margin-right:4px;}
+        body.spec-mode .spec-note{display:block;}
+        body.spec-mode [data-spec]{outline:2px dashed var(--spec-border)!important;outline-offset:2px;position:relative;}
+        .spec-flowchart{display:none;background:var(--spec-bg);border:2px solid var(--spec-border);border-radius:16px;padding:32px;margin:80px 32px 0;max-width:1200px;margin-left:auto;margin-right:auto;}
+        body.spec-mode .spec-flowchart{display:block;}
+        .spec-flowchart h2{color:var(--spec-text);font-size:20px;margin-bottom:12px;}
+        .spec-flowchart h3{color:var(--spec-text);font-size:16px;margin:24px 0 12px;padding-top:16px;border-top:1px solid rgba(255,212,59,0.4);}
+        .flow-table{width:100%;border-collapse:collapse;font-size:13px;}
+        .flow-table th{text-align:left;padding:8px 12px;background:rgba(255,212,59,0.3);color:var(--spec-text);border-bottom:2px solid var(--spec-border);font-size:12px;}
+        .flow-table td{padding:8px 12px;border-bottom:1px solid rgba(255,212,59,0.3);color:var(--spec-text);vertical-align:top;}
+        .ft{display:inline-block;padding:1px 8px;border-radius:4px;font-size:10px;font-weight:700;}
+        .ft-click{background:#d0ebff;color:#1864ab;}.ft-modal{background:#e5dbff;color:#5f3dc4;}
+        .ft-full{background:#ffe3e3;color:#c92a2a;}.ft-api{background:#d3f9d8;color:#2b8a3e;}
+        .ft-sse{background:#fff3bf;color:#e67700;}.ft-nav{background:#f1f3f5;color:#495057;}
+
+        /* 헤더 */
+        .header{background:rgba(255,255,255,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-light);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:fixed;top:0;left:0;right:0;z-index:100;}
+        .header-left{display:flex;align-items:center;gap:36px;}
+        .logo{display:flex;align-items:center;gap:3px;font-weight:800;font-size:20px;color:var(--brand);text-decoration:none;cursor:pointer;position:relative;transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);letter-spacing:0px;}
+        .logo:hover{transform:scale(1.05) rotate(-2deg);}
+        .logo-icon{width:32px;height:32px;background:var(--brand-gradient);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;color:white;animation:iconBob 3s ease-in-out infinite;}
+        @keyframes iconBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
+        .nav{display:flex;gap:4px;}
+        .nav a{color:var(--text-secondary);text-decoration:none;padding:8px 16px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;position:relative;}
+        .nav a:hover{background:var(--bg-tertiary);color:var(--text-primary);}
+        .nav a.active{background:var(--coral-bg);color:var(--coral);}
+        .header-right{display:flex;align-items:center;gap:12px;}
+        .status-dot{width:8px;height:8px;background:var(--success);border-radius:50%;display:inline-block;}
+        .theme-toggle{width:36px;height:36px;border-radius:8px;border:1px solid var(--border-light);background:var(--bg-primary);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;position:relative;}
+
+        /* ===== 히어로 — 놀이터 인터랙션 풀버전 ===== */
+        .hero{padding:60px 32px;text-align:center;position:relative;overflow:hidden;}
+        .hero::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(108,92,231,0.08) 0%,transparent 70%);pointer-events:none;}
+
+        /* 뱃지: 위에서 통통 떨어짐 */
+        .hero-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;background:var(--brand-bg);color:var(--brand);font-size:13px;font-weight:600;margin-bottom:20px;
+            opacity:0;animation:badgeDrop 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.2s both, badgeWiggle 3s ease-in-out 1.5s infinite;}
+        @keyframes badgeDrop{
+            0%{opacity:0;transform:translateY(-50px) rotate(-10deg) scale(0.5);}
+            60%{opacity:1;transform:translateY(5px) rotate(3deg) scale(1.05);}
+            80%{transform:translateY(-3px) rotate(-1deg) scale(0.98);}
+            100%{opacity:1;transform:translateY(0) rotate(0deg) scale(1);}
+        }
+        @keyframes badgeWiggle{0%,100%{transform:rotate(0deg);}25%{transform:rotate(-3deg);}75%{transform:rotate(3deg);}}
+
+        /* 제목 첫줄: 좌에서 슬라이드 + 회전 */
+        .hero-line1{opacity:0;animation:slideFromLeft 0.8s cubic-bezier(0.16,1,0.3,1) 0.5s both;}
+        @keyframes slideFromLeft{
+            0%{opacity:0;transform:translateX(-80px) rotate(-3deg);}
+            100%{opacity:1;transform:translateX(0) rotate(0deg);}
+        }
+
+        /* 제목 둘째줄: 아래에서 바운스 업 */
+        .hero-line2{opacity:0;animation:bounceUp 0.8s cubic-bezier(0.34,1.56,0.64,1) 0.8s both;}
+        @keyframes bounceUp{
+            0%{opacity:0;transform:translateY(60px) scale(0.8);}
+            60%{opacity:1;transform:translateY(-8px) scale(1.03);}
+            80%{transform:translateY(4px) scale(0.99);}
+            100%{opacity:1;transform:translateY(0) scale(1);}
+        }
+
+        .hero h1{font-size:52px;font-weight:800;line-height:1.3;margin-bottom:20px;}
+        .hero-emoji-inline{
+            display:inline-block;width:56px;height:56px;vertical-align:middle;margin-left:4px;
+            animation:inlineEmojiBounce 2s ease-in-out 1.2s infinite;
+        }
+        @keyframes inlineEmojiBounce{0%,100%{transform:translateY(0) rotate(0deg);}25%{transform:translateY(-8px) rotate(-8deg);}75%{transform:translateY(-4px) rotate(6deg);}}
+        .hero h1 span{background:linear-gradient(135deg,#ff6b6b,#ff922b,#e64980);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:200% 200%;animation:gradientShift 4s ease infinite;}
+        @keyframes gradientShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
+
+        /* 설명: 우에서 슬라이드 */
+        .hero p{font-size:18px;color:var(--text-secondary);max-width:480px;margin:0 auto 40px;line-height:1.8;
+            opacity:0;animation:slideFromRight 0.7s cubic-bezier(0.16,1,0.3,1) 1.1s both;}
+        @keyframes slideFromRight{
+            0%{opacity:0;transform:translateX(60px);}
+            100%{opacity:1;transform:translateX(0);}
+        }
+
+        /* 버튼: 아래에서 통통 순차 등장 */
+        .hero-actions{display:flex;gap:14px;justify-content:center;}
+        .btn-hero{padding:16px 36px;border-radius:20px;font-size:16px;font-weight:700;cursor:pointer;border:none;text-decoration:none;position:relative;
+            transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            opacity:0;animation:btnPopUp 0.6s cubic-bezier(0.34,1.56,0.64,1) both;}
+        .btn-hero:nth-child(1){animation-delay:1.4s;}
+        .btn-hero:nth-child(2){animation-delay:1.6s;}
+        @keyframes btnPopUp{
+            0%{opacity:0;transform:translateY(40px) scale(0.7);}
+            60%{opacity:1;transform:translateY(-5px) scale(1.05);}
+            100%{opacity:1;transform:translateY(0) scale(1);}
+        }
+        .btn-hero-primary{background:var(--brand-gradient);color:white;box-shadow:0 6px 20px rgba(255,107,107,0.3);}
+        .btn-hero-primary:hover{transform:translateY(-4px) scale(1.05) rotate(-1deg);box-shadow:0 12px 30px rgba(255,107,107,0.4);}
+        .btn-hero-secondary{background:var(--bg-primary);color:var(--text-primary);border:2px solid var(--border-light);border-radius:20px;}
+        .btn-hero-secondary:hover{border-color:var(--brand);color:var(--brand);transform:translateY(-3px) scale(1.03) rotate(1deg);}
+
+        /* 스크롤 힌트 화살표 */
+        .scroll-hint{
+            position:absolute;bottom:30px;left:50%;transform:translateX(-50%);
+            display:flex;flex-direction:column;align-items:center;gap:4px;
+            color:var(--text-muted);font-size:12px;letter-spacing:1px;
+            opacity:0;animation:hintAppear 0.6s ease 2.5s both;
+        }
+        .scroll-hint-arrow{
+            width:16px;height:16px;border-right:1.5px solid var(--brand);border-bottom:1.5px solid var(--brand);
+            transform:rotate(45deg);animation:arrowBounce 1.5s ease-in-out infinite;
+        }
+        @keyframes hintAppear{from{opacity:0;transform:translateX(-50%) translateY(10px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+        @keyframes arrowBounce{0%,100%{transform:rotate(45deg) translate(0,0);}50%{transform:rotate(45deg) translate(4px,4px);}}
+
+        /* ===== 파이프라인 프리뷰 섹션 ===== */
+        .pipeline-preview{padding:30px 32px 0;text-align:center;position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:60px;}
+        .pipeline-top{width:100%;max-width:1100px;}
+        .pipeline-bottom{width:100%;max-width:700px;height:200px;position:relative;overflow:hidden;}
+        .pipeline-timeline{position:relative;width:100%;}
+        .pipeline-track{display:flex;justify-content:space-between;position:relative;z-index:2;}
+        .pipeline-track::before{content:'';position:absolute;top:28px;left:calc(100%/12 + 28px);right:0;height:3px;background:var(--border-light);border-radius:2px;z-index:0;}
+        .pipeline-progress{position:absolute;top:28px;left:0;right:0;height:3px;border-radius:2px;background:linear-gradient(90deg,var(--coral),#ff922b,var(--agent-design));z-index:1;transform-origin:left;transform:scaleX(0);}
+        .pipeline-progress-done{position:absolute;top:28px;left:calc(100% * 11/12 + 32px);right:0;height:3px;border-radius:0 4px 4px 0;background:linear-gradient(90deg,var(--success),#51cf66);z-index:5;opacity:0;transition:opacity 0.8s ease;}
+        .pipeline-node{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;min-height:120px;}
+        .pipeline-avatar{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;border:2px solid var(--border);background:var(--bg-tertiary);transition:all 0.5s cubic-bezier(0.34,1.56,0.64,1);position:relative;cursor:pointer;z-index:10;}
+        .pipeline-avatar.active{transform:scale(1.15);border-color:currentColor;}
+        .pipeline-avatar.done{border-color:var(--success);}
+        .pipeline-avatar .ping{display:none;}
+        .pipeline-avatar .check{position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:var(--success);color:white;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;}
+        .pipeline-agent-name{font-size:12px;font-weight:600;margin-top:8px;transition:color 0.3s;}
+        .pipeline-bubble{position:absolute;top:90px;left:50%;transform:translateX(-50%) translateY(8px);padding:10px 14px;border-radius:14px;font-size:12px;line-height:1.5;white-space:nowrap;text-align:center;border:2px solid;opacity:0;transition:all 0.4s cubic-bezier(0.16,1,0.3,1);z-index:2;}
+        .pipeline-bubble.visible{opacity:1;transform:translateX(-50%) translateY(0);}
+        .pipeline-output{position:absolute;top:100px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text-muted);white-space:nowrap;}
+        .pipeline-complete{opacity:0;transform:translateY(20px) scale(0.9);transition:all 0.6s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;}
+        .pipeline-complete.visible{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+        .pipeline-complete-card{display:inline-flex;align-items:center;gap:16px;padding:20px 36px;border-radius:20px;background:linear-gradient(135deg,rgba(255,107,107,0.1),rgba(255,168,168,0.15));border:2px solid rgba(255,107,107,0.3);}
+        .pipeline-replay{margin-top:16px;padding:8px 20px;border-radius:12px;background:none;border:1.5px solid var(--border);color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;}
+        .pipeline-replay:hover{border-color:var(--coral);color:var(--coral);}
+
+        /* ===== 에이전트 상세 패널 ===== */
+        .agent-detail{overflow:hidden;transition:opacity 0.4s ease, max-height 0.4s ease;opacity:0;max-height:0;}
+        .agent-detail.open{opacity:1;max-height:300px;}
+        .agent-detail-inner{background:var(--bg-secondary);border:2px solid var(--border-light);border-radius:16px;padding:20px 24px;display:flex;gap:20px;text-align:left;max-width:700px;margin:0 auto;}
+        .agent-detail-section{flex:1;}
+        .agent-detail-title{font-size:13px;font-weight:700;margin-bottom:8px;}
+        .agent-detail-text{font-size:12px;color:var(--text-secondary);line-height:1.7;}
+        .agent-detail-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;margin-right:4px;}
+
+        /* ===== 떠다니는 이모지 — JS 랜덤 파티클 ===== */
+        .hero-emoji-container{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+        .floating-emoji{position:absolute;pointer-events:none;will-change:transform;transition:none;}
+
+        /* 스튜디오 — 놀이터 톤 */
+        .studio-section{padding:60px 32px;background:var(--bg-secondary);}
+        .studio-inner{max-width:1000px;margin:0 auto;text-align:center;}
+        .section-label{font-size:14px;font-weight:600;color:var(--brand);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+        .section-heading{font-size:28px;font-weight:700;margin-bottom:40px;}
+        .agent-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
+        .agent-card{background:var(--bg-primary);border:2px solid var(--border-light);border-radius:18px;padding:24px 12px;text-align:center;transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);cursor:default;}
+        .agent-card:nth-child(odd){transform:rotate(-1.5deg);}
+        .agent-card:nth-child(even){transform:rotate(1.5deg);}
+        .agent-card:hover{transform:rotate(0deg) translateY(-8px) scale(1.05) !important;box-shadow:0 12px 32px rgba(0,0,0,0.08);border-color:var(--brand-light);}
+        .agent-icon{width:42px;height:42px;border-radius:0;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;background:none !important;}
+        .agent-icon img{display:block;width:42px;height:42px;object-fit:contain;}
+        .agent-name{font-size:13px;font-weight:600;margin-bottom:4px;}
+        .agent-desc{font-size:11px;color:var(--text-muted);}
+
+        /* 플레이그라운드 */
+        .playground{padding:80px 32px;max-width:1200px;margin:0 auto;}
+        .playground-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;}
+        .playground-sub{font-size:15px;color:var(--text-muted);margin-top:4px;}
+        .game-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;}
+        .game-card{background:var(--bg-primary);border:2px solid var(--border-light);border-radius:20px;overflow:hidden;cursor:pointer;position:relative;transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);}
+        .game-card:hover{border-color:var(--brand);transform:translateY(-8px) rotate(-1deg);box-shadow:0 16px 40px rgba(108,92,231,0.12);}
+        .game-thumbnail{height:180px;display:flex;align-items:center;justify-content:center;font-size:48px;position:relative;}
+        .game-thumbnail::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,var(--bg-primary));}
+        .game-info{padding:16px 20px 20px;}
+        .game-genre{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:8px;}
+        .game-name{font-size:17px;font-weight:700;margin-bottom:4px;}
+        .game-desc{font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;}
+        .game-footer{display:flex;justify-content:space-between;align-items:center;}
+        .game-date{font-size:12px;color:var(--text-muted);}
+        .btn-play{padding:8px 20px;border-radius:14px;background:var(--brand-gradient);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;position:relative;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);}
+        .btn-play:hover{transform:scale(1.08);box-shadow:0 4px 14px rgba(255,107,107,0.3);}
+        .game-card-empty{border:3px dashed var(--border);border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;position:relative;transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);}
+        .game-card-empty:hover{border-color:var(--brand);background:var(--brand-bg);transform:scale(1.02);}
+        .empty-icon{font-size:40px;margin-bottom:12px;color:var(--text-muted);}
+        .empty-text{font-size:15px;font-weight:600;color:var(--text-secondary);}
+        .empty-hint{font-size:13px;color:var(--text-muted);margin-top:4px;}
+        .footer{padding:40px 32px;border-top:1px solid var(--border-light);text-align:center;color:var(--text-muted);font-size:13px;}
+
+        /* ===== 일반 모달 (부드러운 열기/닫기) ===== */
+        .modal-overlay{
+            position:fixed;top:0;left:0;right:0;bottom:0;
+            background:rgba(0,0,0,0);backdrop-filter:blur(0px);
+            z-index:200;display:flex;align-items:center;justify-content:center;
+            pointer-events:none;
+            transition:background 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                       backdrop-filter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-overlay.active{
+            background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);
+            pointer-events:auto;
+        }
+        .modal{
+            background:var(--bg-primary);border-radius:20px;max-height:85vh;overflow-y:auto;
+            box-shadow:0 24px 64px rgba(0,0,0,0.15);
+            opacity:0;
+            transform:scale(0.92) translateY(20px);
+            transition:opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                       transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-overlay.active .modal{
+            opacity:1;
+            transform:scale(1) translateY(0);
+        }
+        .modal-sm{width:560px;}.modal-lg{width:800px;}
+        .modal-header{padding:24px 28px 0;display:flex;justify-content:space-between;align-items:center;}
+        .modal-title{font-size:20px;font-weight:700;}
+        .modal-close{width:32px;height:32px;border-radius:8px;border:none;background:var(--bg-tertiary);font-size:18px;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center;}
+        .modal-close:hover{background:var(--bg-hover);color:var(--text-primary);}
+        .modal-body{padding:24px 28px;}
+        .modal-footer{padding:0 28px 24px;}
+
+        /* ===== 슬라이드 업 풀스크린 모달 (iOS 시트 스타일) ===== */
+        .slideup-overlay{
+            position:fixed;top:0;left:0;right:0;bottom:0;
+            background:rgba(0,0,0,0);z-index:300;
+            pointer-events:none;
+            transition:background 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .slideup-overlay.active{
+            pointer-events:auto;
+            background:rgba(0,0,0,0.35);
+        }
+        .slideup-card{
+            position:fixed;
+            left:0;right:0;bottom:0;
+            height:calc(100vh - 40px);
+            background:var(--bg-primary);
+            border-radius:16px 16px 0 0;
+            box-shadow:0 -4px 60px rgba(0,0,0,0.12);
+            transform:translateY(100%);
+            /* 핵심: iOS 스프링 느낌의 이징 — 빠르게 시작, 부드럽게 감속 */
+            transition:transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+            display:flex;flex-direction:column;
+            overflow:hidden;
+            will-change:transform;
+        }
+        .slideup-overlay.active .slideup-card{
+            transform:translateY(0);
+        }
+        /* 닫힐 때는 부드럽게 — 카드와 오버레이 동기화 */
+        .slideup-overlay.closing{
+            transition:background 0.45s cubic-bezier(0.32, 0, 0.67, 0);
+        }
+        .slideup-overlay.closing .slideup-card{
+            transition:transform 0.45s cubic-bezier(0.32, 0, 0.67, 0);
+        }
+
+        /* 슬라이드 카드 핸들 */
+        .slideup-handle{
+            width:36px;height:4px;background:var(--border);border-radius:2px;
+            margin:10px auto 0;flex-shrink:0;
+            touch-action:none;user-select:none;
+        }
+
+        /* 슬라이드 카드 헤더 */
+        .slideup-header{
+            padding:12px 28px 16px;
+            border-bottom:1px solid var(--border-light);
+            display:flex;justify-content:space-between;align-items:center;
+            flex-shrink:0;
+        }
+        .slideup-back{
+            display:flex;align-items:center;gap:8px;
+            font-size:14px;color:var(--text-secondary);font-weight:500;
+            cursor:pointer;border:none;background:none;font-family:inherit;
+            padding:8px 14px;border-radius:8px;transition:all 0.15s;
+        }
+        .slideup-back:hover{background:var(--bg-tertiary);color:var(--text-primary);}
+        .slideup-body{flex:1;overflow-y:auto;padding:24px 28px;max-width:1200px;margin:0 auto;width:100%;}
+
+        /* 상세 */
+        .detail-title{font-size:22px;font-weight:700;margin-bottom:4px;}
+        .detail-meta{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+        .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:500;}
+        .badge-progress{background:var(--info-bg);color:var(--info);}
+        .badge-completed{background:var(--success-bg);color:var(--success);}
+        .badge-failed{background:var(--danger-bg);color:var(--danger);}
+
+        .pipeline{display:flex;align-items:center;margin:24px 0;}
+        .pipeline-stage{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;}
+        .pipeline-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;border:2px solid var(--border);background:var(--bg-primary);z-index:1;}
+        .pipeline-dot.completed{border-color:var(--success);background:var(--success-bg);color:var(--success);}
+        .pipeline-dot.active{border-color:var(--info);background:var(--info-bg);color:var(--info);animation:pulse 2s infinite;}
+        .pipeline-dot.pending{border-color:var(--border);color:var(--text-muted);}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(51,154,240,0.2)}50%{box-shadow:0 0 0 8px rgba(51,154,240,0)}}
+        .pipeline-line{position:absolute;top:18px;left:50%;width:100%;height:2px;background:var(--border-light);z-index:0;}
+        .pipeline-line.completed{background:var(--success);}
+        .pipeline-label{font-size:11px;color:var(--text-muted);margin-top:6px;}
+        .progress-bar{height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden;margin:8px 0 4px;}
+        .progress-fill{height:100%;border-radius:3px;background:var(--brand);transition:width 0.3s;}
+
+        .tabs{display:flex;gap:2px;background:var(--bg-tertiary);border-radius:10px;padding:3px;margin:20px 0;}
+        .tab{flex:1;padding:10px;text-align:center;border-radius:8px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;}
+        .tab:hover{color:var(--text-primary);}
+        .tab.active{background:var(--bg-primary);color:var(--coral);box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+        .tab-content{display:none;}.tab-content.active{display:block;}
+
+        /* 로그 */
+        .log-panel{background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:12px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:13px;max-height:400px;overflow-y:auto;}
+        .log-entry{padding:6px 0;display:flex;gap:10px;border-bottom:1px solid var(--bg-tertiary);}
+        .log-time{color:var(--text-muted);white-space:nowrap;}.log-level{font-weight:600;min-width:50px;}.log-agent{min-width:60px;font-weight:500;}
+
+        /* 채팅 */
+        .chat-panel{background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:12px;padding:20px;max-height:400px;overflow-y:auto;}
+        .chat-msg{display:flex;gap:12px;margin-bottom:20px;}
+        .chat-avatar{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+        .chat-bubble{background:var(--bg-primary);border:1px solid var(--border-light);border-radius:12px;padding:12px 16px;max-width:80%;}
+        .chat-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+        .chat-name{font-weight:600;font-size:13px;}
+        .chat-type{font-size:11px;padding:1px 8px;border-radius:10px;font-weight:500;}
+        .chat-text{font-size:14px;color:var(--text-secondary);}
+        .chat-time{font-size:11px;color:var(--text-muted);margin-top:4px;}
+        .chat-artifact{margin-top:6px;font-size:12px;color:var(--brand);}
+        .avatar-cto{background:var(--agent-cto-bg);color:var(--agent-cto);}
+        .avatar-planning{background:var(--agent-planning-bg);color:var(--agent-planning);}
+        .avatar-design{background:var(--agent-design-bg);color:var(--agent-design);}
+        .avatar-frontend{background:var(--agent-frontend-bg);color:var(--agent-frontend);}
+        .avatar-backend{background:var(--agent-backend-bg);color:var(--agent-backend);}
+        .avatar-qa{background:var(--agent-qa-bg);color:var(--agent-qa);}
+
+        /* 미리보기 */
+        .preview-toolbar{display:flex;gap:8px;margin-bottom:16px;}
+        .preview-btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-secondary);cursor:pointer;}
+        .preview-frame{width:100%;height:500px;border:2px solid var(--border);border-radius:12px;background:#0f3460;display:flex;align-items:center;justify-content:center;color:white;font-size:48px;}
+        .feedback-form{margin-top:20px;padding:20px;background:var(--bg-secondary);border-radius:12px;border:1px solid var(--border-light);}
+
+        /* 소스코드 */
+        .source-layout{display:flex;gap:16px;}
+        .file-tree{width:200px;flex-shrink:0;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:12px;padding:12px;}
+        .file-item{padding:6px 10px;border-radius:6px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--text-secondary);}
+        .file-item:hover{background:var(--bg-tertiary);}
+        .file-item.active{background:var(--brand-bg);color:var(--brand);font-weight:600;}
+        .code-viewer{flex:1;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:12px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:13px;max-height:500px;overflow-y:auto;white-space:pre;line-height:1.8;}
+        .code-ln{color:var(--text-muted);display:inline-block;width:30px;text-align:right;margin-right:16px;user-select:none;}
+
+        /* 개요 */
+        .overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+        .overview-card{background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:12px;padding:20px;}
+        .overview-card-title{font-size:14px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;}
+        .artifact-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-light);}
+        .artifact-name{font-size:13px;font-weight:600;}
+        .artifact-meta{font-size:11px;color:var(--text-muted);}
+        .token-bar-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;}
+        .token-bar{height:8px;background:var(--bg-tertiary);border-radius:4px;overflow:hidden;margin-bottom:8px;}
+        .token-fill{height:100%;border-radius:4px;}
+
+        /* 폼 */
+        .form-group{margin-bottom:20px;}
+        .form-label{display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;}
+        .form-input,.form-textarea{width:100%;background:var(--bg-primary);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text-primary);font-size:14px;font-family:inherit;outline:none;}
+        .form-input:focus,.form-textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(108,92,231,0.1);}
+        .form-textarea{min-height:130px;resize:vertical;}
+        .form-hint{font-size:12px;color:var(--text-muted);margin-top:6px;display:flex;justify-content:space-between;}
+        .genre-tags{display:flex;gap:8px;flex-wrap:wrap;}
+        .genre-tag{padding:7px 16px;border-radius:20px;font-size:13px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer;font-weight:500;}
+        .genre-tag:hover{border-color:var(--brand);color:var(--brand);}
+        .genre-tag.selected{background:var(--brand);border-color:var(--brand);color:white;}
+        .btn-submit{width:100%;padding:13px;background:var(--brand-gradient);color:white;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;}
+        .btn-submit:disabled{opacity:0.5;cursor:not-allowed;}
+        .btn-action{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-secondary);cursor:pointer;}
+        .btn-action:hover{background:var(--bg-tertiary);}
+        .btn-action-danger{color:var(--danger);border-color:var(--danger-bg);}
+
+        /* 프로젝트 목록 */
+        .project-list-item{display:flex;justify-content:space-between;align-items:center;padding:16px;border:1px solid var(--border-light);border-radius:12px;margin-bottom:10px;cursor:pointer;}
+        .project-list-item:hover{border-color:var(--brand);background:var(--brand-bg);}
+        .project-left{display:flex;align-items:center;gap:14px;}
+        .project-icon{font-size:28px;}
+        .project-info-name{font-size:15px;font-weight:600;}
+        .project-info-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
+        .progress-bar-sm{width:80px;height:4px;background:var(--bg-tertiary);border-radius:2px;overflow:hidden;margin-top:6px;}
+
+        .filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+        .filter-btn{padding:6px 14px;border-radius:6px;font-size:13px;border:1px solid var(--border-light);background:var(--bg-primary);color:var(--text-secondary);cursor:pointer;}
+        .filter-btn.active{background:var(--coral);border-color:var(--coral);color:white;}
+
+        /* 설정/감사 */
+        .settings-card{background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:12px;padding:20px;margin-bottom:16px;}
+        .settings-title{font-size:15px;font-weight:600;margin-bottom:14px;}
+        .health-item{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px;}
+        .health-label{color:var(--text-secondary);min-width:120px;}
+        .audit-table{width:100%;border-collapse:collapse;font-size:13px;}
+        .audit-table th{text-align:left;padding:10px 12px;font-weight:600;color:var(--text-secondary);border-bottom:2px solid var(--border-light);}
+        .audit-table td{padding:10px 12px;border-bottom:1px solid var(--border-light);}
+        .event-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;}
+
+        /* ===== 모바일 반응형 (max-width: 768px) ===== */
+        @media (max-width: 768px) {
+            /* 풀페이지 스냅 모바일 */
+            .snap-section { min-height: calc(100vh - 52px); }
+            .scroll-hint { bottom: 20px; }
+
+            /* 헤더 */
+            .header { padding: 0 16px; height: 52px; }
+            .header-left { gap: 12px; }
+            .logo { font-size: 16px; }
+            .logo-icon { width: 28px; height: 28px; font-size: 14px; }
+            .nav { display: none; }
+            .header-right { gap: 8px; }
+            .theme-toggle { width: 32px; height: 32px; }
+
+            /* 모바일 네비 (하단 고정) */
+            .mobile-nav {
+                display: flex !important;
+                position: fixed; bottom: 0; left: 0; right: 0;
+                background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+                border-top: 1px solid var(--border-light);
+                z-index: 100; padding: 8px 0;
+                justify-content: space-around;
+            }
+            .mobile-nav a {
+                display: flex; flex-direction: column; align-items: center;
+                font-size: 10px; color: var(--text-muted); text-decoration: none;
+                gap: 2px; padding: 4px 8px;
+            }
+            .mobile-nav a.active { color: var(--brand); }
+            .mobile-nav .mn-icon { font-size: 18px; }
+
+            /* 인트로 */
+            .intro-block { font-size: 56px !important; -webkit-text-stroke-width: 2.5px !important; }
+            .intro-title { gap: 2px !important; }
+            .intro-subtitle { font-size: 13px !important; }
+            .intro-logo { animation-delay: 0.2s; }
+            .intro-cloud { height: 20px !important; }
+            .intro-cloud::before { height: 16px !important; }
+            .intro-cloud::after { height: 12px !important; }
+            .intro-loadbar { width: 150px !important; }
+
+            /* 히어로 */
+            .hero { padding: 100px 20px 50px !important; }
+            .hero h1 { font-size: 28px !important; }
+            .hero p { font-size: 14px !important; }
+            .hero-actions { flex-direction: column; gap: 8px; }
+            .btn-hero { padding: 12px 24px !important; font-size: 14px !important; width: 100%; text-align: center; }
+            .hero-badge { font-size: 11px; }
+
+            /* 에이전트 카드 */
+            .studio-section { padding: 40px 16px; }
+            .section-heading { font-size: 20px !important; margin-bottom: 24px !important; }
+            .agent-cards { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+            .agent-card { padding: 14px 8px !important; }
+            .agent-icon { width: 36px !important; height: 36px !important; }
+            .agent-icon img { width: 36px !important; height: 36px !important; }
+            .agent-name { font-size: 11px !important; }
+            .agent-desc { font-size: 9px !important; }
+
+            /* 플레이그라운드 */
+            .playground { padding: 40px 16px !important; }
+            .playground-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .game-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+            .game-thumbnail { height: 140px !important; }
+            .game-name { font-size: 15px !important; }
+            .game-desc { font-size: 12px !important; }
+
+            /* 일반 모달 */
+            .modal { border-radius: 16px !important; max-height: 90vh !important; }
+            .modal-sm, .modal-lg { width: calc(100vw - 32px) !important; }
+            .modal-header { padding: 20px 20px 0 !important; }
+            .modal-body { padding: 20px !important; }
+            .modal-footer { padding: 0 20px 20px !important; }
+            .modal-title { font-size: 18px !important; }
+            .form-textarea { min-height: 100px !important; }
+            .genre-tags { gap: 6px !important; }
+            .genre-tag { padding: 5px 12px !important; font-size: 12px !important; }
+
+            /* 슬라이드 업 모달 */
+            .slideup-card { height: calc(100vh - 20px) !important; border-radius: 14px 14px 0 0 !important; }
+            .slideup-header { padding: 10px 16px 12px !important; }
+            .slideup-body { padding: 16px !important; }
+            .detail-title { font-size: 18px !important; }
+
+            /* 파이프라인 */
+            .pipeline { margin: 16px 0 !important; }
+            .pipeline-dot { width: 30px !important; height: 30px !important; font-size: 12px !important; }
+            .pipeline-label { font-size: 9px !important; }
+
+            /* 탭 */
+            .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .tab { flex: none !important; padding: 8px 14px !important; font-size: 12px !important; white-space: nowrap; }
+
+            /* 로그 */
+            .log-panel { font-size: 11px !important; padding: 12px !important; max-height: 300px !important; }
+            .log-entry { flex-wrap: wrap; gap: 4px !important; }
+            .log-time { font-size: 10px !important; }
+            .log-agent { min-width: auto !important; }
+
+            /* 채팅 */
+            .chat-panel { padding: 14px !important; max-height: 350px !important; }
+            .chat-bubble { max-width: 90% !important; padding: 10px 12px !important; }
+            .chat-avatar { width: 30px !important; height: 30px !important; font-size: 14px !important; }
+
+            /* 미리보기 */
+            .preview-frame { height: 280px !important; }
+            .preview-toolbar { flex-wrap: wrap; }
+            .feedback-form { padding: 14px !important; }
+
+            /* 소스코드 */
+            .source-layout { flex-direction: column !important; }
+            .file-tree { width: 100% !important; display: flex; gap: 8px; padding: 8px !important; }
+            .file-item { white-space: nowrap; }
+            .code-viewer { max-height: 350px !important; font-size: 11px !important; }
+
+            /* 개요 */
+            .overview-grid { grid-template-columns: 1fr !important; }
+
+            /* 감사 로그 */
+            .audit-table { font-size: 11px !important; }
+            .audit-table th, .audit-table td { padding: 8px 6px !important; }
+
+            /* 프로젝트 목록 모달 */
+            .project-list-item { padding: 12px !important; }
+            .project-icon { font-size: 22px !important; }
+            .project-info-name { font-size: 14px !important; }
+
+            /* 파이프라인 프리뷰 */
+            .pipeline-preview { padding: 0 16px !important; }
+            .pipeline-top { padding: 0 !important; }
+            .pipeline-track { flex-direction: column !important; gap: 20px !important; }
+            .pipeline-track::before { display: none !important; }
+            .pipeline-progress { display: none !important; }
+            .pipeline-progress-done { display: none !important; }
+            .pipeline-node { flex-direction: row !important; gap: 14px !important; min-height: auto !important; }
+            .pipeline-avatar { width: 44px !important; height: 44px !important; font-size: 20px !important; flex-shrink: 0; }
+            .pipeline-agent-name { font-size: 14px !important; text-align: left !important; }
+            .pipeline-bubble { position: static !important; transform: none !important; width: auto !important; max-width: none !important; white-space: normal !important; text-align: left !important; font-size: 12px !important; }
+            .pipeline-bubble.visible { transform: none !important; }
+            .pipeline-output { position: static !important; transform: none !important; text-align: left !important; margin-top: 4px; }
+            .pipeline-bottom { min-height: auto !important; }
+            .agent-detail-inner { flex-direction: column !important; gap: 12px !important; }
+            .agent-detail-section:last-child { border-left: none !important; padding-left: 0 !important; border-top: 1px solid var(--border-light); padding-top: 12px !important; }
+            .pipeline-complete-card { flex-direction: column !important; text-align: center !important; gap: 10px !important; padding: 16px 20px !important; }
+            .scroll-hint { bottom: 16px !important; }
+
+            /* 설정 */
+            .settings-card { padding: 16px !important; }
+            .health-item { font-size: 13px !important; }
+
+            /* 푸터 + 하단 네비 여백 */
+            .footer { padding: 30px 16px 80px !important; font-size: 11px !important; }
+
+            /* 필터 */
+            .filter-bar { overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+            .filter-btn { flex-shrink: 0; white-space: nowrap; }
+
+            /* 화면정의서 (spec-flowchart) */
+            .spec-flowchart { padding: 16px !important; margin: 60px 16px 80px !important; }
+            .spec-flowchart h2 { font-size: 16px !important; }
+            .spec-flowchart h3 { font-size: 14px !important; margin: 16px 0 8px !important; }
+            .spec-flowchart pre { font-size: 9px !important; padding: 12px !important; -webkit-overflow-scrolling: touch; overflow-x: auto; }
+            .flow-table { font-size: 11px !important; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .flow-table th { padding: 6px 8px !important; font-size: 10px !important; white-space: nowrap; }
+            .flow-table td { padding: 6px 8px !important; }
+            .ft { font-size: 9px !important; padding: 1px 6px !important; }
+
+            /* 정의서 모드 주석 */
+            .spec-note { max-width: 180px !important; font-size: 9px !important; padding: 6px 8px !important; }
+            body.spec-mode [data-spec] { outline-offset: 1px !important; }
+
+            /* 정의서 토글 버튼 — 모바일 네비 위로 */
+            .spec-toggle { bottom: 72px !important; right: 16px !important; padding: 10px 18px !important; font-size: 12px !important; }
+
+            /* 스크롤 가능 영역 iOS 모멘텀 */
+            .code-viewer { -webkit-overflow-scrolling: touch; }
+            .log-panel { -webkit-overflow-scrolling: touch; }
+            .chat-panel { -webkit-overflow-scrolling: touch; }
+            .slideup-body { -webkit-overflow-scrolling: touch; }
+        }
+
+        /* 아주 작은 화면 (max-width: 380px) */
+        @media (max-width: 380px) {
+            .intro-block { font-size: 44px !important; }
+            .hero h1 { font-size: 24px !important; }
+            .agent-cards { grid-template-columns: repeat(2, 1fr) !important; }
+            .pipeline-dot { width: 26px !important; height: 26px !important; font-size: 10px !important; }
+            .pipeline-label { font-size: 8px !important; }
+        }
+
+        /* ===== 인트로 화면 ===== */
+        .intro {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10000;
+            background: #f8f9fb;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .intro.exiting {
+            opacity: 0;
+            transform: scale(1.05);
+            pointer-events: none;
+        }
+        .intro.hidden { display: none; }
+
+        /* 배경 파티클 */
+        .intro-particles {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            overflow: hidden;
+        }
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0;
+            animation: particleFloat linear infinite;
+        }
+        @keyframes particleFloat {
+            0% { opacity: 0; transform: translateY(100vh) scale(0); }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.6; }
+            100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+        }
+
+        /* 바닥 놀이터 그라운드 */
+        @keyframes canvasFrameIn {
+            from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+        }
+
+        /* 인트로 HTML 구름 */
+        .intro-cloud {
+            position: absolute;
+            height: 30px;
+            background: rgba(108,92,231,0.06);
+            border-radius: 50px;
+            animation: cloudDrift linear infinite;
+            opacity: 0;
+            animation-fill-mode: both;
+        }
+        .intro-cloud::before {
+            content: '';
+            position: absolute;
+            top: -12px; left: 20%;
+            width: 45%; height: 24px;
+            background: rgba(108,92,231,0.05);
+            border-radius: 50px;
+        }
+        .intro-cloud::after {
+            content: '';
+            position: absolute;
+            top: -6px; left: 50%;
+            width: 35%; height: 18px;
+            background: rgba(108,92,231,0.04);
+            border-radius: 50px;
+        }
+        @keyframes cloudDrift {
+            0% { transform: translateX(-150px); opacity: 0; }
+            8% { opacity: 1; }
+            92% { opacity: 1; }
+            100% { transform: translateX(min(1000px, 92vw)); opacity: 0; }
+        }
+
+        .intro-ground {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 120px;
+            background: linear-gradient(180deg, transparent, rgba(108,92,231,0.06));
+            border-top: 1px solid rgba(108,92,231,0.1);
+        }
+
+        /* 로고 등장 */
+        .intro-logo {
+            position: relative; z-index: 2;
+            text-align: center;
+            animation: introLogoIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+        }
+        @keyframes introLogoIn {
+            from { opacity: 0; transform: translateY(40px) scale(0.8); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .intro-icon {
+            width: 80px; height: 80px;
+            background: var(--brand-gradient);
+            border-radius: 24px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 40px; color: white; font-weight: 800;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 40px rgba(255,107,107,0.4);
+            animation: iconBounce 2s ease-in-out 1.5s infinite;
+        }
+        @keyframes iconBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .intro-title {
+            display: flex; justify-content: center; gap: 4px;
+            margin-bottom: 12px;
+        }
+        .intro-block {
+            display: inline-block;
+            font-size: 82px; font-weight: 800;
+            color: transparent;
+            -webkit-text-stroke: 3px var(--brand);
+            animation: blockBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+        .intro-block:nth-child(1) { -webkit-text-stroke-color: var(--agent-planning); --wobble-from: -5deg; --wobble-to: 3deg; }
+        .intro-block:nth-child(2) { -webkit-text-stroke-color: var(--agent-cto); --wobble-from: 4deg; --wobble-to: -3deg; }
+        .intro-block:nth-child(3) { -webkit-text-stroke-color: var(--agent-design); --wobble-from: -3deg; --wobble-to: 5deg; }
+        @keyframes blockBounce1 {
+            0% { opacity: 0; transform: translateY(-60px) rotate(15deg) scale(0.3); }
+            60% { opacity: 1; transform: translateY(8px) rotate(-8deg) scale(1.1); }
+            80% { transform: translateY(-4px) rotate(-3deg) scale(0.95); }
+            100% { transform: translateY(0) rotate(-5deg) scale(1); }
+        }
+        @keyframes blockBounce2 {
+            0% { opacity: 0; transform: translateY(-60px) rotate(-12deg) scale(0.3); }
+            60% { opacity: 1; transform: translateY(8px) rotate(6deg) scale(1.1); }
+            80% { transform: translateY(-4px) rotate(2deg) scale(0.95); }
+            100% { transform: translateY(0) rotate(4deg) scale(1); }
+        }
+        @keyframes blockBounce3 {
+            0% { opacity: 0; transform: translateY(-60px) rotate(18deg) scale(0.3); }
+            60% { opacity: 1; transform: translateY(8px) rotate(-5deg) scale(1.1); }
+            80% { transform: translateY(-4px) rotate(-1deg) scale(0.95); }
+            100% { transform: translateY(0) rotate(-3deg) scale(1); }
+        }
+        .intro-block:nth-child(1) { animation: blockBounce1 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.4s both, blockWobble1 2.5s ease-in-out 1.5s infinite; }
+        .intro-block:nth-child(2) { animation: blockBounce2 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.6s both, blockWobble2 2.8s ease-in-out 1.8s infinite; }
+        .intro-block:nth-child(3) { animation: blockBounce3 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.8s both, blockWobble3 2.3s ease-in-out 2.1s infinite; }
+        @keyframes blockWobble1 {
+            0%, 100% { transform: rotate(-5deg) translateY(0); }
+            50% { transform: rotate(3deg) translateY(-7px); }
+        }
+        @keyframes blockWobble2 {
+            0%, 100% { transform: rotate(4deg) translateY(0); }
+            50% { transform: rotate(-3deg) translateY(-5px); }
+        }
+        @keyframes blockWobble3 {
+            0%, 100% { transform: rotate(-3deg) translateY(0); }
+            50% { transform: rotate(5deg) translateY(-8px); }
+        }
+        .intro-subtitle {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            animation: introSubIn 0.8s ease 0.8s both;
+        }
+        @keyframes introSubIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 에이전트 아이콘 원형 배치 */
+        .intro-agents {
+            display: flex; gap: 16px; margin-bottom: 50px;
+            animation: introAgentsIn 1s ease 1.2s both;
+        }
+        @keyframes introAgentsIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .intro-agent {
+            width: 60px; height: 60px;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            animation: agentPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+            box-shadow: none;
+            background: none !important;
+        }
+        .intro-agent:nth-child(1) { animation-delay: 1.3s; }
+        .intro-agent:nth-child(2) { animation-delay: 1.45s; }
+        .intro-agent:nth-child(3) { animation-delay: 1.6s; }
+        .intro-agent:nth-child(4) { animation-delay: 1.75s; }
+        .intro-agent:nth-child(5) { animation-delay: 1.9s; }
+        .intro-agent:nth-child(6) { animation-delay: 2.05s; }
+        @keyframes agentPop {
+            from { opacity: 0; transform: scale(0) rotate(-20deg); }
+            to { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+
+        /* 연결선 애니메이션 */
+        .intro-line {
+            width: 20px; height: 2px; margin-top: 25px;
+            background: var(--border);
+            border-radius: 1px;
+            animation: lineGlow 2s ease-in-out infinite alternate;
+        }
+        @keyframes lineGlow {
+            from { background: var(--border); }
+            to { background: var(--brand);
+        }
+
+        /* 클릭 안내 */
+        .intro-hint {
+            font-size: 8px; color: #d0d3d9; letter-spacing: 1.5px;
+            opacity: 0;
+            animation: hintFade 3s ease-in-out 2.5s infinite;
+            z-index: 2;
+        }
+        @keyframes hintFade {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 0.45; }
+        }
+
+        /* 인트로 로딩바 */
+        .intro-loadbar {
+            position: absolute; bottom: 55px;
+            width: 200px; height: 3px;
+            background: var(--border-light);
+            border-radius: 2px;
+            overflow: hidden;
+            z-index: 2;
+            animation: introHintIn 0.6s ease 1s both;
+        }
+        .intro-loadfill {
+            height: 100%;
+            background: var(--brand-gradient);
+            border-radius: 2px;
+            animation: loadProgress 2.5s cubic-bezier(0.16, 1, 0.3, 1) 1s both;
+        }
+        @keyframes loadProgress {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        /* 메인 콘텐츠 초기 숨김 (인트로 중) */
+        body.intro-active .header,
+        body.intro-active #homePage,
+        body.intro-active .spec-toggle {
+            opacity: 0;
+            transition: opacity 0.6s ease 0.3s;
+        }
+        body.intro-done .header,
+        body.intro-done #homePage,
+        body.intro-done .spec-toggle {
+            opacity: 1;
+        }
+
+        /* ===== 패럴랙스 & 스크롤 애니메이션 ===== */
+        html { scroll-behavior: smooth; }
+
+        /* 스크롤 시 나타나는 요소 (초기 상태: 숨김) */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 딜레이 클래스 (순차 등장) */
+        .delay-1 { transition-delay: 0.1s; }
+        .delay-2 { transition-delay: 0.2s; }
+        .delay-3 { transition-delay: 0.3s; }
+        .delay-4 { transition-delay: 0.4s; }
+        .delay-5 { transition-delay: 0.5s; }
+        .delay-6 { transition-delay: 0.6s; }
+
+        /* 좌측에서 슬라이드 */
+        .reveal-left {
+            opacity: 0;
+            transform: translateX(-40px);
+            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-left.visible { opacity: 1; transform: translateX(0); }
+
+        /* 우측에서 슬라이드 */
+        .reveal-right {
+            opacity: 0;
+            transform: translateX(40px);
+            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-right.visible { opacity: 1; transform: translateX(0); }
+
+        /* 스케일 업 */
+        .reveal-scale {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-scale.visible { opacity: 1; transform: scale(1); }
+
+        /* 히어로 패럴랙스 배경 */
+        .hero {
+            overflow: hidden;
+        }
+        .hero::before {
+            transition: transform 0.1s linear;
+        }
+        .hero-badge {
+            animation: fadeInDown 0.8s ease-out 0.2s both;
+        }
+        .hero h1 {
+            animation: fadeInDown 0.8s ease-out 0.4s both;
+        }
+        .hero p {
+            animation: fadeInDown 0.8s ease-out 0.6s both;
+        }
+        .hero-actions {
+            animation: fadeInUp 0.8s ease-out 0.8s both;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 플로우 화살표 순차 등장 */
+        .flow-step, .flow-arrow {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .flow-steps.visible .flow-step,
+        .flow-steps.visible .flow-arrow {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .flow-steps.visible .flow-step:nth-child(1) { transition-delay: 0.0s; }
+        .flow-steps.visible .flow-arrow:nth-child(2) { transition-delay: 0.1s; }
+        .flow-steps.visible .flow-step:nth-child(3) { transition-delay: 0.2s; }
+        .flow-steps.visible .flow-arrow:nth-child(4) { transition-delay: 0.3s; }
+        .flow-steps.visible .flow-step:nth-child(5) { transition-delay: 0.4s; }
+        .flow-steps.visible .flow-arrow:nth-child(6) { transition-delay: 0.5s; }
+        .flow-steps.visible .flow-step:nth-child(7) { transition-delay: 0.6s; }
+        .flow-steps.visible .flow-arrow:nth-child(8) { transition-delay: 0.7s; }
+        .flow-steps.visible .flow-step:nth-child(9) { transition-delay: 0.8s; }
+        .flow-steps.visible .flow-arrow:nth-child(10) { transition-delay: 0.9s; }
+        .flow-steps.visible .flow-step:nth-child(11) { transition-delay: 1.0s; }
+
+        /* 게임 카드 호버 시 부드러운 그림자 */
+        .game-card {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .game-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* 에이전트 카드 호버 */
+        .agent-card {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .agent-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+        }
+
+        /* 헤더 스크롤 시 그림자 */
+        .header {
+            transition: box-shadow 0.3s ease;
+        }
+        .header.scrolled {
+            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+        }
+
+        /* (slideup-card 트랜지션은 메인 정의에서 처리) */
+
+        /* 플레이 버튼 펄스 */
+        .btn-play:hover {
+            animation: btnPulse 0.6s ease;
+        }
+        @keyframes btnPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* 히어로 배경 글로우 */
+        .hero-glow {
+            position: absolute;
+            width: 400px; height: 400px;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            pointer-events: none;
+            animation: glowFloat 6s ease-in-out infinite;
+        }
+        .hero-glow-1 {
+            top: 20%; left: 20%;
+            background: var(--agent-planning);
+            animation-delay: 0s;
+        }
+        .hero-glow-2 {
+            top: 30%; right: 20%;
+            background: var(--agent-frontend);
+            animation-delay: 2s;
+        }
+        .hero-glow-3 {
+            bottom: 20%; left: 40%;
+            background: var(--brand);
+            animation-delay: 4s;
+        }
+        @keyframes glowFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(20px, -15px) scale(1.1); }
+            66% { transform: translate(-15px, 10px) scale(0.95); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== 인트로 화면 ===== -->
+<div class="intro" id="introScreen" onclick="dismissIntro()">
+    <!-- 게임 장면 Canvas (가운데 프레임) -->
+    <div id="introCanvasWrap" style="
+        position:absolute; top:50%; left:50%;
+        transform:translate(-50%,-50%);
+        width:min(1000px, 92vw); height:min(420px, 55vh);
+        border-radius:20px;
+        overflow:hidden;
+        opacity:0;
+        animation: canvasFrameIn 1.5s cubic-bezier(0.16,1,0.3,1) 0.5s both;
+    ">
+        <!-- 소프트 마스크 (가장자리 페이드) -->
+        <div style="position:absolute;top:0;left:0;right:0;height:60px;background:linear-gradient(var(--bg-secondary),transparent);z-index:1;border-radius:20px 20px 0 0;"></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;height:60px;background:linear-gradient(transparent,var(--bg-secondary));z-index:1;border-radius:0 0 20px 20px;"></div>
+        <div style="position:absolute;top:0;left:0;bottom:0;width:50px;background:linear-gradient(90deg,var(--bg-secondary),transparent);z-index:1;"></div>
+        <div style="position:absolute;top:0;right:0;bottom:0;width:50px;background:linear-gradient(270deg,var(--bg-secondary),transparent);z-index:1;"></div>
+        <canvas id="introCanvas" style="width:100%;height:100%;"></canvas>
+    </div>
+
+    <!-- 장면 표시 -->
+    <!-- 게임이름: Canvas 프레임 안쪽 하단 -->
+    <div id="sceneLabel" style="position:absolute;top:calc(50% + min(170px,22vh));left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,107,107,0.3);z-index:3;font-weight:600;letter-spacing:2px;"></div>
+
+    <!-- 클릭문구: 로딩바 아래 -->
+    <div style="position:absolute;bottom:38px;left:50%;transform:translateX(-50%);z-index:3;">
+        <div style="font-size:11px;color:#bbb;letter-spacing:1px;">아무 곳이나 클릭하여 시작하세요</div>
+    </div>
+
+    <!-- 바닥 놀이터 -->
+    <div class="intro-ground"></div>
+
+    <!-- 구름 (Canvas 프레임 너비에 맞춤) -->
+    <div class="intro-clouds" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:min(1000px,92vw);bottom:0;pointer-events:none;z-index:2;overflow:hidden;">
+        <div class="intro-cloud" style="top:8%;left:15%;width:120px;animation-duration:25s;animation-delay:0s;"></div>
+        <div class="intro-cloud" style="top:5%;left:40%;width:90px;animation-duration:30s;animation-delay:3s;"></div>
+        <div class="intro-cloud" style="top:12%;left:65%;width:140px;animation-duration:28s;animation-delay:1s;"></div>
+        <div class="intro-cloud" style="top:3%;left:85%;width:100px;animation-duration:32s;animation-delay:5s;"></div>
+        <div class="intro-cloud" style="top:15%;left:5%;width:80px;animation-duration:26s;animation-delay:8s;"></div>
+    </div>
+
+    <!-- 로고 + 타이틀 -->
+    <div class="intro-logo">
+        <!-- 심볼 로고 제거됨 -->
+        <div class="intro-title">
+            <div class="intro-block">놀</div>
+            <div class="intro-block">이</div>
+            <div class="intro-block">터</div>
+        </div>
+        <div class="intro-subtitle">AI Multi-Agent Game Studio</div>
+    </div>
+
+    <!-- 에이전트 행진 제거됨 -->
+
+    <!-- 로딩바 -->
+    <div class="intro-loadbar"><div class="intro-loadfill"></div></div>
+
+    <!-- 클릭 안내: 위 sceneLabel 묶음으로 이동됨 -->
+</div>
+
+<!-- 모바일 하단 네비 (데스크톱에서는 숨김) -->
+<div class="mobile-nav" style="display:none">
+    <a class="active" onclick="closeAll()"><span class="mn-icon">🏠</span>홈</a>
+    <a onclick="openModal('projectsModal')"><span class="mn-icon">📂</span>프로젝트</a>
+    <a onclick="openModal('createModal')"><span class="mn-icon">🎮</span>생성</a>
+    <a onclick="openModal('auditModal')"><span class="mn-icon">📋</span>감사로그</a>
+    <a onclick="openModal('settingsModal')"><span class="mn-icon">⚙️</span>설정</a>
+</div>
+
+<button class="spec-toggle" id="specToggle" onclick="toggleSpecMode()">📋 화면정의서 모드 ON</button>
+
+<!-- ===== 화면정의서 (정의서 모드에서만 표시) ===== -->
+<div class="spec-flowchart">
+    <h2>📋 놀이터 NoriTer — 화면 인터랙션 정의서 v2</h2>
+    <p style="font-size:13px;color:var(--spec-text)">모든 화면은 홈(단일 페이지) 위에 모달로 동작. <b>프로젝트 상세는 슬라이드 업 카드 모달</b> (아래에서 위로 올라옴)</p>
+    <p style="font-size:12px;color:var(--spec-text);opacity:0.7;margin-top:4px">📌 노란 박스 = 인터랙션 설명 | 노란 점선 = 클릭 가능 요소</p>
+
+    <h3>🗺️ 전체 모달 구조</h3>
+    <pre style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--spec-text);line-height:1.8;background:rgba(255,212,59,0.15);padding:20px;border-radius:8px;overflow-x:auto">
+┌──────────────────────────── 홈 (항상 배경) ────────────────────────────┐
+│                                                                      │
+│  [게임 생성] ──→ 일반 모달 (가운데 팝업)                                 │
+│  [내 프로젝트] ──→ 일반 모달 (가운데 팝업)                               │
+│  [감사 로그] ──→ 일반 모달 (가운데 팝업)                                 │
+│  [설정] ──→ 일반 모달 (가운데 팝업)                                      │
+│  [플레이▶] ──→ 게임 iframe 모달 (가운데 팝업)                            │
+│                                                                      │
+│  프로젝트 카드 클릭 / 게임 생성 완료 ──→ 슬라이드 업 카드 모달             │
+│  ┌────────────────────────────────────────────┐ ← 둥근 모서리          │
+│  │  ──── (핸들 바)                              │ ← 상단 드래그 핸들      │
+│  │  ← 돌아가기              [중단] [삭제]        │                       │
+│  │                                            │                       │
+│  │  뱀파이어 서바이벌  🔄 진행중                  │                       │
+│  │  [✓]──[✓]──[✓]──[🔄]──[○]──[○]           │ ← 파이프라인            │
+│  │                                            │                       │
+│  │  [개요] [로그] [대화] [미리보기] [소스코드]     │ ← 탭 전환              │
+│  │                                            │                       │
+│  │  (탭 콘텐츠)                                 │                       │
+│  │                                            │                       │
+│  └────────────────────────────────────────────┘ ← 아래에서 슬라이드 업   │
+└──────────────────────────────────────────────────────────────────────┘
+    </pre>
+
+    <h3>🖱️ 인터랙션 요약 (모든 요소)</h3>
+    <table class="flow-table">
+        <thead><tr><th>위치</th><th>요소</th><th>이벤트</th><th>동작</th><th>API</th></tr></thead>
+        <tbody>
+            <tr><td>헤더</td><td>로고/[홈]</td><td><span class="ft ft-click">클릭</span></td><td>모든 모달 닫기 → 홈</td><td>—</td></tr>
+            <tr><td>헤더</td><td>[내 프로젝트]</td><td><span class="ft ft-modal">일반 모달</span></td><td>프로젝트 목록 모달 팝업</td><td><span class="ft ft-api">API-PRJ-002</span></td></tr>
+            <tr><td>헤더</td><td>[감사 로그]</td><td><span class="ft ft-modal">일반 모달</span></td><td>감사 로그 모달 팝업</td><td><span class="ft ft-api">API-LOG-003</span></td></tr>
+            <tr><td>헤더</td><td>[설정]</td><td><span class="ft ft-modal">일반 모달</span></td><td>설정 모달 팝업</td><td><span class="ft ft-api">API-SET-001</span></td></tr>
+            <tr><td>헤더</td><td>🌙 토글</td><td><span class="ft ft-click">클릭</span></td><td>라이트↔다크 테마 전환</td><td>—</td></tr>
+            <tr><td>히어로</td><td>[🎮 30초 데모]</td><td><span class="ft ft-modal">일반 모달</span></td><td>게임 생성 모달 (DEMO 뱃지 표시)</td><td>—</td></tr>
+            <tr><td>히어로</td><td>[👀 구경하기]</td><td><span class="ft ft-nav">스크롤</span></td><td>플레이그라운드로 스무스 스크롤</td><td>—</td></tr>
+            <tr><td>파이프라인</td><td>자동 재생</td><td><span class="ft ft-click">뷰포트 진입</span></td><td>6단계 순차 애니메이션 자동 시작</td><td>—</td></tr>
+            <tr><td>파이프라인</td><td>에이전트 활성화</td><td><span class="ft ft-click">자동</span></td><td>아이콘 활성 + 채팅 버블 + 상세 패널 자동 열림</td><td>—</td></tr>
+            <tr><td>파이프라인</td><td>프로그레스 바</td><td><span class="ft ft-click">자동</span></td><td>진행에 따라 코랄 로딩 → 완료 시 QA 뒤 초록 전환</td><td>—</td></tr>
+            <tr><td>파이프라인</td><td>[게임 완성!] 카드</td><td><span class="ft ft-full">슬라이드 업</span></td><td>클릭 → 프로젝트 상세 모달 열기</td><td><span class="ft ft-api">API-PRJ-003</span></td></tr>
+            <tr><td>파이프라인</td><td>[↻ 다시 보기]</td><td><span class="ft ft-click">클릭</span></td><td>파이프라인 애니메이션 처음부터 재시작</td><td>—</td></tr>
+            <tr><td>파이프라인</td><td>[🎮 30초 데모]</td><td><span class="ft ft-modal">일반 모달</span></td><td>게임 생성 모달 (DEMO 뱃지 표시)</td><td>—</td></tr>
+            <tr><td>생성 모달</td><td>장르 태그</td><td><span class="ft ft-click">클릭</span></td><td>단일 선택 (토글)</td><td>—</td></tr>
+            <tr><td>생성 모달</td><td>요구사항 입력</td><td><span class="ft ft-click">입력</span></td><td>실시간 글자수 카운트, 10자 이상 시 버튼 활성화</td><td>검증: NT-ERR-V001</td></tr>
+            <tr><td>생성 모달</td><td>[게임 생성 요청]</td><td><span class="ft ft-api">API 호출</span></td><td>모달 닫기 → 슬라이드 업 상세 모달 열기 → SSE 연결</td><td><span class="ft ft-api">API-PRJ-001</span></td></tr>
+            <tr><td>플레이그라운드</td><td>[플레이▶]</td><td><span class="ft ft-modal">일반 모달</span></td><td>게임 iframe 팝업 (바로 플레이)</td><td><span class="ft ft-api">API-GAM-001</span></td></tr>
+            <tr><td>플레이그라운드</td><td>게임 카드 영역</td><td><span class="ft ft-full">슬라이드 업</span></td><td>프로젝트 상세 슬라이드 업 카드 모달</td><td><span class="ft ft-api">API-PRJ-003</span></td></tr>
+            <tr><td>플레이그라운드</td><td>빈 카드 (✨)</td><td><span class="ft ft-modal">일반 모달</span></td><td>게임 생성 모달</td><td>—</td></tr>
+            <tr><td>목록 모달</td><td>프로젝트 카드</td><td><span class="ft ft-full">슬라이드 업</span></td><td>목록 닫기 → 슬라이드 업 상세 열기</td><td><span class="ft ft-api">API-PRJ-003</span></td></tr>
+            <tr><td>상세 모달</td><td>← 돌아가기</td><td><span class="ft ft-click">클릭</span></td><td>슬라이드 다운 닫기 → 홈 복귀, SSE 해제</td><td>—</td></tr>
+            <tr><td>상세 모달</td><td>[중단]</td><td><span class="ft ft-api">API 호출</span></td><td>확인 다이얼로그 → 상태 CANCELLED</td><td><span class="ft ft-api">API-PRJ-007</span></td></tr>
+            <tr><td>상세 모달</td><td>[삭제]</td><td><span class="ft ft-api">API 호출</span></td><td>확인 다이얼로그 → 삭제 → 슬라이드 닫기</td><td><span class="ft ft-api">API-PRJ-005</span></td></tr>
+            <tr><td>상세 > 개요</td><td>산출물 카드</td><td><span class="ft ft-click">클릭</span></td><td>산출물 JSON 내용 모달</td><td>로컬 데이터</td></tr>
+            <tr><td>상세 > 로그</td><td>레벨/에이전트 필터</td><td><span class="ft ft-click">클릭</span></td><td>로그 필터링</td><td><span class="ft ft-api">API-LOG-001</span></td></tr>
+            <tr><td>상세 > 로그</td><td>실시간 추가</td><td><span class="ft ft-sse">SSE 수신</span></td><td>하단에 자동 추가 + 자동 스크롤</td><td><span class="ft ft-sse">SSE: log</span></td></tr>
+            <tr><td>상세 > 대화</td><td>실시간 추가</td><td><span class="ft ft-sse">SSE 수신</span></td><td>채팅 버블 실시간 추가</td><td><span class="ft ft-sse">SSE: agent-msg</span></td></tr>
+            <tr><td>상세 > 미리보기</td><td>[📥 다운로드]</td><td><span class="ft ft-api">API 호출</span></td><td>ZIP 파일 다운로드</td><td><span class="ft ft-api">API-GAM-004</span></td></tr>
+            <tr><td>상세 > 미리보기</td><td>[수정 요청]</td><td><span class="ft ft-api">API 호출</span></td><td>상태 REVISION → 파이프라인 재실행</td><td><span class="ft ft-api">API-PRJ-006</span></td></tr>
+            <tr><td>상세 > 소스</td><td>파일 트리 클릭</td><td><span class="ft ft-api">API 호출</span></td><td>해당 파일 코드 뷰어에 표시</td><td><span class="ft ft-api">API-GAM-003</span></td></tr>
+            <tr><td>설정 모달</td><td>[유효성 검증]</td><td><span class="ft ft-api">API 호출</span></td><td>입력한 키 검증 → 유효/무효 결과</td><td><span class="ft ft-api">API-SET-003</span></td></tr>
+            <tr><td>설정 모달</td><td>[저장]</td><td><span class="ft ft-api">API 호출</span></td><td>API 키 암호화 저장</td><td><span class="ft ft-api">API-SET-002</span></td></tr>
+            <tr><td>공통</td><td>ESC 키</td><td><span class="ft ft-click">키보드</span></td><td>가장 위 모달/슬라이드 닫기</td><td>—</td></tr>
+            <tr><td>공통</td><td>오버레이 클릭</td><td><span class="ft ft-click">클릭</span></td><td>일반 모달 닫기 (슬라이드는 해당없음)</td><td>—</td></tr>
+        </tbody>
+    </table>
+
+    <h3>📡 SSE 실시간 이벤트 (프로젝트 상세 슬라이드 모달)</h3>
+    <table class="flow-table">
+        <thead><tr><th>이벤트</th><th>UI 반영</th><th>대상</th></tr></thead>
+        <tbody>
+            <tr><td><span class="ft ft-sse">log</span></td><td>로그 탭 하단 실시간 추가 + 자동 스크롤</td><td>로그 탭</td></tr>
+            <tr><td><span class="ft ft-sse">stage-update</span></td><td>파이프라인 아이콘 변경 + 진행률 갱신</td><td>파이프라인 + 프로그레스바</td></tr>
+            <tr><td><span class="ft ft-sse">agent-msg</span></td><td>대화 탭 채팅 버블 실시간 추가</td><td>대화 탭</td></tr>
+            <tr><td><span class="ft ft-sse">error</span></td><td>에러 토스트 + 로그 탭 에러 추가</td><td>토스트 + 로그 탭</td></tr>
+            <tr><td><span class="ft ft-sse">complete</span></td><td>상태→COMPLETED, 미리보기 활성화, 완성 토스트</td><td>전체</td></tr>
+            <tr><td><span class="ft ft-sse">cancelled</span></td><td>상태→CANCELLED, SSE 해제</td><td>전체</td></tr>
+        </tbody>
+    </table>
+
+    <h3>📱 모바일 대응 사양 (구현 시 참조)</h3>
+    <table class="flow-table">
+        <thead><tr><th>항목</th><th>데스크톱 (≥769px)</th><th>모바일 (≤768px)</th><th>초소형 (≤380px)</th></tr></thead>
+        <tbody>
+            <tr><td><b>네비게이션</b></td><td>상단 헤더 텍스트 메뉴</td><td>상단 로고만 + 하단 고정 아이콘 네비 (5개 탭)</td><td>좌동</td></tr>
+            <tr><td><b>히어로</b></td><td>h1 52px, 버튼 가로 배치</td><td>h1 28px, 버튼 세로 풀너비</td><td>h1 24px</td></tr>
+            <tr><td><b>에이전트 카드</b></td><td>6열 그리드</td><td>3열 그리드, 아이콘·폰트 축소</td><td>2열 그리드</td></tr>
+            <tr><td><b>게임 카드</b></td><td>auto-fill 280px 그리드</td><td>1열 풀너비, 썸네일 140px</td><td>좌동</td></tr>
+            <tr><td><b>일반 모달</b></td><td>가운데 팝업 (560/800px)</td><td>가운데 팝업 (100vw - 32px), 90vh</td><td>좌동</td></tr>
+            <tr><td><b>풀스크린 모달</b></td><td>슬라이드 업 카드 (100vh - 40px)</td><td>슬라이드 업 카드 (100vh - 20px)</td><td>좌동</td></tr>
+            <tr><td><b>모달 열기</b></td><td colspan="3">일반: scale(0.92)→1 + fadeIn 0.4s / 풀스크린: translateY(100%)→0 스프링 0.7s</td></tr>
+            <tr><td><b>모달 닫기</b></td><td colspan="3">일반: scale→0.92 + fadeOut 0.4s / 풀스크린: translateY→100% ease-in 0.45s + 오버레이 동기 페이드</td></tr>
+            <tr><td><b>모달 닫기 방법</b></td><td>ESC, 오버레이 클릭, 닫기 버튼</td><td>ESC, 닫기 버튼 + <b>핸들/헤더 드래그 디스미스</b> (150px 이상 끌면 닫힘)</td><td>좌동</td></tr>
+            <tr><td><b>탭 (상세 모달)</b></td><td>균등 분할 5개</td><td>수평 스크롤, flex-none, 12px</td><td>좌동</td></tr>
+            <tr><td><b>파이프라인 (상세)</b></td><td>dot 36px, label 11px</td><td>dot 30px, label 9px</td><td>dot 26px, label 8px</td></tr>
+            <tr><td><b>파이프라인 프리뷰</b></td><td>가로 6개 노드 + 프로그레스 바</td><td>세로 스택 (라인 숨김), 노드 가로 배치 (아이콘+이름+버블)</td><td>좌동</td></tr>
+            <tr><td><b>에이전트 상세 패널</b></td><td>가로 2열 (설명 | 예시)</td><td>세로 1열 스택</td><td>좌동</td></tr>
+            <tr><td><b>데모 모드</b></td><td colspan="3">30초 데모 버튼 → 생성 모달에 DEMO 뱃지 표시, 일반 생성과 동일 플로우 (더미 에이전트)</td></tr>
+            <tr><td><b>풀페이지 스냅</b></td><td colspan="3">히어로 → 파이프라인 mandatory 스냅, 플레이그라운드 이후 자유 스크롤</td></tr>
+            <tr><td><b>소스코드</b></td><td>좌 파일트리 + 우 코드뷰어</td><td>상 파일트리(가로 스크롤) + 하 코드뷰어</td><td>좌동</td></tr>
+            <tr><td><b>개요 그리드</b></td><td>2열</td><td>1열 스택</td><td>좌동</td></tr>
+            <tr><td><b>필터 바</b></td><td>flex-wrap</td><td>가로 스크롤 (nowrap)</td><td>좌동</td></tr>
+            <tr><td><b>터치 인터랙션</b></td><td>—</td><td>탭 하이라이트 제거, iOS 모멘텀 스크롤, 드래그 디스미스</td><td>좌동</td></tr>
+            <tr><td><b>하단 여백</b></td><td>footer 기본 패딩</td><td>footer 하단 80px (하단 네비 고려)</td><td>좌동</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ===== 헤더 ===== -->
+<div class="header">
+    <div class="header-left">
+        <a class="logo" data-spec onclick="closeAll()"><span style="color:transparent;-webkit-text-stroke:1.2px #ae3ec9">놀</span><span style="color:transparent;-webkit-text-stroke:1.2px #4263eb">이</span><span style="color:transparent;-webkit-text-stroke:1.2px #e64980">터</span>
+            <div class="spec-note" style="top:50px;left:0">클릭→모든 모달 닫기, 홈 복귀</div>
+        </a>
+        <nav class="nav">
+            <a class="active" data-spec onclick="closeAll()">홈<div class="spec-note" style="top:40px;left:0">모든 모달 닫기</div></a>
+            <a data-spec onclick="openModal('projectsModal')">내 프로젝트<div class="spec-note" style="top:40px;left:0">→ 프로젝트 목록 모달<br>API-PRJ-002</div></a>
+            <a data-spec onclick="openModal('auditModal')">감사 로그<div class="spec-note" style="top:40px;left:0">→ 감사 로그 모달<br>API-LOG-003</div></a>
+            <a data-spec onclick="openModal('settingsModal')">설정<div class="spec-note" style="top:40px;left:0">→ 설정 모달<br>API-SET-001</div></a>
+        </nav>
+    </div>
+    <div class="header-right">
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);position:relative" data-spec>
+            <span class="status-dot"></span> 시스템 정상
+            <div class="spec-note" style="top:30px;right:0">자동: API-SYS-001</div>
+        </div>
+        <button class="theme-toggle" data-spec>🌙<div class="spec-note" style="top:40px;right:0">라이트↔다크 토글</div></button>
+    </div>
+</div>
+
+<!-- ===== 홈 ===== -->
+<div id="homePage" class="snap-container">
+    <section class="hero snap-section" data-snap>
+        <div class="hero-glow hero-glow-1"></div>
+        <div class="hero-glow hero-glow-2"></div>
+        <div class="hero-glow hero-glow-3"></div>
+        <!-- 떠다니는 이모지 (JS로 랜덤 생성) -->
+        <div class="hero-emoji-container" id="heroEmojis"></div>
+        <div class="hero-badge">🎪 놀이터에 오신 걸 환영해요!</div>
+        <h1><div class="hero-line1"><span>상상하면,</span></div><div class="hero-line2">게임이 돼요 <img src="icons/놀람.png" class="hero-emoji-inline" alt="놀람"></div></h1>
+        <p>AI 친구들이 당신의 상상을 게임으로 만들어줘요.<br>어떤 게임을 만들어볼까요?</p>
+        <div class="hero-actions">
+            <button class="btn-hero btn-hero-primary" data-spec onclick="openDemoModal()">🎮 30초 데모 체험하기
+                <div class="spec-note" style="top:-45px;left:50%;transform:translateX(-50%)">→ 게임 생성 모달 (일반)</div>
+            </button>
+            <a href="#playground" class="btn-hero btn-hero-secondary" data-spec>👀 구경하기
+                <div class="spec-note" style="top:-35px;left:50%;transform:translateX(-50%)">→ 플레이그라운드 스크롤</div>
+            </a>
+        </div>
+        <div class="scroll-hint">
+            <span>스크롤</span>
+            <div class="scroll-hint-arrow"></div>
+        </div>
+    </section>
+
+    <!-- ===== 파이프라인 + 에이전트 통합 섹션 ===== -->
+    <section class="pipeline-preview snap-section" id="pipelinePreview" data-snap>
+        <div class="pipeline-top">
+            <div class="section-label">Meet the Crew & Live Pipeline</div>
+            <div class="section-heading" style="margin-bottom:8px">AI 친구들이 이렇게 게임을 만들어요 🚀</div>
+            <p style="color:var(--text-muted);font-size:15px;margin-bottom:40px">6명의 에이전트가 순서대로 협업하는 과정을 지켜보세요</p>
+
+            <div class="pipeline-timeline">
+            <div class="pipeline-track" id="pipelineTrack">
+                <div class="pipeline-progress" id="pipelineProgress"></div>
+                <div class="pipeline-progress-done" id="pipelineProgressDone"></div>
+                <div class="pipeline-node" data-idx="0"><div class="pipeline-avatar" data-emoji="📋" style="color:var(--agent-planning)">📋</div><div class="pipeline-agent-name" style="color:var(--text-muted)">기획팀</div><div class="pipeline-bubble" style="background:var(--agent-planning-bg);border-color:rgba(174,62,201,0.3);color:var(--agent-planning)"></div><div class="pipeline-output"></div></div>
+                <div class="pipeline-node" data-idx="1"><div class="pipeline-avatar" data-emoji="👔" style="color:var(--agent-cto)">👔</div><div class="pipeline-agent-name" style="color:var(--text-muted)">CTO</div><div class="pipeline-bubble" style="background:var(--agent-cto-bg);border-color:rgba(66,99,235,0.3);color:var(--agent-cto)"></div><div class="pipeline-output"></div></div>
+                <div class="pipeline-node" data-idx="2"><div class="pipeline-avatar" data-emoji="🎨" style="color:var(--agent-design)">🎨</div><div class="pipeline-agent-name" style="color:var(--text-muted)">디자인팀</div><div class="pipeline-bubble" style="background:var(--agent-design-bg);border-color:rgba(230,73,128,0.3);color:var(--agent-design)"></div><div class="pipeline-output"></div></div>
+                <div class="pipeline-node" data-idx="3"><div class="pipeline-avatar" data-emoji="💻" style="color:var(--agent-frontend)">💻</div><div class="pipeline-agent-name" style="color:var(--text-muted)">프론트팀</div><div class="pipeline-bubble" style="background:var(--agent-frontend-bg);border-color:rgba(12,166,120,0.3);color:var(--agent-frontend)"></div><div class="pipeline-output"></div></div>
+                <div class="pipeline-node" data-idx="4"><div class="pipeline-avatar" data-emoji="⚙️" style="color:var(--agent-backend)">⚙️</div><div class="pipeline-agent-name" style="color:var(--text-muted)">백엔드팀</div><div class="pipeline-bubble" style="background:var(--agent-backend-bg);border-color:rgba(230,119,0,0.3);color:var(--agent-backend)"></div><div class="pipeline-output"></div></div>
+                <div class="pipeline-node" data-idx="5"><div class="pipeline-avatar" data-emoji="🔍" style="color:var(--agent-qa)">🔍</div><div class="pipeline-agent-name" style="color:var(--text-muted)">QA팀</div><div class="pipeline-bubble" style="background:var(--agent-qa-bg);border-color:rgba(247,103,7,0.3);color:var(--agent-qa)"></div><div class="pipeline-output"></div></div>
+            </div>
+        </div>
+        </div><!-- /pipeline-top -->
+
+        <!-- 하단 고정 영역: 상세 패널 or 완성 카드 (같은 자리에 교체 표시) -->
+        <div class="pipeline-bottom">
+            <div class="agent-detail" id="agentDetail">
+                <div class="agent-detail-inner" id="agentDetailInner"></div>
+            </div>
+            <div class="pipeline-complete" id="pipelineComplete">
+                <div class="pipeline-complete-card" style="cursor:pointer" onclick="openSlideup()">
+                    <span style="font-size:40px">🎮</span>
+                    <div style="text-align:left">
+                        <div style="font-size:18px;font-weight:700">게임 완성! <span style="font-size:13px;font-weight:500;color:var(--coral)">클릭해서 확인하기 →</span></div>
+                        <div style="font-size:14px;color:var(--text-muted)">6명의 AI 에이전트가 협업해서 게임을 만들었어요</div>
+                    </div>
+                </div>
+                <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+                    <button class="pipeline-replay" onclick="replayPipeline()">↻ 다시 보기</button>
+                    <button class="btn-hero btn-hero-primary" style="padding:12px 28px;font-size:14px" onclick="openDemoModal()">🎮 30초 데모 체험하기</button>
+                </div>
+            </div>
+        </div>
+        <div class="scroll-hint" style="animation:hintAppear 0.6s ease 2s both">
+            <span>스크롤</span>
+            <div class="scroll-hint-arrow"></div>
+        </div>
+    </section>
+
+    <div class="snap-section-scroll" data-snap>
+    <section class="playground" id="playground">
+        <div class="playground-header">
+            <div><div class="section-label reveal">Playground</div><div class="section-heading reveal" style="margin-bottom:0">놀이터 🎡</div><div class="playground-sub">AI 친구들이 만든 게임을 바로 플레이해보세요!</div></div>
+            <button class="btn-hero btn-hero-primary" style="padding:10px 24px;font-size:14px;position:relative" data-spec onclick="openModal('createModal')">+ 게임 만들기<div class="spec-note" style="top:-35px;right:0">→ 게임 생성 모달</div></button>
+        </div>
+        <div class="game-grid">
+            <div class="game-card reveal delay-1" data-spec onclick="openSlideup()">
+                <div class="game-thumbnail" style="background:linear-gradient(135deg,#ff6b6b,#ffa8a8)">🧛</div>
+                <div class="game-info"><span class="game-genre" style="background:rgba(250,82,82,0.1);color:var(--danger)">액션</span><div class="game-name">뱀파이어 서바이벌</div><div class="game-desc">사방에서 몰려오는 몬스터를 피하며 자동 공격으로 처치하는 서바이벌 게임</div>
+                    <div class="game-footer"><span class="game-date">3분 전</span><button class="btn-play" data-spec onclick="event.stopPropagation();alert('게임 iframe 팝업!')">플레이 ▶<div class="spec-note" style="bottom:40px;right:0">→ 게임 iframe 모달<br>API-GAM-001</div></button></div>
+                </div>
+                <div class="spec-note" style="top:10px;left:10px">카드 클릭 → 슬라이드 업 상세<br>API-PRJ-003 + SSE 연결</div>
+            </div>
+            <div class="game-card reveal delay-2" onclick="openSlideup()"><div class="game-thumbnail" style="background:linear-gradient(135deg,#339af0,#74c0fc)">🧱</div><div class="game-info"><span class="game-genre" style="background:rgba(51,154,240,0.1);color:var(--info)">퍼즐</span><div class="game-name">테트리스 클론</div><div class="game-desc">떨어지는 블록을 회전하고 쌓아 줄을 완성하는 클래식 퍼즐 게임</div><div class="game-footer"><span class="game-date">25분 전</span><button class="btn-play" onclick="event.stopPropagation()">플레이 ▶</button></div></div></div>
+            <div class="game-card game-card-empty reveal delay-3" data-spec onclick="openModal('createModal')"><div class="empty-icon">✨</div><div class="empty-text">나만의 게임 만들기</div><div class="empty-hint">AI에게 원하는 게임을 설명해보세요</div><div class="spec-note" style="bottom:10px">→ 게임 생성 모달</div></div>
+        </div>
+    </section>
+    <div class="footer">🎪 놀이터 NoriTer — AI 친구들과 함께 만드는 미니게임 놀이터</div>
+    </div>
+</div>
+
+<!-- ===== 일반 모달: 게임 생성 ===== -->
+<div class="modal-overlay" id="createModal" style="display:none" onclick="if(event.target===this)closeModal('createModal')">
+    <div class="modal modal-sm">
+        <div class="modal-header"><div class="modal-title">🎮 새 게임 만들기 <span id="demoBadge" style="display:none;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:var(--coral-bg);color:var(--coral);margin-left:8px;vertical-align:middle">DEMO</span></div><button class="modal-close" onclick="closeModal('createModal')">✕</button></div>
+        <div class="modal-body">
+            <div class="form-group"><label class="form-label">프로젝트명 <span style="color:var(--text-muted);font-weight:400">(선택)</span></label><input class="form-input" placeholder="예: 뱀파이어 서바이벌"></div>
+            <div class="form-group"><label class="form-label">게임 장르 <span style="color:var(--text-muted);font-weight:400">(선택)</span></label><div class="genre-tags"><span class="genre-tag" onclick="selGenre(this)">퍼즐</span><span class="genre-tag" onclick="selGenre(this)">액션</span><span class="genre-tag" onclick="selGenre(this)">아케이드</span><span class="genre-tag" onclick="selGenre(this)">슈팅</span><span class="genre-tag" onclick="selGenre(this)">전략</span><span class="genre-tag" onclick="selGenre(this)">기타</span></div></div>
+            <div class="form-group"><label class="form-label">어떤 게임을 만들고 싶으세요? <span style="color:var(--danger)">*</span></label><textarea class="form-textarea" placeholder="예: 뱀파이어 서바이벌 류 미니게임을 만들어줘..." id="req" oninput="updCnt()"></textarea><div class="form-hint"><span>최소 10자 이상</span><span id="cnt">0/10</span></div></div>
+        </div>
+        <div class="modal-footer"><button class="btn-submit" disabled id="subBtn" onclick="closeModal('createModal');openSlideup()">게임 생성 요청</button></div>
+    </div>
+</div>
+
+<!-- ===== 일반 모달: 내 프로젝트 ===== -->
+<div class="modal-overlay" id="projectsModal" style="display:none" onclick="if(event.target===this)closeModal('projectsModal')">
+    <div class="modal modal-lg">
+        <div class="modal-header"><div class="modal-title">📂 내 프로젝트</div><button class="modal-close" onclick="closeModal('projectsModal')">✕</button></div>
+        <div class="modal-body">
+            <div class="filter-bar"><button class="filter-btn active">전체</button><button class="filter-btn">진행중</button><button class="filter-btn">완료</button><button class="filter-btn">실패</button></div>
+            <div class="project-list-item" onclick="closeModal('projectsModal');openSlideup()"><div class="project-left"><div class="project-icon">🧛</div><div><div class="project-info-name">뱀파이어 서바이벌</div><div class="project-info-meta">액션 · 3분 전 · 구현 단계</div><div class="progress-bar-sm"><div class="progress-fill" style="width:57%"></div></div></div></div><span class="badge badge-progress">🔄 진행중</span></div>
+            <div class="project-list-item" onclick="closeModal('projectsModal');openSlideup()"><div class="project-left"><div class="project-icon">🧱</div><div><div class="project-info-name">테트리스 클론</div><div class="project-info-meta">퍼즐 · 25분 전</div><div class="progress-bar-sm"><div class="progress-fill" style="width:100%;background:var(--success)"></div></div></div></div><span class="badge badge-completed">✓ 완료</span></div>
+            <div class="project-list-item"><div class="project-left"><div class="project-icon">🚀</div><div><div class="project-info-name">스페이스 슈터</div><div class="project-info-meta">슈팅 · 1시간 전</div><div class="progress-bar-sm"><div class="progress-fill" style="width:71%;background:var(--danger)"></div></div></div></div><span class="badge badge-failed">✕ 실패</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 일반 모달: 감사 로그 ===== -->
+<div class="modal-overlay" id="auditModal" style="display:none" onclick="if(event.target===this)closeModal('auditModal')">
+    <div class="modal modal-lg">
+        <div class="modal-header"><div class="modal-title">📋 감사 로그</div><button class="modal-close" onclick="closeModal('auditModal')">✕</button></div>
+        <div class="modal-body">
+            <div class="filter-bar"><button class="filter-btn active">전체</button><button class="filter-btn">프로젝트</button><button class="filter-btn">스테이지</button><button class="filter-btn">설정</button></div>
+            <table class="audit-table"><thead><tr><th>시각</th><th>이벤트</th><th>프로젝트</th><th>상세</th></tr></thead><tbody>
+                <tr><td>14:55</td><td><span class="event-badge" style="background:var(--success-bg);color:var(--success)">STAGE_COMPLETED</span></td><td>뱀파이어 서바이벌</td><td>QA 완료</td></tr>
+                <tr><td>14:30</td><td><span class="event-badge" style="background:var(--brand-bg);color:var(--brand)">PROJECT_CREATED</span></td><td>뱀파이어 서바이벌</td><td>장르: 액션</td></tr>
+                <tr><td>14:00</td><td><span class="event-badge" style="background:var(--bg-tertiary);color:var(--text-secondary)">SETTING_CHANGED</span></td><td>—</td><td>API 키 변경됨</td></tr>
+            </tbody></table>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 일반 모달: 설정 ===== -->
+<div class="modal-overlay" id="settingsModal" style="display:none" onclick="if(event.target===this)closeModal('settingsModal')">
+    <div class="modal modal-sm">
+        <div class="modal-header"><div class="modal-title">⚙️ 설정</div><button class="modal-close" onclick="closeModal('settingsModal')">✕</button></div>
+        <div class="modal-body">
+            <div class="settings-card"><div class="settings-title">Claude API 키</div><div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span class="status-dot"></span><span style="font-size:14px">설정됨</span><span style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono'">sk-ant-a***...****</span></div><div class="form-group"><label class="form-label">새 API 키</label><input class="form-input" type="password" placeholder="sk-ant-api03-..."></div><div style="display:flex;gap:8px"><button class="btn-action">유효성 검증</button><button class="btn-submit" style="width:auto;padding:10px 20px">저장</button></div></div>
+            <div class="settings-card"><div class="settings-title">시스템 상태</div><div class="health-item"><span class="health-label">서버</span><span class="status-dot"></span> UP</div><div class="health-item"><span class="health-label">데이터베이스</span><span class="status-dot"></span> UP</div><div class="health-item"><span class="health-label">Claude API</span><span class="status-dot"></span> UP</div><div class="health-item"><span class="health-label">활성 파이프라인</span>1개</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 슬라이드 업 카드 모달: 프로젝트 상세 ===== -->
+<div class="slideup-overlay" id="slideupModal" style="display:none">
+    <div class="slideup-card">
+        <div class="slideup-handle"></div>
+        <div class="slideup-header">
+            <button class="slideup-back" data-spec onclick="closeSlideup()">← 돌아가기
+                <div class="spec-note" style="top:40px;left:0">슬라이드 다운 → 홈 복귀<br>SSE 연결 해제</div>
+            </button>
+            <div style="display:flex;gap:8px">
+                <button class="btn-action" data-spec>중단<div class="spec-note" style="top:40px;right:0">확인 다이얼로그 → API-PRJ-007</div></button>
+                <button class="btn-action btn-action-danger" data-spec>삭제<div class="spec-note" style="top:40px;right:0">확인 다이얼로그 → API-PRJ-005</div></button>
+            </div>
+        </div>
+        <div class="slideup-body">
+            <div class="detail-title">뱀파이어 서바이벌</div>
+            <div class="detail-meta"><span class="badge badge-progress">🔄 진행중</span><span style="font-size:13px;color:var(--text-muted)">액션 · 57%</span></div>
+
+            <div class="pipeline">
+                <div class="pipeline-stage"><div class="pipeline-dot completed">✓</div><div class="pipeline-label">기획</div><div class="pipeline-line completed"></div></div>
+                <div class="pipeline-stage"><div class="pipeline-dot completed">✓</div><div class="pipeline-label">CTO</div><div class="pipeline-line completed"></div></div>
+                <div class="pipeline-stage"><div class="pipeline-dot completed">✓</div><div class="pipeline-label">디자인</div><div class="pipeline-line completed"></div></div>
+                <div class="pipeline-stage"><div class="pipeline-dot active">4</div><div class="pipeline-label">구현</div><div class="pipeline-line"></div></div>
+                <div class="pipeline-stage"><div class="pipeline-dot pending">5</div><div class="pipeline-label">QA</div><div class="pipeline-line"></div></div>
+                <div class="pipeline-stage"><div class="pipeline-dot pending">6</div><div class="pipeline-label">출시</div></div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:57%"></div></div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="swTab('overview',this)">📋 개요</div>
+                <div class="tab" onclick="swTab('log',this)">📜 로그</div>
+                <div class="tab" onclick="swTab('chat',this)">💬 대화</div>
+                <div class="tab" onclick="swTab('preview',this)">🎮 미리보기</div>
+                <div class="tab" onclick="swTab('source',this)">📄 소스코드</div>
+            </div>
+
+            <!-- 개요 -->
+            <div class="tab-content active" id="tab-overview">
+                <div class="overview-grid">
+                    <div class="overview-card"><div class="overview-card-title">산출물</div>
+                        <div class="artifact-item"><span style="font-size:20px">📄</span><div><div class="artifact-name">plan.json <span style="color:var(--text-muted);font-weight:400">v1</span></div><div class="artifact-meta" style="color:var(--agent-planning)">기획팀 · 14:31</div></div></div>
+                        <div class="artifact-item"><span style="font-size:20px">📄</span><div><div class="artifact-name">architecture.json <span style="color:var(--text-muted);font-weight:400">v1</span></div><div class="artifact-meta" style="color:var(--agent-cto)">CTO · 14:32</div></div></div>
+                        <div class="artifact-item"><span style="font-size:20px">📄</span><div><div class="artifact-name">design.json <span style="color:var(--text-muted);font-weight:400">v1</span></div><div class="artifact-meta" style="color:var(--agent-design)">디자인팀 · 14:33</div></div></div>
+                    </div>
+                    <div class="overview-card"><div class="overview-card-title">토큰 사용량 <span style="font-weight:400;color:var(--text-muted)">— 총 9,500</span></div>
+                        <div class="token-bar-label"><span style="color:var(--agent-planning)">기획팀</span><span>3,200</span></div><div class="token-bar"><div class="token-fill" style="width:34%;background:var(--agent-planning)"></div></div>
+                        <div class="token-bar-label"><span style="color:var(--agent-cto)">CTO</span><span>2,800</span></div><div class="token-bar"><div class="token-fill" style="width:29%;background:var(--agent-cto)"></div></div>
+                        <div class="token-bar-label"><span style="color:var(--agent-design)">디자인팀</span><span>3,500</span></div><div class="token-bar"><div class="token-fill" style="width:37%;background:var(--agent-design)"></div></div>
+                        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-light);font-size:13px;color:var(--text-muted)">디버깅: 0/3</div>
+                    </div>
+                </div>
+            </div>
+            <!-- 로그 -->
+            <div class="tab-content" id="tab-log">
+                <div class="filter-bar"><button class="filter-btn active">전체</button><button class="filter-btn">INFO</button><button class="filter-btn" style="color:var(--agent-planning)">AGENT</button><button class="filter-btn" style="color:var(--warning)">WARN</button><button class="filter-btn" style="color:var(--danger)">ERROR</button></div>
+                <div class="log-panel">
+                    <div class="log-entry"><span class="log-time">14:30:01</span><span class="log-level" style="color:var(--text-muted)">INFO</span><span class="log-agent" style="color:var(--agent-planning)">기획팀</span><span>기획팀이 게임 기획서 작성을 시작합니다.</span></div>
+                    <div class="log-entry"><span class="log-time">14:31:15</span><span class="log-level" style="color:var(--agent-planning)">AGENT</span><span class="log-agent" style="color:var(--agent-planning)">기획팀</span><span>기획서 작성 완료. CTO에게 전달.</span></div>
+                    <div class="log-entry"><span class="log-time">14:33:45</span><span class="log-level" style="color:var(--danger)">ERROR</span><span class="log-agent" style="color:var(--agent-frontend)">프론트</span><span>Claude API Rate Limit <span style="background:var(--danger-bg);color:var(--danger);padding:1px 6px;border-radius:4px;font-size:11px">NT-ERR-A001</span></span></div>
+                    <div class="log-entry"><span class="log-time">14:33:48</span><span class="log-level" style="color:var(--text-muted)">INFO</span><span class="log-agent" style="color:var(--agent-frontend)">프론트</span><span>재시도 성공. 프론트엔드 코드 생성 중...</span></div>
+                </div>
+            </div>
+            <!-- 대화 -->
+            <div class="tab-content" id="tab-chat">
+                <div class="chat-panel">
+                    <div class="chat-msg"><div class="chat-avatar avatar-planning">📋</div><div class="chat-bubble"><div class="chat-header"><span class="chat-name" style="color:var(--agent-planning)">기획팀</span><span style="color:var(--text-muted)">→</span><span class="chat-name" style="color:var(--agent-cto)">CTO</span><span class="chat-type" style="background:var(--info-bg);color:var(--info)">HANDOFF</span></div><div class="chat-text">게임 기획서 작성을 완료했습니다.</div><div class="chat-artifact">📎 plan.json (v1)</div><div class="chat-time">14:31:15</div></div></div>
+                    <div class="chat-msg"><div class="chat-avatar avatar-cto">👔</div><div class="chat-bubble"><div class="chat-header"><span class="chat-name" style="color:var(--agent-cto)">CTO</span><span style="color:var(--text-muted)">→</span><span class="chat-name" style="color:var(--agent-design)">디자인팀</span><span class="chat-type" style="background:var(--info-bg);color:var(--info)">HANDOFF</span></div><div class="chat-text">Canvas 2D 기반으로 진행합니다.</div><div class="chat-artifact">📎 architecture.json (v1)</div><div class="chat-time">14:32:00</div></div></div>
+                    <div class="chat-msg"><div class="chat-avatar avatar-qa">🔍</div><div class="chat-bubble"><div class="chat-header"><span class="chat-name" style="color:var(--agent-qa)">QA팀</span><span style="color:var(--text-muted)">→</span><span class="chat-name" style="color:var(--agent-cto)">CTO</span><span class="chat-type" style="background:var(--danger-bg);color:var(--danger)">BUG_REPORT</span></div><div class="chat-text">CRITICAL 버그 1건. 몬스터 스폰 위치 오류.</div><div class="chat-time">14:55:00</div></div></div>
+                </div>
+            </div>
+            <!-- 미리보기 -->
+            <div class="tab-content" id="tab-preview">
+                <div class="preview-toolbar"><button class="preview-btn">🔄 새로고침</button><button class="preview-btn">⛶ 전체화면</button><button class="btn-play" style="border-radius:8px">📥 다운로드 ZIP</button></div>
+                <div class="preview-frame">🎮</div>
+                <div class="feedback-form"><div class="form-group" style="margin-bottom:12px"><label class="form-label">수정 요청</label><textarea class="form-textarea" style="min-height:80px" placeholder="수정할 내용을 입력하세요 (최소 5자)"></textarea></div><button class="btn-submit" disabled>수정 요청 보내기</button></div>
+            </div>
+            <!-- 소스코드 -->
+            <div class="tab-content" id="tab-source">
+                <div class="source-layout">
+                    <div class="file-tree"><div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;padding:0 10px">📁 game/</div><div class="file-item active">📄 index.html</div><div class="file-item">📄 style.css</div><div class="file-item">📄 game.js</div></div>
+                    <div class="code-viewer"><span class="code-ln">1</span>&lt;!DOCTYPE html&gt;
+<span class="code-ln">2</span>&lt;html lang="ko"&gt;
+<span class="code-ln">3</span>&lt;head&gt;
+<span class="code-ln">4</span>  &lt;meta charset="UTF-8"&gt;
+<span class="code-ln">5</span>  &lt;title&gt;뱀파이어 서바이벌&lt;/title&gt;
+<span class="code-ln">6</span>  &lt;link rel="stylesheet" href="style.css"&gt;
+<span class="code-ln">7</span>&lt;/head&gt;
+<span class="code-ln">8</span>&lt;body&gt;
+<span class="code-ln">9</span>  &lt;canvas id="gameCanvas" width="800" height="600"&gt;&lt;/canvas&gt;
+<span class="code-ln">10</span>  &lt;script src="game.js"&gt;&lt;/script&gt;
+<span class="code-ln">11</span>&lt;/body&gt;
+<span class="code-ln">12</span>&lt;/html&gt;</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== 인트로 =====
+document.body.classList.add('intro-active');
+
+// ===== Canvas 게임 장면 — 3개 동시 실행, 각각 독립 페이드 =====
+(function introGameScenes(){
+    const canvas = document.getElementById('introCanvas');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const wrap = document.getElementById('introCanvasWrap');
+    let W, H, cssW, cssH;
+    function resize(){
+        const rect = wrap.getBoundingClientRect();
+        cssW = rect.width;
+        cssH = rect.height;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = cssW * dpr;
+        canvas.height = cssH * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        W = cssW;
+        H = cssH;
+    }
+    setTimeout(resize, 100);
+    window.addEventListener('resize', ()=>{ setTimeout(resize, 50); });
+
+    let lastTime = performance.now();
+    let elapsed = 0;
+    const label = document.getElementById('sceneLabel');
+    const sceneNames = ['🚀 SPACE SHOOTER','🧱 TETRIS','👾 PIXEL ADVENTURE'];
+
+    // 장면별 페이드 (0~1). 순환: 순수 sin 커브, 잘라내기 없음
+    const CYCLE = 15;  // 전체 한 바퀴 15초 (느리게)
+    function getSceneAlpha(sceneIndex, t) {
+        // 3개 장면이 120도 위상차로 sin 커브 — 부드럽게 나타났다 부드럽게 사라짐
+        const phase = (t / CYCLE * Math.PI * 2) - (sceneIndex * Math.PI * 2 / 3);
+        const raw = (Math.sin(phase) + 1) / 2;  // 0~1 부드러운 곡선
+        // smoothstep으로 더 부드럽게 (시작/끝이 완만)
+        return raw * raw * (3 - 2 * raw);
+    }
+
+    // ===== 로켓 =====
+    const rockets=[], stars=[], bullets=[];
+    const rColors=['#6c5ce7','#e64980','#339af0','#0ca678','#f76707','#ae3ec9'];
+    for(let i=0;i<5;i++) rockets.push({x:Math.random()*960,y:Math.random()*400,vx:(Math.random()-0.5)*1,vy:-Math.random()*1.2-0.6,size:10+Math.random()*6,color:rColors[i%6]});
+    for(let i=0;i<30;i++) stars.push({x:Math.random()*960,y:Math.random()*400,size:Math.random()*1.5+0.5,speed:Math.random()*0.3+0.1,twinkle:Math.random()*Math.PI*2});
+
+    function drawRockets(dt, alpha){
+        if(alpha<0.01) return;
+        ctx.globalAlpha = alpha * 0.5;
+        // 별
+        stars.forEach(s=>{
+            s.twinkle+=0.02;
+            const a=0.1+Math.abs(Math.sin(s.twinkle))*0.2;
+            ctx.fillStyle=`rgba(108,92,231,${a})`;
+            ctx.beginPath(); ctx.arc(s.x,s.y,s.size,0,Math.PI*2); ctx.fill();
+            s.y+=s.speed; if(s.y>H){s.y=-5;s.x=Math.random()*W;}
+        });
+        // 로켓
+        rockets.forEach(r=>{
+            ctx.save(); ctx.translate(r.x,r.y); ctx.globalAlpha=Math.min(1,alpha*1.3);
+            ctx.fillStyle=r.color;
+            ctx.beginPath(); ctx.moveTo(0,-r.size); ctx.lineTo(-r.size*0.4,r.size*0.5);
+            ctx.lineTo(r.size*0.4,r.size*0.5); ctx.closePath(); ctx.fill();
+            // 불꽃
+            ctx.fillStyle='#ffd43b'; ctx.globalAlpha=alpha*(0.3+Math.random()*0.2);
+            ctx.beginPath(); ctx.moveTo(-r.size*0.2,r.size*0.5);
+            ctx.lineTo(0,r.size*0.5+r.size*0.3+Math.random()*5);
+            ctx.lineTo(r.size*0.2,r.size*0.5); ctx.closePath(); ctx.fill();
+            ctx.restore();
+            r.x+=r.vx; r.y+=r.vy;
+            if(r.y<-40){r.y=H+40;r.x=Math.random()*W;}
+            if(r.x<-30) r.x=W+30; if(r.x>W+30) r.x=-30;
+            if(Math.random()<0.015) bullets.push({x:r.x,y:r.y-r.size,vy:-5,color:r.color,life:1});
+        });
+        bullets.forEach(b=>{
+            b.life-=0.02;
+            ctx.fillStyle=b.color; ctx.globalAlpha=alpha*b.life*0.4;
+            ctx.fillRect(b.x-1,b.y,2,7); b.y+=b.vy;
+        });
+        while(bullets.length>30) bullets.shift();
+    }
+
+    // ===== 테트리스 (양쪽 사이드) =====
+    const tetColors=['#6c5ce7','#ae3ec9','#e64980','#0ca678','#e67700','#339af0','#f76707'];
+    const BS=22;
+    // 왼쪽 스트림, 오른쪽 스트림 (3칸 — 가장자리에 딱 붙게)
+    const tetStreams=[
+        {blocks:[], x:0, cols:3},
+        {blocks:[], x:0, cols:3}
+    ];
+    function spawnTetBlock(stream){
+        const col=Math.floor(Math.random()*stream.cols);
+        const color=tetColors[Math.floor(Math.random()*tetColors.length)];
+        const w=1+Math.floor(Math.random()*2);  // 1~2칸 너비
+        stream.blocks.push({col,w,y:-BS*2,speed:0.6+Math.random()*1.0,color,landed:false,landY:H});
+    }
+    function initTetStreams(){
+        tetStreams[0].x = 0;
+        tetStreams[1].x = W - 3*BS;
+        for(let s of tetStreams) for(let i=0;i<8;i++) spawnTetBlock(s);
+    }
+    initTetStreams();
+
+    function drawTetris(dt, alpha){
+        if(alpha<0.01) return;
+        tetStreams[0].x = 0;
+        tetStreams[1].x = W - 3*BS;
+        tetStreams.forEach(stream=>{
+            // 가이드라인
+            ctx.strokeStyle=`rgba(108,92,231,${alpha*0.04})`; ctx.lineWidth=0.5;
+            for(let c=0;c<=stream.cols;c++){
+                ctx.beginPath(); ctx.moveTo(stream.x+c*BS,0); ctx.lineTo(stream.x+c*BS,cssH); ctx.stroke();
+            }
+            // 블록
+            stream.blocks.forEach(b=>{
+                b.y+=b.speed;
+                ctx.fillStyle=b.color; ctx.globalAlpha=alpha*0.35;
+                for(let i=0;i<b.w;i++){
+                    ctx.fillRect(stream.x+(b.col+i)*BS+1, b.y+1, BS-2, BS-2);
+                }
+                ctx.globalAlpha=alpha*0.12;
+                ctx.strokeStyle=b.color; ctx.lineWidth=1;
+                for(let i=0;i<b.w;i++){
+                    ctx.strokeRect(stream.x+(b.col+i)*BS+1, b.y+1, BS-2, BS-2);
+                }
+                if(b.y>H+BS) b.y=-BS*3;  // 리사이클
+            });
+            if(Math.random()<0.008) spawnTetBlock(stream);
+        });
+    }
+
+    // ===== 픽셀 캐릭터 =====
+    const pixChars=[], pixCoins=[], pixClouds=[];
+    const pColors=['#6c5ce7','#e64980','#0ca678','#e67700','#339af0'];
+    for(let i=0;i<4;i++) pixChars.push({x:100+Math.random()*800, y:0, vx:(Math.random()-0.5)*2, size:12+Math.random()*5, color:pColors[i%5], jumpY:0,jumping:false,jumpVY:0, frame:Math.random()*100});
+    for(let i=0;i<8;i++) pixCoins.push({x:80+Math.random()*840, y:0, size:6, rot:Math.random()*Math.PI*2});
+    // 구름: 프레임 안에 균등 분산, 느린 속도, 개별 페이드 사이클
+    // 구름: Canvas 상단 영역에만 (아이콘 안 겹치게)
+    for(let i=0;i<5;i++) pixClouds.push({x:60+i*190, y:15+Math.random()*40, w:45+Math.random()*50, speed:0.03+Math.random()*0.04, fadePhase:i*1.2, opacity:0});
+
+    function drawPixelChar(x,y,size,color,frame,alpha){
+        ctx.fillStyle=color; ctx.globalAlpha=Math.min(1, alpha*1.5);
+        ctx.fillRect(x-size/2,y-size,size,size);
+        ctx.fillStyle='white'; ctx.globalAlpha=Math.min(1, alpha*1.8);
+        ctx.fillRect(x-size*0.3,y-size*0.8,size*0.18,size*0.18);
+        ctx.fillRect(x+size*0.12,y-size*0.8,size*0.18,size*0.18);
+        ctx.fillStyle=color; ctx.globalAlpha=Math.min(1, alpha*1.2);
+        const leg=Math.sin(frame*0.15)*size*0.3;
+        ctx.fillRect(x-size*0.35,y,size*0.22,size*0.35+leg);
+        ctx.fillRect(x+size*0.13,y,size*0.22,size*0.35-leg);
+    }
+
+    function drawPixels(dt, alpha){
+        if(alpha<0.01) return;
+        const groundY = H - 5;  // Canvas 바닥에 딱 붙게
+        // 구름
+        pixClouds.forEach(c=>{
+            // 구름: 픽셀 장면 alpha 그대로 따라감 (같이 페이드인/아웃)
+            const cloudAlpha = Math.min(1, alpha * 0.3);
+            ctx.fillStyle=`rgba(108,92,231,${cloudAlpha})`;
+            ctx.beginPath(); ctx.ellipse(c.x,c.y,c.w/2,20,0,0,Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(c.x-c.w*0.3,c.y+5,c.w*0.32,15,0,0,Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(c.x+c.w*0.25,c.y+3,c.w*0.28,13,0,0,Math.PI*2); ctx.fill();
+            c.x+=c.speed; if(c.x>W+c.w) c.x=-c.w;
+        });
+        // 바닥 라인
+        ctx.strokeStyle=`rgba(108,92,231,${Math.min(1,alpha*0.25)})`; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(0,groundY); ctx.lineTo(W,groundY); ctx.stroke();
+        // 코인
+        pixCoins.forEach(c=>{
+            c.y = groundY - 20 - Math.sin(c.rot*0.5)*8;
+            c.rot+=0.025;
+            const scaleX=Math.abs(Math.cos(c.rot));
+            ctx.fillStyle='#ffd43b'; ctx.globalAlpha=Math.min(1, alpha*1.3);
+            ctx.save(); ctx.translate(c.x,c.y); ctx.scale(scaleX,1);
+            ctx.fillRect(-c.size/2,-c.size/2,c.size,c.size);
+            ctx.restore();
+        });
+        // 캐릭터
+        pixChars.forEach(ch=>{
+            ch.frame++; ch.x+=ch.vx; ch.y=groundY;
+            if(!ch.jumping&&Math.random()<0.008){ch.jumping=true;ch.jumpVY=-4.5;}
+            if(ch.jumping){ch.jumpY+=ch.jumpVY;ch.jumpVY+=0.18;if(ch.jumpY>=0){ch.jumpY=0;ch.jumping=false;}}
+            if(ch.x<20){ch.x=20;ch.vx*=-1;} if(ch.x>W-20){ch.x=W-20;ch.vx*=-1;}
+            drawPixelChar(ch.x,ch.y+ch.jumpY,ch.size,ch.color,ch.frame,alpha);
+        });
+    }
+
+    // ===== 메인 루프 =====
+    let animId;
+    function loop(now){
+        const dt=Math.min((now-lastTime)/1000, 0.05);
+        lastTime=now;
+        elapsed+=dt;
+
+        ctx.clearRect(0,0,W,H);
+
+        // 3개 장면 동시 그리기 (각각 독립 페이드)
+        const a0 = getSceneAlpha(0, elapsed);
+        const a1 = getSceneAlpha(1, elapsed);
+        const a2 = getSceneAlpha(2, elapsed);
+
+        drawRockets(dt, a0);
+        drawTetris(dt, a1);
+        drawPixels(dt, a2);
+
+        // 가장 밝은 장면 이름 표시
+        const maxA = Math.max(a0,a1,a2);
+        const maxI = a0===maxA?0:a1===maxA?1:2;
+        if(label){
+            label.textContent=sceneNames[maxI];
+            label.style.opacity=maxA;
+        }
+
+        ctx.globalAlpha=1;
+        if(!introDismissed) animId=requestAnimationFrame(loop);
+    }
+    animId=requestAnimationFrame(loop);
+    window.stopIntroAnim=function(){ cancelAnimationFrame(animId); };
+})();
+
+let introDismissed = false;
+function dismissIntro(){
+    if(introDismissed) return;
+    introDismissed = true;
+    if(window.stopIntroAnim) window.stopIntroAnim();
+    const intro = document.getElementById('introScreen');
+    intro.classList.add('exiting');
+    document.body.classList.remove('intro-active');
+    document.body.classList.add('intro-done');
+    setTimeout(()=>{
+        intro.classList.add('hidden');
+    }, 900);
+}
+
+// 키보드로도 인트로 넘기기
+document.addEventListener('keydown', function introKey(e){
+    if(!introDismissed){
+        dismissIntro();
+        return;
+    }
+}, {once: false});
+
+function toggleSpecMode(){document.body.classList.toggle('spec-mode');const b=document.getElementById('specToggle');b.classList.toggle('active');b.textContent=document.body.classList.contains('spec-mode')?'📋 화면정의서 모드 OFF':'📋 화면정의서 모드 ON';}
+function openDemoModal(){
+    document.getElementById('demoBadge').style.display='inline-block';
+    openModal('createModal');
+}
+function openModal(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.style.display = 'flex';
+    requestAnimationFrame(()=>{
+        requestAnimationFrame(()=>{
+            el.classList.add('active');
+        });
+    });
+}
+function closeModal(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.classList.remove('active');
+    setTimeout(()=>{ el.style.display = 'none'; if(id==='createModal') document.getElementById('demoBadge').style.display='none'; }, 450);
+}
+// ===== 슬라이드 업 모달 (미끄러지는 애니메이션) =====
+function openSlideup(){
+    const overlay = document.getElementById('slideupModal');
+    overlay.classList.remove('closing');
+    // 먼저 display를 활성화하고, 다음 프레임에서 active 추가 (transition 발동)
+    overlay.style.display = 'block';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            overlay.classList.add('active');
+        });
+    });
+    document.body.style.overflow='hidden';
+}
+function closeSlideup(){
+    const overlay = document.getElementById('slideupModal');
+    const card = overlay.querySelector('.slideup-card');
+    // 드래그에서 남은 인라인 스타일 클리어
+    card.style.transform = '';
+    card.style.transition = '';
+    overlay.style.background = '';
+    // 1) closing transition 먼저 설정
+    overlay.classList.add('closing');
+    // 2) 다음 프레임에서 active 제거 → 부드러운 슬라이드 다운 발동
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            overlay.classList.remove('active');
+        });
+    });
+    document.body.style.overflow='';
+    // 트랜지션 끝나면 display 제거 (0.45s + 여유)
+    setTimeout(() => {
+        overlay.style.display = 'none';
+        overlay.classList.remove('closing');
+    }, 550);
+}
+function closeAll(){
+    document.querySelectorAll('.modal-overlay.active').forEach(m=>{
+        m.classList.remove('active');
+        setTimeout(()=>{ m.style.display = 'none'; }, 450);
+    });
+    if(document.getElementById('slideupModal').classList.contains('active')) closeSlideup();
+}
+
+// ===== 핸들 바 드래그로 닫기 (마우스 드래그 지원) =====
+(function(){
+    const overlay = document.getElementById('slideupModal');
+    const card = overlay.querySelector('.slideup-card');
+    const handle = overlay.querySelector('.slideup-handle');
+    const header = overlay.querySelector('.slideup-header');
+    let isDragging = false;
+    let startY = 0;
+    let currentY = 0;
+
+    function onDragStart(e) {
+        isDragging = true;
+        startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+        card.style.transition = 'none'; // 드래그 중에는 트랜지션 끄기
+    }
+    function onDragMove(e) {
+        if (!isDragging) return;
+        currentY = (e.type === 'touchmove' ? e.touches[0].clientY : e.clientY) - startY;
+        if (currentY < 0) currentY = 0; // 위로는 못 끌기
+        // 저항감 추가 (많이 끌수록 느려짐)
+        const resistance = currentY > 100 ? 100 + (currentY - 100) * 0.3 : currentY;
+        card.style.transform = `translateY(${resistance}px)`;
+        // 배경 투명도도 연동
+        const opacity = Math.max(0, 0.35 - (resistance / window.innerHeight) * 0.5);
+        overlay.style.background = `rgba(0,0,0,${opacity})`;
+    }
+    function onDragEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        card.style.transition = ''; // 트랜지션 복구
+        if (currentY > 150) {
+            // 충분히 끌었으면 닫기
+            closeSlideup();
+        } else {
+            // 원위치로 복귀 (스프링 효과)
+            card.style.transform = 'translateY(0)';
+            overlay.style.background = 'rgba(0,0,0,0.35)';
+        }
+        currentY = 0;
+    }
+
+    // 핸들 + 헤더 영역에서 드래그 시작
+    [handle, header].forEach(el => {
+        el.addEventListener('mousedown', onDragStart);
+        el.addEventListener('touchstart', onDragStart, {passive:true});
+    });
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('touchmove', onDragMove, {passive:true});
+    document.addEventListener('mouseup', onDragEnd);
+    document.addEventListener('touchend', onDragEnd);
+})();
+function selGenre(el){document.querySelectorAll('.genre-tag').forEach(t=>t.classList.remove('selected'));el.classList.add('selected');}
+function updCnt(){const l=document.getElementById('req').value.length;const c=document.getElementById('cnt');const b=document.getElementById('subBtn');c.textContent=l+'/10';if(l>=10){c.style.color='var(--success)';c.textContent=l+'/10 ✓';b.disabled=false;}else{c.style.color='var(--text-muted)';b.disabled=true;}}
+function swTab(name,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));el.classList.add('active');document.getElementById('tab-'+name).classList.add('active');}
+document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+        // 일반 모달이 열려있으면 그것부터 닫기
+        const openModals = document.querySelectorAll('.modal-overlay.active');
+        if(openModals.length > 0){
+            const last = openModals[openModals.length - 1];
+            closeModal(last.id);
+            return;
+        }
+        // 슬라이드 업 모달 닫기
+        if(document.getElementById('slideupModal').classList.contains('active')){
+            closeSlideup();
+        }
+    }
+});
+
+// ===== 파이프라인 프리뷰 애니메이션 =====
+const pipelineData = [
+    {agent:'기획팀',msg:'게임 기획서를 작성하고 있어요...',done:'기획서 완성! CTO에게 전달할게요 ✨',output:'📄 plan.json → 👔',
+     detail:'요구사항을 분석하고 게임 기획서(plan.json)를 생성합니다.',input:'사용자 요구사항 텍스트',outputDesc:'게임 컨셉, 규칙, 목표를 담은 기획서',example:'"뱀파이어 서바이벌 류 게임" → 장르 분석 → 핵심 메커니즘 설계'},
+    {agent:'CTO',msg:'아키텍처를 설계하고 있어요...',done:'Canvas 2D 기반으로 결정! 디자인팀 부탁해요',output:'📐 architecture.json → 🎨',
+     detail:'기술 스택과 아키텍처를 결정합니다.',input:'기획서 (plan.json)',outputDesc:'렌더링 방식, 라이브러리, 파일 구조',example:'Canvas 2D vs WebGL 비교 → Canvas 2D 선택 → 모듈 구조 설계'},
+    {agent:'디자인팀',msg:'UI/UX 디자인을 그리고 있어요...',done:'디자인 시안 완료! 개발팀 화이팅 💪',output:'🎨 design.json → 💻⚙️',
+     detail:'게임 UI/UX 디자인 스펙을 생성합니다.',input:'기획서 + 아키텍처',outputDesc:'색상 팔레트, 레이아웃, 스프라이트 스펙',example:'다크 테마 + 네온 포인트 → UI 요소별 크기/색상 정의'},
+    {agent:'프론트팀',msg:'화면을 만들고 있어요...',done:'렌더링 코드 완성! 백엔드팀과 합칠게요',output:'🖥️ render.js → 🔗 merge',
+     detail:'화면 렌더링과 인터랙션 코드를 작성합니다.',input:'디자인 스펙 + 아키텍처',outputDesc:'HTML/CSS/Canvas 렌더링 코드',example:'Canvas에 캐릭터/몬스터 그리기 + 애니메이션 루프'},
+    {agent:'백엔드팀',msg:'게임 로직을 짜고 있어요...',done:'로직 완성! 코드 합치기 완료 🎮',output:'⚙️ game.js → 🔍 QA',
+     detail:'게임 핵심 로직과 상태 관리를 구현합니다.',input:'기획서 + 아키텍처',outputDesc:'게임 로직, 충돌 감지, 점수 시스템',example:'몬스터 스폰 로직 + 자동 공격 시스템 + 레벨업 구현'},
+    {agent:'QA팀',msg:'게임을 테스트하고 있어요...',done:'테스트 통과! 게임 완성 🎉',output:'✅ PASS',
+     detail:'생성된 코드를 분석하고 버그를 찾습니다.',input:'합쳐진 게임 코드',outputDesc:'테스트 리포트, 버그 목록, PASS/FAIL',example:'구문 오류 검사 → 로직 검증 → 렌더링 테스트 → PASS'},
+];
+const nodes = document.querySelectorAll('.pipeline-node');
+const progressBar = document.getElementById('pipelineProgress');
+const completeEl = document.getElementById('pipelineComplete');
+const detailPanel = document.getElementById('agentDetail');
+const detailInner = document.getElementById('agentDetailInner');
+const progressDone = document.getElementById('pipelineProgressDone');
+const colors=['#ae3ec9','#4263eb','#e64980','#0ca678','#e67700','#f76707'];
+const colorVars=['var(--agent-planning)','var(--agent-cto)','var(--agent-design)','var(--agent-frontend)','var(--agent-backend)','var(--agent-qa)'];
+const bgVars=['var(--agent-planning-bg)','var(--agent-cto-bg)','var(--agent-design-bg)','var(--agent-frontend-bg)','var(--agent-backend-bg)','var(--agent-qa-bg)'];
+let pipelineStarted = false;
+let pipelineTimers = [];
+
+function showAgentDetail(idx){
+    const d=pipelineData[idx];
+    detailInner.innerHTML=`
+        <div class="agent-detail-section">
+            <div class="agent-detail-title" style="color:${colors[idx]}">${d.agent}은 이런 일을 해요</div>
+            <div class="agent-detail-text">${d.detail}</div>
+            <div style="margin-top:12px">
+                <span class="agent-detail-tag" style="background:${colors[idx]}15;color:${colors[idx]}">입력</span>
+                <span style="font-size:12px;color:var(--text-secondary)">${d.input}</span>
+            </div>
+            <div style="margin-top:6px">
+                <span class="agent-detail-tag" style="background:${colors[idx]}15;color:${colors[idx]}">출력</span>
+                <span style="font-size:12px;color:var(--text-secondary)">${d.outputDesc}</span>
+            </div>
+        </div>
+        <div class="agent-detail-section" style="border-left:2px solid var(--border-light);padding-left:20px">
+            <div class="agent-detail-title">💬 실제 동작 예시</div>
+            <div class="agent-detail-text" style="font-style:italic">${d.example}</div>
+        </div>
+    `;
+    detailPanel.classList.add('open');
+}
+
+function resetPipeline(){
+    nodes.forEach(n=>{
+        const av=n.querySelector('.pipeline-avatar');
+        const bubble=n.querySelector('.pipeline-bubble');
+        const out=n.querySelector('.pipeline-output');
+        const name=n.querySelector('.pipeline-agent-name');
+        av.classList.remove('active','done');
+        av.style.background='var(--bg-tertiary)';
+        av.style.borderColor='var(--border)';
+        av.innerHTML=av.dataset.emoji;
+        bubble.classList.remove('visible');
+        bubble.textContent='';
+        out.textContent='';
+        name.style.color='var(--text-muted)';
+    });
+    progressBar.style.transition='none';
+    progressBar.style.transform='scaleX(0)';
+    progressDone.style.opacity='0';
+    completeEl.classList.remove('visible');
+    detailPanel.classList.remove('open');
+}
+
+function runPipeline(){
+    if(pipelineStarted) return;
+    pipelineStarted = true;
+    let idx = 0;
+    resetPipeline();
+
+    function activateStage(){
+        if(idx>=pipelineData.length){
+            progressDone.style.opacity='1';
+            completeEl.classList.add('visible');
+            detailPanel.classList.remove('open');
+            pipelineStarted=false;
+            return;
+        }
+
+        // 프로그레스 바: 아이콘 중앙 위치까지 2s linear
+        if(idx===0){
+            void progressBar.offsetHeight;
+            progressBar.style.transition='transform 2s linear';
+        }
+        progressBar.style.transform='scaleX('+((2*idx+1)/(2*pipelineData.length))+')';
+
+        const node=nodes[idx];
+        const av=node.querySelector('.pipeline-avatar');
+        const bubble=node.querySelector('.pipeline-bubble');
+        const name=node.querySelector('.pipeline-agent-name');
+        const out=node.querySelector('.pipeline-output');
+        const data=pipelineData[idx];
+
+        // 활성화
+        av.classList.add('active');
+        av.style.background=bgVars[idx];
+        av.style.borderColor=colorVars[idx];
+        av.innerHTML=av.dataset.emoji;
+        name.style.color=colorVars[idx];
+        bubble.textContent=data.msg;
+        bubble.classList.add('visible');
+
+        // 상세 패널 자동 열기
+        showAgentDetail(idx);
+
+        // 2초 후 완료
+        const t1=setTimeout(()=>{
+            av.classList.remove('active');
+            av.classList.add('done');
+            av.innerHTML=av.dataset.emoji+'<div class="check">✓</div>';
+            bubble.textContent=data.done;
+            const t2=setTimeout(()=>{
+                bubble.classList.remove('visible');
+                out.textContent=data.output;
+                idx++;
+                activateStage();
+            },1200);
+            pipelineTimers.push(t2);
+        },2000);
+        pipelineTimers.push(t1);
+    }
+    activateStage();
+}
+
+function replayPipeline(){
+    pipelineTimers.forEach(t=>clearTimeout(t));
+    pipelineTimers=[];
+    pipelineStarted=false;
+    runPipeline();
+}
+
+// Intersection Observer로 자동 시작
+const pipelineObserver=new IntersectionObserver(([e])=>{
+    if(e.isIntersecting&&!pipelineStarted) runPipeline();
+},{threshold:0.4});
+const pipelineSection=document.getElementById('pipelinePreview');
+if(pipelineSection) pipelineObserver.observe(pipelineSection);
+
+// ===== JS 스냅 스크롤 (React useSnapScroll과 동일) =====
+(function(){
+    var container=document.getElementById('homePage');
+    if(!container) return;
+    var sections=container.querySelectorAll('[data-snap]');
+    var current=0, isScrolling=false, accumulated=0, wheelTimeout;
+
+    function scrollTo(idx){
+        if(isScrolling||idx<0||idx>=sections.length) return;
+        isScrolling=true; current=idx;
+        sections[idx].scrollIntoView({behavior:'smooth'});
+        setTimeout(function(){isScrolling=false;},800);
+    }
+
+    container.addEventListener('wheel',function(e){
+        var last=sections[sections.length-1];
+        if(last&&last.contains(e.target)){
+            if(e.deltaY<0&&last.scrollTop<=0){e.preventDefault();scrollTo(current-1);}
+            return;
+        }
+        e.preventDefault();
+        accumulated+=e.deltaY;
+        clearTimeout(wheelTimeout);
+        wheelTimeout=setTimeout(function(){accumulated=0;},200);
+        if(Math.abs(accumulated)<50) return;
+        if(accumulated>0) scrollTo(current+1); else scrollTo(current-1);
+        accumulated=0;
+    },{passive:false});
+
+    var touchY=0;
+    container.addEventListener('touchstart',function(e){touchY=e.touches[0].clientY;},{passive:true});
+    container.addEventListener('touchend',function(e){
+        var last=sections[sections.length-1];
+        if(last&&last.contains(e.target)&&last.scrollTop>0) return;
+        var dy=touchY-e.changedTouches[0].clientY;
+        if(Math.abs(dy)<50) return;
+        if(dy>0) scrollTo(current+1); else scrollTo(current-1);
+    },{passive:true});
+})();
+
+// ===== 히어로 떠다니는 이모지 파티클 =====
+(function(){
+    const container = document.getElementById('heroEmojis');
+    if(!container) return;
+    const emojis = ['🎮','🧩','🚀','⭐','🎨','🎵','🎲','✨','🎯','🕹️','👾','🎪','🧸','🎠','🎡','💫'];
+    const particles = [];
+    const COUNT = 12;
+    const sizes = [14,16,18,20,24,26,28,32,36,40,44,48];
+
+    for(let i=0;i<COUNT;i++){
+        const el = document.createElement('span');
+        el.className = 'floating-emoji';
+        el.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+        const size = sizes[i % sizes.length];
+        el.style.fontSize = size+'px';
+        el.style.opacity = size < 24 ? 0.2 + Math.random()*0.15 : 0.3 + Math.random()*0.25;
+        container.appendChild(el);
+
+        particles.push({
+            el,
+            x: Math.random()*100,
+            y: Math.random()*100,
+            vx: (Math.random()-0.5)*0.3,
+            vy: (Math.random()-0.5)*0.2 - 0.1,
+            rot: Math.random()*360,
+            vr: (Math.random()-0.5)*1.5,
+            wobblePhase: Math.random()*Math.PI*2,
+            wobbleSpeed: 0.01+Math.random()*0.02,
+            wobbleAmp: 5+Math.random()*15,
+        });
+    }
+
+    let running = true;
+    function animate(){
+        if(!running) return;
+        particles.forEach(p=>{
+            p.wobblePhase += p.wobbleSpeed;
+            p.x += p.vx + Math.sin(p.wobblePhase)*0.08;
+            p.y += p.vy + Math.cos(p.wobblePhase*0.7)*0.05;
+            p.rot += p.vr;
+
+            // 경계 래핑
+            if(p.x>105) p.x=-5;
+            if(p.x<-5) p.x=105;
+            if(p.y>105) p.y=-5;
+            if(p.y<-5) p.y=105;
+
+            const wobbleX = Math.sin(p.wobblePhase)*p.wobbleAmp;
+            const wobbleY = Math.cos(p.wobblePhase*1.3)*p.wobbleAmp*0.6;
+            p.el.style.transform = `translate(${wobbleX}px, ${wobbleY}px) rotate(${p.rot}deg)`;
+            p.el.style.left = p.x+'%';
+            p.el.style.top = p.y+'%';
+        });
+        requestAnimationFrame(animate);
+    }
+    animate();
+})();
+
+// ===== 스크롤 애니메이션 (Intersection Observer) =====
+const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+        }
+    });
+}, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+// reveal 클래스가 있는 모든 요소 관찰
+document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale').forEach(el => {
+    revealObserver.observe(el);
+});
+
+// flow-steps 순차 등장
+const flowSteps = document.getElementById('flowSteps');
+if (flowSteps) {
+    const flowObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) entry.target.classList.add('visible');
+        });
+    }, { threshold: 0.3 });
+    flowObserver.observe(flowSteps);
+}
+
+// ===== 히어로 패럴랙스 (스크롤 시 배경 글로우 이동) =====
+let ticking = false;
+window.addEventListener('scroll', () => {
+    if (!ticking) {
+        requestAnimationFrame(() => {
+            const scrollY = window.scrollY;
+
+            // 헤더 스크롤 그림자
+            const header = document.querySelector('.header');
+            if (scrollY > 10) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+
+            // 히어로 글로우 패럴랙스 (스크롤에 따라 느리게 이동)
+            const glows = document.querySelectorAll('.hero-glow');
+            glows.forEach((glow, i) => {
+                const speed = 0.15 + (i * 0.05);
+                glow.style.transform = `translateY(${scrollY * speed}px)`;
+            });
+
+            // 히어로 텍스트 패럴랙스 (스크롤 시 살짝 올라감)
+            const heroContent = document.querySelector('.hero');
+            if (heroContent) {
+                const opacity = Math.max(0, 1 - scrollY / 600);
+                const translateY = scrollY * 0.3;
+                heroContent.style.opacity = opacity;
+                heroContent.style.transform = `translateY(${translateY}px)`;
+            }
+
+            ticking = false;
+        });
+        ticking = true;
+    }
+});
+</script>
+</body>
+</html>

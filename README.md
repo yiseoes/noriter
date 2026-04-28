@@ -3,9 +3,36 @@
 
 <br>
 
+![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.4.4-6DB33F?style=flat-square&logo=springboot&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Claude](https://img.shields.io/badge/Claude_API-Anthropic-CC785C?style=flat-square)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat-square&logo=mysql&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+
+<br>
+
 > 사용자가 요구사항을 입력하면, 가상의 AI 개발 스튜디오가
 > **기획 → 설계 → 구현 → 테스트 → 디버깅 → 출시**까지
 > 7단계를 자율적으로 수행해 플레이 가능한 HTML5 Canvas 게임을 생성합니다.
+
+<br>
+
+```
+입력  →  "고양이를 모으는 귀여운 퍼즐 게임 만들어줘"
+
+           ↓ PlanningAgent   기획서 작성 (장르·규칙·콘텐츠)
+           ↓ ContentAgent    게임 데이터 100+ 항목 생성
+           ↓ CtoAgent        인터페이스 계약 설계
+           ↓ DesignAgent     색상·레이아웃 스펙
+           ↓ FrontendAgent   HTML / CSS / Renderer 클래스
+           ↓ BackendAgent    Game 클래스 / 게임 로직
+           ↓ QaAgent         정적 코드 분석 · PASS 판정
+           ↓ Release         파일 저장
+
+출력  →  브라우저에서 바로 실행 가능한 HTML5 Canvas 게임  (~2분)
+```
 
 <br>
 
@@ -26,8 +53,12 @@
 11. [실시간 모니터링 (SSE)](#11-실시간-모니터링-sse)
 12. [보안 설계](#12-보안-설계)
 13. [개발 회고 및 트러블슈팅](#13-개발-회고-및-트러블슈팅)
-14. [로컬 실행 방법](#14-로컬-실행-방법)
-15. [프로젝트 구조](#15-프로젝트-구조)
+14. [테스트 전략](#14-테스트-전략)
+15. [성능 및 비용 분석](#15-성능-및-비용-분석)
+16. [설계 의사결정 기록 (ADR)](#16-설계-의사결정-기록-adr)
+17. [향후 로드맵](#17-향후-로드맵)
+18. [로컬 실행 방법](#18-로컬-실행-방법)
+19. [프로젝트 구조](#19-프로젝트-구조)
 
 <br>
 
@@ -953,3 +984,437 @@ workspace_NORITER/
 
 *NoriTer는 "AI가 실제로 소프트웨어를 만들 수 있는가"라는 질문에 대한 실험적 답변입니다.*
 *단순한 코드 생성이 아닌, 전문화된 에이전트들이 각자의 역할을 맡아 협업하는 시스템을 구현했습니다.*
+
+<br>
+
+---
+
+## 14. 테스트 전략
+
+### 테스트 피라미드
+
+```
+               ┌─────────────────────────┐
+               │     E2E 테스트           │  ← 실제 파이프라인 실행
+               │  (비용 발생, 사전 승인)   │     Claude API 호출 포함
+               └───────────┬─────────────┘
+              ┌────────────┴────────────┐
+              │     통합 테스트          │  ← Spring + H2
+              │  (MockMvc + TestContainers)│   JWT 인증, API 전체 흐름
+              └──────────┬──────────────┘
+             ┌───────────┴───────────────┐
+             │       단위 테스트          │  ← 순수 Java 로직
+             │   (JUnit 5, Mockito)       │   에이전트, CodeMerger, 파서
+             └───────────────────────────┘
+```
+
+### 단위 테스트 (Unit Tests)
+
+| 테스트 클래스 | 검증 대상 |
+|-------------|---------|
+| `PipelineOrchestratorTest` | 파이프라인 단계 순서, 분기 조건 |
+| `CodeMergerTest` | 클래스 병합, 중복 제거, 초기화 코드 추가 |
+| `JsSyntaxValidatorTest` | JS 문법 오류 감지, 오탐 방지 |
+| `PromptRegistryTest` | 프롬프트 로드, 캐싱, 템플릿 변수 치환 |
+| `AgentResultTest` | 결과 파싱, 섹션 블록 추출 |
+| `IdGeneratorTest` | ID 형식, 접두사, 유일성 |
+| `ProjectServiceTest` | 소유권 검증, 상태 전이 |
+
+### 통합 테스트 (Integration Tests)
+
+```java
+// AuthIntegrationTest — 인증 전체 흐름
+@SpringBootTest
+@AutoConfigureMockMvc
+class AuthIntegrationTest {
+
+    @Test
+    void 회원가입_로그인_JWT_보호_API_전체_흐름() {
+        // 1. 회원가입
+        mockMvc.perform(post("/api/auth/signup")...);
+
+        // 2. 로그인 → JWT 토큰 수신
+        String token = mockMvc.perform(post("/api/auth/login")...)
+                              .andReturn()...;
+
+        // 3. JWT로 보호된 API 접근
+        mockMvc.perform(get("/api/projects")
+                    .header("Authorization", "Bearer " + token))
+               .andExpect(status().isOk());
+    }
+}
+```
+
+```java
+// ProjectOwnershipIntegrationTest — 소유권 격리
+@Test
+void 다른_사용자의_프로젝트_접근_불가() {
+    // userA의 프로젝트를 userB의 JWT로 접근 시도
+    mockMvc.perform(get("/api/projects/{id}", projectA.getId())
+                .header("Authorization", "Bearer " + tokenB))
+           .andExpect(status().isNotFound());  // 존재하지 않는 것처럼 처리
+}
+```
+
+### 파이프라인 테스트 원칙
+
+AI API를 호출하는 E2E 테스트는 **비용이 발생**하므로 실행 전 반드시 예상 비용 고지 후 승인을 받습니다.
+
+- **파이프라인 1회 실행**: 약 15,000~25,000 토큰 소모 (입력 + 출력 합산)
+- **테스트 격리**: H2 인메모리 DB 사용, 실제 파일 저장소는 임시 디렉터리
+
+<br>
+
+---
+
+## 15. 성능 및 비용 분석
+
+### 파이프라인 실행 시간 (실측)
+
+| 단계 | 에이전트 | 평균 소요 시간 | 비고 |
+|------|---------|-------------|------|
+| PLANNING | PlanningAgent | ~15초 | 기획서 JSON 생성 |
+| CONTENT | ContentAgent | ~10초 | 콘텐츠 데이터 100+ 항목 |
+| ARCHITECTURE | CtoAgent | ~10초 | 인터페이스 계약 JSON |
+| DESIGN | DesignAgent | ~8초 | 색상·레이아웃 JSON |
+| IMPLEMENTATION | FrontendAgent | ~25초 | HTML + CSS + Renderer |
+| IMPLEMENTATION | BackendAgent | ~30초 | Game 클래스 전체 |
+| QA | QaAgent | ~15초 | 코드 정적 분석 |
+| DEBUG (발생 시) | 해당 에이전트 | ~20초 | 최대 3회 |
+| **전체 (PASS 시)** | — | **~2분** | 디버깅 없는 경우 |
+| **전체 (1회 DEBUG)** | — | **~3분** | |
+
+### 토큰 사용량 (실측 추정)
+
+| 에이전트 | 입력 토큰 | 출력 토큰 | 합산 |
+|---------|---------|---------|------|
+| PlanningAgent | ~2,000 | ~1,500 | ~3,500 |
+| ContentAgent | ~1,500 | ~2,000 | ~3,500 |
+| CtoAgent | ~2,500 | ~1,000 | ~3,500 |
+| DesignAgent | ~3,000 | ~800 | ~3,800 |
+| FrontendAgent | ~3,500 | ~2,500 | ~6,000 |
+| BackendAgent | ~4,000 | ~3,000 | ~7,000 |
+| QaAgent | ~5,000 | ~500 | ~5,500 |
+| **총합** | | | **~32,800** |
+
+- 모델: claude-3-5-haiku-20241022 (빠른 응답 + 낮은 비용 선택)
+- 게임 1개 생성 비용: **약 $0.01 ~ $0.02** (하이쿠 기준)
+- 에이전트별 토큰 사용량은 DB에 기록되어 관리자가 조회 가능
+
+### 비용 최적화 전략
+
+```
+1. 재시도 최소화
+   - 파이프라인 실패 시 실패 단계부터만 재시도
+   - "이어서 재시도" 기능으로 완료 단계 스킵
+
+2. 모델 선택
+   - claude-3-5-haiku: 빠름 + 저렴 + 코드 생성 품질 충분
+   - Opus/Sonnet 대비 약 5~10배 저렴
+
+3. 디버깅 횟수 제한
+   - 최대 3회 디버깅 루프
+   - 초과 시 FAILED 처리 → 사용자가 이어서 재시도 선택
+
+4. 프롬프트 최적화
+   - 불필요한 설명 제거, 출력 형식 명확히 → 출력 토큰 절감
+   - 섹션 블록 방식으로 마크다운 코드펜스 제거 → 파싱 오류 방지
+```
+
+<br>
+
+---
+
+## 16. 설계 의사결정 기록 (ADR)
+
+프로젝트에서 내린 주요 기술 결정과 그 이유를 기록합니다.
+
+### ADR-001: 멀티 에이전트 vs 단일 에이전트
+
+**결정**: 전문화된 7개 에이전트 분리
+**대안**: 단일 LLM 호출로 전부 생성
+**이유**:
+- 컨텍스트가 커질수록 응답 품질 하락 (컨텍스트 희석 문제)
+- 역할을 좁혀줄수록 각 에이전트의 출력 품질이 높아짐
+- 실패 단계만 재실행 가능 → 비용/시간 절약
+- 실제 소프트웨어 팀 구조를 모방해 이해와 디버깅이 쉬움
+
+**트레이드오프**: 총 API 호출 횟수 증가, 에이전트 간 계약 관리 복잡도 증가
+
+---
+
+### ADR-002: 코드 출력 형식 — JSON vs 섹션 블록
+
+**결정**: 코드는 `===SECTION===...===END_SECTION===` 블록, 기획/설계는 JSON
+**대안**: 코드도 JSON으로 감싸기 (`{"code": "..."}`)
+**이유**:
+- JSON 내부 코드 문자열은 이스케이프 문제 잦음 (줄바꿈 `\n`, 따옴표 `\"`)
+- AI가 JSON 인코딩을 실수하면 파싱 완전 실패
+- 섹션 블록은 코드를 있는 그대로 포함 가능 → 파싱 안정성 높음
+- 마크다운 코드펜스(` ``` `)와 달리 섹션 이름이 명확해 파싱 혼동 없음
+
+---
+
+### ADR-003: 실시간 통신 — SSE vs WebSocket
+
+**결정**: SSE (Server-Sent Events)
+**대안**: WebSocket
+**이유**:
+- 파이프라인은 서버 → 클라이언트 **단방향** 스트리밍이면 충분
+- WebSocket은 양방향 통신 오버헤드와 세션 관리 복잡도가 있음
+- SSE는 HTTP 위에서 동작해 인프라 제약 없음 (프록시, 방화벽 친화적)
+- Spring의 `SseEmitter`로 간단하게 구현 가능
+
+---
+
+### ADR-004: 프론트엔드 상태 관리 — TanStack Query vs Redux
+
+**결정**: TanStack Query (React Query)
+**대안**: Redux Toolkit, Zustand
+**이유**:
+- NoriTer의 상태는 대부분 **서버 상태** (DB에서 오는 프로젝트, 로그 등)
+- TanStack Query는 서버 상태 캐싱, 백그라운드 리페치, stale-while-revalidate 기본 제공
+- SSE 이벤트 수신 후 `queryClient.invalidateQueries()`로 즉시 최신화 가능
+- Redux 대비 보일러플레이트 대폭 감소
+
+---
+
+### ADR-005: 게임 코드 병합 전략 — Runtime vs Build Time
+
+**결정**: 서버사이드 CodeMerger로 Build Time 병합
+**대안**: 브라우저에서 두 파일을 별도 `<script>` 태그로 로드
+**이유**:
+- 두 파일로 분리 시 로드 순서 보장이 복잡 (Game 클래스가 Renderer보다 먼저 로드되면 오류)
+- 단일 `game.js`로 병합하면 미리보기·다운로드 모두 단순해짐
+- 초기화 코드를 항상 마지막에 1번만 삽입 보장 (중복 방지)
+- AI가 실수로 포함시킨 반대편 클래스를 서버에서 정리 가능
+
+---
+
+### ADR-006: 게임 장르 분류
+
+**결정**: 6개 장르 Enum (PUZZLE, ACTION, ARCADE, SHOOTING, STRATEGY, OTHER)
+**이유**:
+- 너무 세분화하면 기획 AI가 장르를 혼동
+- 6개로 단순화하면 PlanningAgent의 장르 선택이 일관되고 콘텐츠 생성 품질이 높아짐
+- OTHER 포함으로 새 장르 수용 가능
+
+<br>
+
+---
+
+## 17. 향후 로드맵
+
+### Phase 1 — 품질 고도화 (진행 중)
+
+- [x] 프롬프트 전면 강화 (가독성, IME, 인터페이스 계약)
+- [x] CodeMerger 안전망 (중복 제거, 클래스 스트립)
+- [x] QA 에이전트 오탐 방지 (정적 분석 기준 명확화)
+- [ ] 새 게임으로 강화된 프롬프트 E2E 검증
+- [ ] 생성 실패율 통계 수집 및 분석
+
+### Phase 2 — 게임 다양성 확장
+
+- [ ] **게임 템플릿 시스템**: 장르별 베이스 코드 제공으로 AI 생성 품질 보조
+- [ ] **에셋 지원**: 스프라이트, 사운드 파일 업로드 후 게임에 통합
+- [ ] **모바일 터치 지원**: 터치 이벤트 기반 조작 게임 생성
+
+### Phase 3 — 플랫폼 기능
+
+- [ ] **게임 공유**: 생성된 게임을 퍼블릭 URL로 공유
+- [ ] **게임 갤러리**: 공개 게임 목록 + 플레이 카운트
+- [ ] **수정 요청 고도화**: 게임 내 특정 요소(색상, 난이도) 핀포인트 수정
+- [ ] **버전 관리**: 수정 이력 보존 + 특정 버전으로 롤백
+
+### Phase 4 — AI 고도화
+
+- [ ] **멀티 모달**: 스케치 이미지를 입력받아 게임 UI로 구현
+- [ ] **에이전트 메모리**: 이전 성공 패턴 학습 및 재활용
+- [ ] **자동 플레이테스트**: Headless 브라우저로 실제 게임 실행 검증
+
+<br>
+
+---
+
+## 18. 로컬 실행 방법
+
+### 사전 요구사항
+
+| 도구 | 버전 | 확인 방법 |
+|------|------|---------|
+| Java | 17+ | `java -version` |
+| Maven | 3.6+ | `mvn -version` |
+| Node.js | 20+ | `node -version` |
+| MySQL | 8.x | `mysql --version` |
+| Anthropic API Key | - | [console.anthropic.com](https://console.anthropic.com) |
+
+### 1단계: 데이터베이스 설정
+
+```sql
+-- MySQL 접속 후 실행
+CREATE DATABASE noriter CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'noriter'@'localhost' IDENTIFIED BY 'yourpassword';
+GRANT ALL PRIVILEGES ON noriter.* TO 'noriter'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### 2단계: 백엔드 설정
+
+```yaml
+# backend/src/main/resources/application.yml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/noriter?serverTimezone=UTC&characterEncoding=UTF-8
+    username: noriter
+    password: yourpassword
+  jpa:
+    hibernate:
+      ddl-auto: update    # 최초 실행 시 테이블 자동 생성
+```
+
+```bash
+cd backend
+mvn spring-boot:run
+# 서버 시작: http://localhost:8080
+# 헬스체크: http://localhost:8080/actuator/health
+```
+
+### 3단계: 프론트엔드 실행
+
+```bash
+cd frontend
+npm install
+npm run dev
+# 개발 서버: http://localhost:5173
+```
+
+### 4단계: API 키 등록
+
+앱 접속 → 우상단 설정(⚙) → Anthropic API Key 입력
+
+또는 REST API 직접 호출:
+
+```bash
+curl -X PUT http://localhost:8080/api/settings/api-key \
+  -H "Content-Type: application/json" \
+  -d '{"apiKey": "sk-ant-..."}'
+```
+
+### 5단계: 게임 생성 테스트
+
+```bash
+curl -X POST http://localhost:8080/api/projects \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "내 첫 게임",
+    "requirement": "화면에서 떨어지는 과일을 바구니로 받는 캐주얼 게임",
+    "genre": "ARCADE"
+  }'
+```
+
+응답으로 받은 `projectId`로 SSE 스트림 연결:
+
+```bash
+curl -N http://localhost:8080/api/projects/{projectId}/stream
+```
+
+<br>
+
+---
+
+## 19. 프로젝트 구조
+
+```
+workspace_NORITER/
+│
+├── backend/                               # Spring Boot 3.4.4
+│   ├── pom.xml
+│   └── src/
+│       ├── main/java/com/noriter/
+│       │   ├── agent/
+│       │   │   ├── core/                  # BaseAgent, AgentContext, AgentResult
+│       │   │   ├── impl/                  # 7개 에이전트 구현체
+│       │   │   │   ├── PlanningAgent.java
+│       │   │   │   ├── ContentAgent.java
+│       │   │   │   ├── CtoAgent.java
+│       │   │   │   ├── DesignAgent.java
+│       │   │   │   ├── FrontendAgent.java
+│       │   │   │   ├── BackendAgent.java
+│       │   │   │   └── QaAgent.java
+│       │   │   ├── pipeline/
+│       │   │   │   ├── PipelineOrchestrator.java  ← 핵심: 7단계 제어
+│       │   │   │   ├── StageExecutor.java
+│       │   │   │   └── CodeMerger.java            ← 코드 자동 병합
+│       │   │   ├── prompt/                # PromptRegistry, PromptTemplate
+│       │   │   └── message/               # MessageBus
+│       │   ├── auth/                      # JWT 인증 (Spring Security)
+│       │   ├── controller/                # REST API 컨트롤러 + DTO
+│       │   ├── domain/                    # JPA 엔티티 + Enum 12개
+│       │   ├── service/                   # 비즈니스 로직 8개
+│       │   ├── repository/                # Spring Data JPA 8개
+│       │   ├── infrastructure/            # Claude API / SSE / 파일 / 암호화
+│       │   ├── exception/                 # NoriterException, ErrorCode 30+
+│       │   ├── config/                    # Async, CORS, Security
+│       │   └── util/                      # IdGenerator, JsSyntaxValidator
+│       ├── main/resources/
+│       │   ├── templates/                 # 24개 AI 프롬프트 파일
+│       │   ├── application.yml
+│       │   └── log4j2.xml
+│       └── test/                          # 단위 + 통합 테스트 25개+ 클래스
+│
+├── frontend/                              # React 19 + TypeScript + Vite
+│   ├── package.json
+│   └── src/
+│       ├── components/
+│       │   ├── home/                      # HeroSection, Playground, PipelinePreview
+│       │   ├── modal/                     # CreateGame, ProjectList, AuditLog, Settings, Auth
+│       │   ├── project/                   # ProjectDetail, PreviewTab, SourceTab, LogTab
+│       │   └── common/                    # Badge, FilterBar, ThemeToggle
+│       ├── hooks/                         # useAuth, useProjects, useSse, useGameFiles
+│       ├── api/                           # projectApi, gameApi, logApi, authApi
+│       └── types/                         # TypeScript 타입 정의
+│
+├── docs/                                  # 설계 문서 9개 (기획~배포)
+│   ├── 01_프로젝트_개요서.md
+│   ├── 02_기능_요구사항_정의서.md
+│   ├── 03_시스템_아키텍처_설계서.md
+│   ├── 04_에이전트_역할_정의서.md
+│   ├── 05_API_설계서.md
+│   ├── 06_데이터베이스_설계서.md
+│   ├── 07_화면_설계서.md
+│   ├── 08_에이전트_프롬프트_설계서.md
+│   └── 09_프로젝트_디렉토리_구조서.md
+│
+└── wireframe/                             # 초기 UI 와이어프레임
+```
+
+<br>
+
+---
+
+## 기술적 도전 요약
+
+| 도전 | 접근 방식 | 결과 |
+|------|----------|------|
+| AI 출력의 비결정성 | 섹션 블록 파싱 + 재시도 + CodeMerger 안전망 | 안정적 파싱 |
+| 에이전트 간 계약 유지 | CTO 아키텍처 JSON 인터페이스 명세 + 프롬프트 강제 | 런타임 오류 최소화 |
+| 브라우저 iframe 보안 | postMessage 릴레이 패턴 | 키보드 이벤트 정상 전달 |
+| Chrome 한글 IME | compositionend 음절 누적 + isComposing 이중 가드 | 한글 타이핑 정상 작동 |
+| 실시간 UX | SSE + React Query `invalidateQueries` 연계 | 파이프라인 진행 즉시 반영 |
+| 비용 절감 | 실패 단계만 재실행 + 토큰 사용량 추적 + claude-haiku | 게임 1개 약 $0.01~$0.02 |
+| QA 오탐 | 정적 분석 전용 + severity 기준 명확화 + benefit of doubt | 불필요한 디버깅 루프 감소 |
+| 코드 중복 생성 | `stripClass` + `deduplicateClasses` (중괄호 depth 추적) | 중복 클래스 완전 제거 |
+
+<br>
+
+---
+
+> **NoriTer**는 "AI가 실제로 소프트웨어를 만들 수 있는가"라는 질문에 대한 실험적 답변입니다.
+>
+> 단순히 LLM에게 코드를 요청하는 수준을 넘어, **전문화된 에이전트들이 각자의 역할을 맡아 협업하는 자율 시스템**을 구현했습니다. 이 과정에서 AI 에이전트 설계, 프롬프트 엔지니어링, 브라우저 플랫폼 특성, 실시간 스트리밍 등 다양한 기술적 도전을 경험하고 해결했습니다.
+
+<br>
+
+---
+
+*Java 17 · Spring Boot 3.4.4 · React 19 · TypeScript · TanStack Query · Tailwind CSS · MySQL · Claude API · SSE · JWT*

@@ -38,6 +38,24 @@
 
 ---
 
+## 스크린샷
+
+| 메인 홈 화면 | AI 파이프라인 소개 |
+|:-----------:|:-----------------:|
+| ![홈](docs/screenshots/01_home.jpg) | ![파이프라인](docs/screenshots/02_pipeline.jpg) |
+
+| 프로젝트 상세 — 개요 탭 | 실시간 로그 뷰어 |
+|:----------------------:|:---------------:|
+| ![개요](docs/screenshots/03_project_overview.jpg) | ![로그](docs/screenshots/04_project_logs.jpg) |
+
+| 에이전트 대화 (HANDOFF) | 감사 로그 | 설정 |
+|:----------------------:|:---------:|:----:|
+| ![대화](docs/screenshots/05_agent_chat.jpg) | ![감사로그](docs/screenshots/06_audit_log.jpg) | ![설정](docs/screenshots/07_settings.jpg) |
+
+<br>
+
+---
+
 ## 목차
 
 1. [프로젝트 개요](#1-프로젝트-개요)

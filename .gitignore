@@ -32,6 +32,5 @@ logs/
 # 워크스페이스 (생성된 게임 파일)
 backend/workspace/
 
-# 와이어프레임은 별도 레포
-wireframe/
+# wireframe/ — noriter 레포에 포함
 .claude/

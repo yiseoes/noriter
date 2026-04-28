@@ -18,6 +18,8 @@ REQUIREMENTS:
 - If content.json is provided, use its data DIRECTLY as the game's data constants (e.g., CAT_DATABASE, LEVEL_DATA)
   - Do NOT generate content data yourself if content.json is provided
   - Copy the content arrays verbatim into your code
+  - Constant names MUST use UPPERCASE_SNAKE_CASE (e.g., WORD_DATABASE, STAGE_DATA, ITEM_LIST)
+  - Check architecture.json's "contentIntegration" field for the exact constant name to use
 
 GAME LOOP:
 - Implement requestAnimationFrame loop inside the Game class
@@ -32,7 +34,17 @@ CRITICAL — DO NOT include:
 - Renderer class definition
 - window.addEventListener('load', ...) initialization code
 - Any code after the closing brace of the last class/function
-- The initialization code will be appended separately by the system
+- The initialization code will be appended separately by the system (CodeMerger)
+
+INTERFACE CONTRACT — MANDATORY:
+- You MUST implement every method listed in architecture.json's "gameInterface.gameClass.publicMethods"
+- Missing even one method = the game will crash at runtime
+- If a method is in the architecture, implement it — no exceptions
+
+ERROR HANDLING — MANDATORY:
+- Never access array elements without bounds check (use arr[i] && arr[i].prop, not arr[i].prop)
+- Never call methods on potentially undefined objects without null guard
+- Game state transitions must guard: only transition if current state allows it
 
 CRITICAL — FORMAT:
 - Start with ===GAME_JS=== on its own line
@@ -41,3 +53,43 @@ CRITICAL — FORMAT:
 - Return ONLY the ===GAME_JS=== ... ===END_GAME_JS=== block, nothing else
 
 All Korean text in UI.
+
+CODE READABILITY — MANDATORY:
+- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
+- Each statement, function, and block must be on its own line
+- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
+- Readable code prevents bugs and must be maintained by humans
+
+KEYBOARD INPUT — MANDATORY:
+- handleKeyDown(e) must guard e.preventDefault: use 'if (e.preventDefault) e.preventDefault();'
+- This is required because keydown events may be forwarded as plain objects via postMessage (no DOM methods)
+
+KOREAN IME INPUT — MANDATORY for ALL games:
+- The Game constructor MUST bind hiddenInput events via a _bindHiddenInput() method:
+  _bindHiddenInput() {
+    const hi = document.getElementById('hiddenInput');
+    if (!hi) return;
+    this._hiddenInput = hi;
+    this.isComposing = false;
+    hi.addEventListener('compositionstart', () => { this.isComposing = true; });
+    hi.addEventListener('compositionupdate', (e) => { this.composingText = e.data || ''; });
+    hi.addEventListener('compositionend', (e) => {
+      this.isComposing = false;
+      this.composingText = '';
+      this.handleCompositionEnd(e.data || '');
+    });
+    hi.addEventListener('input', (e) => {
+      if (e.isComposing || this.isComposing) return;
+      this.handleInput(this._hiddenInput.value);
+    });
+  }
+- handleCompositionEnd(value) MUST accumulate syllables (Chrome resets hiddenInput to just the committed syllable):
+  handleCompositionEnd(value) {
+    const hiddenValue = this._hiddenInput ? this._hiddenInput.value : value;
+    const currentValue = hiddenValue.startsWith(this.inputText) ? hiddenValue : this.inputText + hiddenValue;
+    if (this._hiddenInput) this._hiddenInput.value = currentValue;
+    this.inputText = currentValue;
+    // then check for match / prefix
+  }
+- When game starts (startGame), call: if (this._hiddenInput) { this._hiddenInput.value = ''; this._hiddenInput.focus(); }
+- When game ends, call: if (this._hiddenInput) this._hiddenInput.blur();

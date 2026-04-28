@@ -25,3 +25,13 @@ CRITICAL — FORMAT:
 - Each section ends with ===END_SECTION_NAME=== on its own line
 - Do NOT use ```code fences inside the section markers
 - Do NOT include any text outside the section blocks
+
+CODE READABILITY — MANDATORY:
+- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
+- Each statement, function, and block must be on its own line
+- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
+- Readable code prevents bugs and must be maintained by humans
+
+HTML/CSS REQUIREMENTS — do NOT remove:
+- index.html must always contain: <input id="hiddenInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+- style.css must always contain: #hiddenInput { position:absolute; opacity:0; pointer-events:none; left:-9999px; top:-9999px; width:1px; height:1px; border:none; outline:none; background:transparent; color:transparent; caret-color:transparent; font-size:16px; }

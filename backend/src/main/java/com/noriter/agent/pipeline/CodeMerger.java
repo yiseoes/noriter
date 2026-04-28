@@ -16,9 +16,51 @@ public class CodeMerger {
     private static final String DEFAULT_INIT_CODE =
             "window.addEventListener('load', () => {\n" +
             "  const canvas = document.getElementById('gameCanvas');\n" +
+            "  const hiddenInput = document.getElementById('hiddenInput');\n" +
             "  const renderer = new Renderer();\n" +
             "  renderer.init(canvas);\n" +
             "  const game = new Game(canvas, renderer);\n" +
+            "  renderer.setGame(game);\n" +
+            "\n" +
+            "  // iframe 환경에서 키보드 포커스 확보\n" +
+            "  canvas.setAttribute('tabindex', '0');\n" +
+            "  canvas.focus();\n" +
+            "\n" +
+            "  // 부모 페이지에서 postMessage로 전달된 키 이벤트 수신\n" +
+            "  window.addEventListener('message', (e) => {\n" +
+            "    if (e.data && e.data.type === 'keydown') {\n" +
+            "      game.handleKeyDown(e.data);\n" +
+            "    }\n" +
+            "  });\n" +
+            "\n" +
+            "  canvas.addEventListener('click', (e) => {\n" +
+            "    const rect = canvas.getBoundingClientRect();\n" +
+            "    const scaleX = canvas.width / rect.width;\n" +
+            "    const scaleY = canvas.height / rect.height;\n" +
+            "    game.handleClick((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);\n" +
+            "  });\n" +
+            "\n" +
+            "  document.addEventListener('keydown', (e) => {\n" +
+            "    game.handleKeyDown(e);\n" +
+            "  });\n" +
+            "\n" +
+            "  // 한글 IME 입력 처리 (input/compositionend 리스너는 Game 생성자에서 등록)\n" +
+            "  let lastTime = 0;\n" +
+            "  function gameLoop(timestamp) {\n" +
+            "    const dt = Math.min((timestamp - lastTime) / 1000, 0.05);\n" +
+            "    lastTime = timestamp;\n" +
+            "    game.update(dt);\n" +
+            "    renderer.render(game);\n" +
+            "    requestAnimationFrame(gameLoop);\n" +
+            "  }\n" +
+            "  requestAnimationFrame((timestamp) => {\n" +
+            "    lastTime = timestamp;\n" +
+            "    requestAnimationFrame(gameLoop);\n" +
+            "  });\n" +
+            "\n" +
+            "  window.addEventListener('resize', () => {\n" +
+            "    renderer.resizeCanvas();\n" +
+            "  });\n" +
             "});\n";
 
     /**
@@ -32,9 +74,13 @@ public class CodeMerger {
 
         String initCode = extractInitCode(architectureJson);
 
-        // 백엔드/프론트 코드에서 초기화 코드 중복 제거
+        // 백엔드: 초기화 코드 + Renderer 클래스 제거 (AI가 실수로 포함시키는 케이스 대응)
         String cleanBackend = removeInitCode(backendLogicSection != null ? backendLogicSection : "");
+        cleanBackend = stripClass(cleanBackend, "Renderer");
+
+        // 프론트: 초기화 코드 + Game 클래스 제거
         String cleanFront = removeInitCode(frontendRenderSection != null ? frontendRenderSection : "");
+        cleanFront = stripClass(cleanFront, "Game");
 
         StringBuilder merged = new StringBuilder();
         merged.append("// === Game 로직 ===\n");
@@ -94,8 +140,64 @@ public class CodeMerger {
     }
 
     /**
-     * 중복 class 정의 제거 — 같은 클래스가 2번 이상 선언된 경우 마지막 것만 유지.
-     * AI가 Renderer 또는 Game 클래스를 두 번 생성하는 케이스 대응.
+     * 특정 클래스 정의를 코드에서 제거.
+     * 중괄호 depth 추적으로 클래스 블록 전체를 정확히 제거.
+     * AI가 지시를 무시하고 불필요한 클래스를 포함시키는 케이스 대응.
+     */
+    /**
+     * game.js에서 특정 클래스 블록만 추출 (역추출용)
+     */
+    public String extractClass(String code, String className) {
+        String marker = "class " + className;
+        int classIdx = code.indexOf(marker);
+        if (classIdx < 0) return null;
+        int braceStart = code.indexOf('{', classIdx);
+        if (braceStart < 0) return null;
+        int depth = 0;
+        int braceEnd = -1;
+        for (int i = braceStart; i < code.length(); i++) {
+            char c = code.charAt(i);
+            if (c == '{') depth++;
+            else if (c == '}') {
+                depth--;
+                if (depth == 0) { braceEnd = i; break; }
+            }
+        }
+        if (braceEnd < 0) return null;
+        return code.substring(classIdx, braceEnd + 1).trim();
+    }
+
+    private String stripClass(String code, String className) {
+        String marker = "class " + className;
+        int classIdx = code.indexOf(marker);
+        if (classIdx < 0) return code; // 해당 클래스 없음 — 정상
+
+        int braceStart = code.indexOf('{', classIdx);
+        if (braceStart < 0) return code;
+
+        // 매칭되는 닫는 중괄호 찾기
+        int depth = 0;
+        int braceEnd = -1;
+        for (int i = braceStart; i < code.length(); i++) {
+            char c = code.charAt(i);
+            if (c == '{') depth++;
+            else if (c == '}') {
+                depth--;
+                if (depth == 0) { braceEnd = i; break; }
+            }
+        }
+        if (braceEnd < 0) return code;
+
+        // 클래스 선언 앞의 섹션 주석 라인도 함께 제거
+        String before = code.substring(0, classIdx)
+                .replaceAll("(?m)^//[^\n]*" + className + "[^\n]*\n$", "");
+        String after = code.substring(braceEnd + 1);
+        log.warn("[코드 병합] {} 클래스 제거 — BackendAgent/FrontendAgent가 잘못 포함시킨 클래스", className);
+        return (before.stripTrailing() + "\n" + after.stripLeading()).trim();
+    }
+
+    /**
+     * 중복 class 정의 제거 (안전망 — stripClass 이후에도 남은 중복 처리).
      */
     private String deduplicateClasses(String code) {
         String result = deduplicateClass(code, "Renderer");
@@ -107,20 +209,13 @@ public class CodeMerger {
         String marker = "class " + className;
         int firstIdx = code.indexOf(marker);
         int lastIdx = code.lastIndexOf(marker);
+        if (firstIdx == lastIdx || firstIdx < 0) return code;
 
-        if (firstIdx == lastIdx || firstIdx < 0) {
-            return code; // 중복 없음
-        }
-
-        // 첫 번째 class 선언부터 두 번째 class 선언 직전까지 제거
-        // (첫 번째 블록을 지우고 마지막 블록만 남김)
-        String before = code.substring(0, firstIdx);
-        String from = code.substring(lastIdx);
-
-        // 구분자 주석도 함께 정리 (바로 앞의 // === ... === 라인 제거)
-        String cleaned = (before + from).replaceAll("(?m)^// === " + className + " ===\\s*\\n", "");
+        // 첫 번째 클래스 블록을 stripClass로 정확히 제거
+        String stripped = stripClass(code.substring(firstIdx), className);
+        String result = code.substring(0, firstIdx) + "\n" + stripped;
         log.warn("[코드 병합] class {} 중복 감지 — 첫 번째 정의 제거 후 마지막만 유지", className);
-        return cleaned;
+        return result;
     }
 
     private int findJsonStringEnd(String json, int start) {

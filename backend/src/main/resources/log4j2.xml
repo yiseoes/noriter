@@ -9,7 +9,7 @@
     <Appenders>
         <!-- 콘솔 출력 -->
         <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout charset="UTF-8" pattern="%d{HH:mm:ss.SSS} %-5level [%t] %logger{36} - %msg%n"/>
+            <PatternLayout charset="MS949" pattern="%d{HH:mm:ss.SSS} %-5level [%t] %logger{36} - %msg%n"/>
         </Console>
 
         <!-- 파일 출력 (일별 롤링) -->

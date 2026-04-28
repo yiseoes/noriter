@@ -49,7 +49,17 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
 
 CRITICAL:
 - "gameInterface" defines the CONTRACT between Game and Renderer — downstream agents MUST follow these exact method signatures
-- "initializationCode" is the SINGLE initialization block that will be appended at the end of game.js — do not add it anywhere else
-- List ALL public methods that Game and Renderer will expose to each other
+- "initializationCode" is informational: the system (CodeMerger) appends it at the end of game.js automatically
+  - Backend agent and Frontend agent must NOT include their own initialization code
+  - Write initializationCode in full, readable multi-line format (not a one-liner)
+  - Must include: canvas.focus(), postMessage listener, document keydown listener, game loop with requestAnimationFrame
+- List ALL public methods that Game and Renderer will expose to each other — incomplete contracts cause runtime crashes
+- "contentIntegration" must specify the EXACT constant name the backend agent should use (e.g., "WORD_DATABASE")
 
 Do NOT include any text outside the JSON.
+
+CODE READABILITY — MANDATORY:
+- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
+- Each statement, function, and block must be on its own line
+- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
+- Readable code prevents bugs and must be maintained by humans

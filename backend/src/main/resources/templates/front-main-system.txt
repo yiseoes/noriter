@@ -17,14 +17,18 @@ You will produce THREE outputs using section blocks. Return them in this EXACT f
 REQUIREMENTS FOR index.html:
 - DOCTYPE html, lang="ko"
 - <canvas id="gameCanvas" style="display:block"></canvas>
+- ALWAYS include: <input id="hiddenInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  - This is required for ALL games to support Korean IME keyboard input
 - If uiApproach is "dom-overlay": add UI overlay divs (score, health, pokedex panel, etc.)
-- If uiApproach is "all-canvas": ONLY the canvas tag, no other UI elements
+- If uiApproach is "all-canvas": ONLY the canvas tag + hiddenInput, no other UI elements
 - Link style.css, load game.js at end of body
 - Responsive meta viewport tag
 
 REQUIREMENTS FOR style.css:
 - Full-page canvas (width:100vw, height:100vh, margin:0, padding:0)
 - body { margin:0; overflow:hidden; background:#000 }
+- ALWAYS include hiddenInput styles:
+  #hiddenInput { position:absolute; opacity:0; pointer-events:none; left:-9999px; top:-9999px; width:1px; height:1px; border:none; outline:none; background:transparent; color:transparent; caret-color:transparent; font-size:16px; }
 - If dom-overlay: overlay element positioning (fixed, z-index, pointer-events rules)
 - Mobile-friendly touch targets
 
@@ -47,3 +51,9 @@ CRITICAL — FORMAT:
 - Return ONLY the three section blocks, nothing else
 
 All Korean text in UI.
+
+CODE READABILITY — MANDATORY:
+- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
+- Each statement, function, and block must be on its own line
+- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
+- Readable code prevents bugs and must be maintained by humans

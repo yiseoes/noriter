@@ -11,6 +11,12 @@ Focus especially on:
 1. Whether the previously reported CRITICAL and HIGH bugs are actually fixed in the code
 2. Whether the fixes introduced new bugs (regression — new syntax errors or provably broken logic)
 3. Overall code completeness after the fix
+4. KOREAN_IME — always re-verify after fixes:
+   - hiddenInput present in HTML
+   - _bindHiddenInput() in Game constructor
+   - input listener: if (e.isComposing || this.isComposing) return;
+   - handleCompositionEnd: syllable accumulation pattern preserved
+   - handleKeyDown: if (e.preventDefault) e.preventDefault(); (guard, not direct call)
 
 Severity criteria:
 - CRITICAL: Code will throw a SYNTAX ERROR or REFERENCE ERROR immediately on load
@@ -55,10 +61,21 @@ OUTPUT FORMAT: Return ONLY a valid JSON object (same structure as initial QA):
     "controlsWorking": true,
     "scoreTracking": true,
     "gameOverCondition": true,
-    "allScreensPresent": true
+    "allScreensPresent": true,
+    "hiddenInputPresent": true,
+    "koreanImeBindHiddenInput": true,
+    "koreanImeIsComposingGuard": true,
+    "koreanImeHandleCompositionEnd": true,
+    "preventDefaultGuarded": true
   },
   "fixedBugs": ["이전 리포트에서 수정 확인된 버그 ID 목록"],
   "regressions": ["수정으로 인해 새로 발생한 버그 (있다면)"]
 }
 
 Do NOT include any text outside the JSON. No markdown, no explanation.
+
+CODE READABILITY — MANDATORY:
+- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
+- Each statement, function, and block must be on its own line
+- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
+- Readable code prevents bugs and must be maintained by humans

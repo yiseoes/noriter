@@ -22,6 +22,7 @@ public class ProjectResponse {
     private final LocalDateTime createdAt;
     private final LocalDateTime completedAt;
     private final boolean demo;
+    private final int feedbackCount;
 
     public ProjectResponse(Project project) {
         this.id = project.getId();
@@ -34,5 +35,6 @@ public class ProjectResponse {
         this.createdAt = project.getCreatedAt();
         this.completedAt = project.getCompletedAt();
         this.demo = project.isDemo();
+        this.feedbackCount = project.getFeedbackCount();
     }
 }

@@ -67,6 +67,7 @@ public class Project {
     private Long userId;
 
     @Column(name = "feedback_count", nullable = false)
+    @Getter(AccessLevel.NONE)
     private Integer feedbackCount;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -95,8 +96,12 @@ public class Project {
         return project;
     }
 
+    public int getFeedbackCount() {
+        return this.feedbackCount != null ? this.feedbackCount : 0;
+    }
+
     public void incrementFeedbackCount() {
-        this.feedbackCount++;
+        this.feedbackCount = this.getFeedbackCount() + 1;
         this.updatedAt = LocalDateTime.now();
     }
 

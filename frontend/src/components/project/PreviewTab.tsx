@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { ProjectStatus } from '../../types';
 
 interface PreviewTabProps {
@@ -8,13 +8,33 @@ interface PreviewTabProps {
   isGuest?: boolean;
   feedbackCount?: number;
   isAdmin?: boolean;
+  refreshKey?: number;
 }
 
 const FEEDBACK_LIMIT = 2;
 
-export default function PreviewTab({ projectId, projectStatus, onFeedback, isGuest, feedbackCount = 0, isAdmin }: PreviewTabProps) {
+export default function PreviewTab({ projectId, projectStatus, onFeedback, isGuest, feedbackCount = 0, isAdmin, refreshKey }: PreviewTabProps) {
   const [feedback, setFeedback] = useState('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // 파이프라인 완료 시 iframe 자동 새로고침
+  useEffect(() => {
+    if (refreshKey && iframeRef.current) {
+      iframeRef.current.src = `/api/projects/${projectId}/preview`;
+    }
+  }, [refreshKey, projectId]);
+
+  // 부모 페이지 키 이벤트를 iframe으로 전달 (iframe 포커스 없어도 동작)
+  useEffect(() => {
+    const forwardKey = (e: KeyboardEvent) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: 'keydown', code: e.code, key: e.key },
+        '*'
+      );
+    };
+    window.addEventListener('keydown', forwardKey);
+    return () => window.removeEventListener('keydown', forwardKey);
+  }, []);
 
   const isCompleted = projectStatus === 'COMPLETED';
   const isFailed = projectStatus === 'FAILED';
@@ -67,6 +87,8 @@ export default function PreviewTab({ projectId, projectStatus, onFeedback, isGue
           className="w-full h-[500px] border-2 border-border rounded-xl bg-[#0f3460] max-md:h-[280px]"
           title="게임 미리보기"
           sandbox="allow-scripts allow-same-origin"
+          tabIndex={0}
+          onLoad={() => iframeRef.current?.contentWindow?.focus()}
         />
       ) : (
         <div className="w-full h-[300px] border-2 border-border rounded-xl bg-bg-secondary

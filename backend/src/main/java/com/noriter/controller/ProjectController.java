@@ -173,6 +173,7 @@ public class ProjectController {
 
         Long userId = getUserId(httpRequest);
         Project project = projectService.requestFeedback(id, request.getFeedback(), userId, guestId);
+        pipelineService.startRevisionPipeline(project.getId(), request.getFeedback());
 
         return ResponseEntity.ok(new ActionResponse(
                 project.getId(), project.getStatus().name(),

@@ -7,7 +7,8 @@ export const getLogs = (projectId: string, level?: string, agent?: string) =>
 
 /** API-LOG-002: 에이전트 대화 조회 */
 export const getMessages = (projectId: string) =>
-  client.get<PageResponse<AgentMessage>>(`/projects/${projectId}/messages`).then(r => r.data);
+  client.get<{ messages: AgentMessage[] }>(`/projects/${projectId}/messages`)
+    .then(r => ({ content: r.data.messages } as PageResponse<AgentMessage>));
 
 /** API-LOG-003: 감사 로그 */
 export const getAuditLogs = (eventType?: string, page = 0, size = 50) =>

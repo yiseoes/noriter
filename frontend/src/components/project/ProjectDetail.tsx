@@ -11,7 +11,7 @@ import SourceTab from './SourceTab';
 import { useSse } from '../../hooks/useSse';
 import { useLogs, useMessages } from '../../hooks/useLogs';
 import { useGameFiles } from '../../hooks/useGameFiles';
-import { useProject, useRetryProject } from '../../hooks/useProjects';
+import { useProject, useRetryProject, useSendFeedback } from '../../hooks/useProjects';
 import type { Project, AuthUser, TokenUsage } from '../../types';
 
 const tabs = [
@@ -31,14 +31,16 @@ interface ProjectDetailProps {
 }
 
 export default function ProjectDetail({ project, isDemo = false, onCreateReal, onLogin, user }: ProjectDetailProps) {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(project.status === 'REVISION' ? 'log' : 'overview');
   const [demoComplete, setDemoComplete] = useState(false);
   const [sseStatus, setSseStatus] = useState<string | null>(null);
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
   const queryClient = useQueryClient();
 
   const isInProgress = project.status === 'IN_PROGRESS' || project.status === 'REVISION';
   const isFailed = project.status === 'FAILED';
   const retryMutation = useRetryProject();
+  const feedbackMutation = useSendFeedback();
 
   // 실제 API 데이터 조회
   const { data: projectDetail } = useProject(project.id);
@@ -70,17 +72,24 @@ export default function ProjectDetail({ project, isDemo = false, onCreateReal, o
 
     if (type === 'stage-update') {
       invalidateAll();
-      setSseStatus(`${d.stageName || d.stageType || ''} 진행 중...`);
+      const revisionStatusMap: Record<string, string> = {
+        CTO_ANALYZING: 'CTO가 수정 범위 분석 중...',
+        FIXING: '코드 수정 중...',
+        RETESTING: 'QA 재검증 중...',
+      };
+      const revisionMsg = d.status ? revisionStatusMap[d.status as string] : undefined;
+      setSseStatus(revisionMsg ?? `${d.stageName || d.stageType || d.stage || '파이프라인'} 진행 중...`);
     }
 
     if (type === 'complete') {
       invalidateAll();
-      setSseStatus('게임 생성 완료!');
+      setSseStatus(project.status === 'REVISION' ? '수정 완료!' : '게임 생성 완료!');
+      setPreviewRefreshKey(k => k + 1);
     }
 
     if (type === 'error') {
       invalidateAll();
-      setSseStatus(`오류 발생: ${d.message || '알 수 없는 오류'}`);
+      setSseStatus(`오류 발생: ${d?.message || '알 수 없는 오류'}`);
     }
 
     if (type === 'cancelled') {
@@ -233,8 +242,10 @@ export default function ProjectDetail({ project, isDemo = false, onCreateReal, o
           projectId={project.id}
           projectStatus={project.status}
           isGuest={!user}
-          feedbackCount={0}
+          feedbackCount={project.feedbackCount ?? 0}
           isAdmin={user?.role === 'ADMIN'}
+          onFeedback={(text) => feedbackMutation.mutate({ id: project.id, feedback: text })}
+          refreshKey={previewRefreshKey}
         />
       )}
       {activeTab === 'source' && <SourceTab files={gameFiles ?? []} />}

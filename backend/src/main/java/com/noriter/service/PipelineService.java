@@ -22,4 +22,9 @@ public class PipelineService {
         log.info("[파이프라인 서비스] 파이프라인 재시도 요청 - projectId={}, fromStage={}", projectId, fromStage);
         pipelineOrchestrator.resumePipeline(projectId, fromStage);
     }
+
+    public void startRevisionPipeline(String projectId, String feedback) {
+        log.info("[파이프라인 서비스] 수정 파이프라인 시작 요청 - projectId={}", projectId);
+        pipelineOrchestrator.startRevisionPipeline(projectId, feedback);
+    }
 }

@@ -10,3 +10,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
 }
 
 Do NOT include any text outside the JSON.
+CODE READABILITY — MANDATORY:
+- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
+- Each statement, function, and block must be on its own line
+- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
+- Readable code prevents bugs and must be maintained by humans

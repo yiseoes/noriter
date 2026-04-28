@@ -302,6 +302,16 @@ public class PipelineOrchestrator {
                 log.debug("[파이프라인] 게임 파일 없음 - {}", file);
             }
         }
+        // game.js에서 Logic(Game)/Render(Renderer) 섹션 역추출
+        String gameJs = artifacts.get("game.js");
+        if (gameJs != null && !gameJs.isBlank()) {
+            String logicSection = codeMerger.extractClass(gameJs, "Game");
+            String renderSection = codeMerger.extractClass(gameJs, "Renderer");
+            if (logicSection != null && !logicSection.isBlank())
+                artifacts.put("gameJsLogicSection", logicSection);
+            if (renderSection != null && !renderSection.isBlank())
+                artifacts.put("gameJsRenderSection", renderSection);
+        }
         return artifacts;
     }
 
@@ -436,6 +446,121 @@ public class PipelineOrchestrator {
         log.warn("[파이프라인] 디버깅 최대 횟수 초과 - projectId={}, {}회 시도 후 FAILED",
                 projectId, maxAttempts);
         handlePipelineFailure(project, String.format("디버깅 %d회 시도 후에도 QA 통과 실패", maxAttempts));
+    }
+
+    /**
+     * 피드백 수정 파이프라인
+     * CTO 피드백 분석 → Front/Back 수정 → 코드 병합 → QA → 완료
+     */
+    @Async
+    public void startRevisionPipeline(String projectId, String feedback) {
+        log.info("[수정 파이프라인] ===== 시작 ===== projectId={}", projectId);
+
+        Project project = projectRepository.findById(projectId).orElse(null);
+        if (project == null) {
+            log.error("[수정 파이프라인] 프로젝트 없음 - projectId={}", projectId);
+            return;
+        }
+
+        project.updateStatus(ProjectStatus.IN_PROGRESS);
+        project.updateProgress(10, StageType.DEBUG);
+        projectRepository.save(project);
+
+        List<Stage> stages = stageRepository.findByProjectIdOrderByStageOrderAsc(projectId);
+        Map<String, String> artifacts = loadExistingArtifacts(projectId);
+
+        try {
+            logService.createLog(projectId, LogLevel.INFO, AgentRole.CTO, StageType.DEBUG,
+                    "수정 요청 분석 중...");
+            sseEmitterService.sendEvent(projectId, SseEvent.stageUpdate(
+                    "{\"stage\":\"DEBUG\",\"status\":\"CTO_ANALYZING\",\"progress\":10}"));
+
+            // 1. CTO 피드백 분석
+            AgentContext feedbackContext = AgentContext.builder()
+                    .projectId(projectId)
+                    .stageType(StageType.DEBUG)
+                    .requirement(project.getRequirement())
+                    .previousArtifacts(new HashMap<>(artifacts))
+                    .feedback(feedback)
+                    .build();
+
+            AgentResult ctoResult = ctoAgent.executeFeedback(feedbackContext);
+            if (ctoResult.getStatus() == AgentResult.Status.FAILED) {
+                handlePipelineFailure(project, "CTO 피드백 분석 실패");
+                return;
+            }
+            String ctoInstruction = ctoResult.getArtifacts().getOrDefault("debug-instruction.json", "");
+            artifacts.put("debug-instruction.json", ctoInstruction);
+
+            project.updateProgress(40, StageType.DEBUG);
+            projectRepository.save(project);
+            logService.createLog(projectId, LogLevel.INFO, AgentRole.CTO, StageType.DEBUG,
+                    "수정 지시 완료. Front/Back 수정 중...");
+            sseEmitterService.sendEvent(projectId, SseEvent.stageUpdate(
+                    "{\"stage\":\"DEBUG\",\"status\":\"FIXING\",\"progress\":40}"));
+
+            // 2. Frontend / Backend 수정
+            AgentContext fixContext = AgentContext.builder()
+                    .projectId(projectId)
+                    .stageType(StageType.DEBUG)
+                    .requirement(project.getRequirement())
+                    .previousArtifacts(new HashMap<>(artifacts))
+                    .ctoInstruction(ctoInstruction)
+                    .feedback(feedback)
+                    .debugAttempt(1)
+                    .build();
+
+            AgentResult frontFixResult = frontendAgent.executeFix(fixContext);
+            if (frontFixResult.getArtifacts() != null) artifacts.putAll(frontFixResult.getArtifacts());
+
+            AgentResult backFixResult = backendAgent.executeFix(fixContext);
+            if (backFixResult.getArtifacts() != null) artifacts.putAll(backFixResult.getArtifacts());
+
+            // 3. 코드 병합
+            String backLogic   = artifacts.getOrDefault("gameJsLogicSection", "");
+            String frontRender = artifacts.getOrDefault("gameJsRenderSection", "");
+            String archJson    = artifacts.getOrDefault("architecture.json", "");
+            String mergedJs    = codeMerger.mergeGameJs(backLogic, frontRender, archJson);
+            // 안전장치: Renderer 클래스가 사라지면 game.js 덮어쓰지 않음
+            if (codeMerger.extractClass(mergedJs, "Renderer") == null) {
+                log.warn("[수정 파이프라인] 병합 결과에 Renderer 클래스 없음 — game.js 덮어쓰기 건너뜀");
+            } else {
+                artifacts.put("game.js", mergedJs);
+                fileStorageService.saveGameFile(projectId, "game.js", mergedJs);
+            }
+            if (!frontRender.isBlank()) artifacts.put("gameJsRenderSection", frontRender);
+            if (!backLogic.isBlank())   artifacts.put("gameJsLogicSection", backLogic);
+
+            // index.html, style.css 저장
+            for (String f : new String[]{"index.html", "style.css"}) {
+                if (artifacts.containsKey(f) && !artifacts.get(f).isBlank()) {
+                    fileStorageService.saveGameFile(projectId, f, artifacts.get(f));
+                }
+            }
+
+            project.updateProgress(80, StageType.DEBUG);
+            projectRepository.save(project);
+            sseEmitterService.sendEvent(projectId, SseEvent.stageUpdate(
+                    "{\"stage\":\"DEBUG\",\"status\":\"RETESTING\",\"progress\":80}"));
+
+            // 4. QA
+            AgentContext qaContext = AgentContext.builder()
+                    .projectId(projectId)
+                    .stageType(StageType.QA)
+                    .requirement(project.getRequirement())
+                    .previousArtifacts(new HashMap<>(artifacts))
+                    .debugAttempt(1)
+                    .build();
+
+            AgentResult qaResult = qaAgent.execute(qaContext);
+            if (qaResult.getArtifacts() != null) artifacts.putAll(qaResult.getArtifacts());
+
+            completeRelease(project, stages);
+
+        } catch (Exception e) {
+            log.error("[수정 파이프라인] 예외 발생 - projectId={}, error={}", projectId, e.getMessage(), e);
+            handlePipelineFailure(project, "수정 파이프라인 오류: " + e.getMessage());
+        }
     }
 
     /**

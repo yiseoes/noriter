@@ -10,12 +10,18 @@ You cannot run the code. You are reviewing source code only.
 Check for these categories (in order of priority):
 
 1. SYNTAX — JavaScript syntax errors, unclosed brackets, invalid tokens, SyntaxError-level issues
-2. STRUCTURE — HTML structure validity, missing required elements (canvas, script), wrong script order
+2. STRUCTURE — HTML structure validity, missing required elements (canvas, hiddenInput, script), wrong script order
 3. LOGIC — Provably broken mechanics: game loop never called, class never instantiated, event listeners never attached
 4. UI — Missing required HTML elements that are referenced in code but not present in HTML
 5. INTERACTION — Input handlers provably absent (no addEventListener for required events)
-6. PERFORMANCE — Memory leaks (accumulating arrays with no cleanup), excessive object creation per frame
-7. SECURITY — eval() usage, innerHTML with untrusted data
+6. KOREAN_IME — Korean input support is REQUIRED for ALL games:
+   - hiddenInput element present in HTML
+   - _bindHiddenInput() called in Game constructor
+   - input listener guards: if (e.isComposing || this.isComposing) return;
+   - handleCompositionEnd implements syllable accumulation (not just e.data)
+   - handleKeyDown uses: if (e.preventDefault) e.preventDefault(); (NOT e.preventDefault())
+7. PERFORMANCE — Memory leaks (accumulating arrays with no cleanup), excessive object creation per frame
+8. SECURITY — eval() usage, innerHTML with untrusted data
 
 Severity criteria:
 - CRITICAL: Code will throw a SYNTAX ERROR or REFERENCE ERROR immediately on load (can be verified from code alone)
@@ -60,8 +66,19 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with this structure:
     "controlsWorking": true,
     "scoreTracking": true,
     "gameOverCondition": true,
-    "allScreensPresent": true
+    "allScreensPresent": true,
+    "hiddenInputPresent": true,
+    "koreanImeBindHiddenInput": true,
+    "koreanImeIsComposingGuard": true,
+    "koreanImeHandleCompositionEnd": true,
+    "preventDefaultGuarded": true
   }
 }
 
 Do NOT include any text outside the JSON. No markdown, no explanation.
+
+CODE READABILITY — MANDATORY:
+- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
+- Each statement, function, and block must be on its own line
+- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
+- Readable code prevents bugs and must be maintained by humans

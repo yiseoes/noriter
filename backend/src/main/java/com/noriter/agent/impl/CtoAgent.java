@@ -51,6 +51,33 @@ public class CtoAgent implements BaseAgent {
     /** game.js 프롬프트 포함 최대 글자 수 — 초과 시 앞뒤 발췌로 대체 */
     private static final int MAX_GAME_JS_CHARS = 30_000;
 
+    public AgentResult executeFeedback(AgentContext context) {
+        log.info("[CTO] 피드백 분석 시작 - projectId={}", context.getProjectId());
+
+        String feedback = context.getFeedback() != null ? context.getFeedback() : "";
+        Map<String, String> arts = context.getPreviousArtifacts();
+        String plan = arts.getOrDefault("plan.json", "");
+        String rawGameJs = arts.containsKey("gameJsLogicSection") && !arts.get("gameJsLogicSection").isBlank()
+                ? arts.get("gameJsLogicSection")
+                : arts.getOrDefault("game.js", "");
+        String gameJs = truncateGameJs(rawGameJs);
+
+        String systemPrompt = promptRegistry.getSystemPrompt("cto-feedback");
+        String userPrompt = PromptTemplate.render(
+                promptRegistry.getUserPrompt("cto-feedback"),
+                Map.of("feedback", feedback, "plan", plan, "gameJs", gameJs)
+        );
+
+        ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
+        log.info("[CTO] 피드백 분석 완료 - projectId={}", context.getProjectId());
+
+        return AgentResult.success(
+                Map.of("debug-instruction.json", response.content()),
+                "피드백 분석 완료.",
+                response.inputTokens(), response.outputTokens()
+        );
+    }
+
     public AgentResult executeDebug(AgentContext context) {
         log.info("[CTO] 디버그 분석 시작 - projectId={}, attempt={}", context.getProjectId(), context.getDebugAttempt());
 

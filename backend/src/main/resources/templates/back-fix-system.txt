@@ -18,3 +18,18 @@ CRITICAL — FORMAT:
 - End with ===END_GAME_JS=== on its own line
 - Do NOT use ```javascript code fences inside the markers
 - Do NOT include any text outside the ===GAME_JS=== ... ===END_GAME_JS=== block
+
+CODE READABILITY — MANDATORY:
+- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
+- Each statement, function, and block must be on its own line
+- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
+- Readable code prevents bugs and must be maintained by humans
+
+KEYBOARD INPUT — MANDATORY:
+- handleKeyDown(e): use 'if (e.preventDefault) e.preventDefault();' — events may be plain objects from postMessage
+
+KOREAN IME — MANDATORY (do NOT remove or simplify these patterns):
+- Game constructor must call _bindHiddenInput() which registers: compositionstart, compositionupdate, compositionend, input listeners
+- input listener must guard: if (e.isComposing || this.isComposing) return;
+- handleCompositionEnd must accumulate syllables: currentValue = hiddenValue.startsWith(inputText) ? hiddenValue : inputText + hiddenValue
+- startGame: this._hiddenInput.value = ''; this._hiddenInput.focus();

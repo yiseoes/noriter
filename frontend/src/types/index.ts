@@ -32,6 +32,7 @@ export interface Project {
   createdAt: string;
   completedAt: string | null;
   demo: boolean;
+  feedbackCount: number;
 }
 
 export interface ProjectDetail extends Project {

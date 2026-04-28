@@ -42,7 +42,7 @@
 
 > 총 11버전 반복 설계, **v11이 최종본** — 파이프라인 시각화 + 에이전트 카드 + 프로젝트 상세 통합
 
-📄 **[와이어프레임 v11 보기 →](docs/wireframe-v11.html)**
+📄 **[와이어프레임 v11 보기 →](https://yiseoes.github.io/noriter/wireframe-v11.html)**
 
 <br>
 

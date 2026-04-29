@@ -38,7 +38,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
     "title": "font, size, weight",
     "score": "font, size",
     "body": "font, size"
-  }
+  },
+  "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 정한 색상 테마와 핵심 비주얼을 담아 구어체 한국어로 (1~2문장)"
 }
 
 Do NOT include any text outside the JSON.

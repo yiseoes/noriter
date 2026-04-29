@@ -3,6 +3,7 @@ package com.noriter.agent.pipeline;
 import com.noriter.agent.core.*;
 import com.noriter.agent.impl.*;
 import com.noriter.util.JsSyntaxValidator;
+import com.noriter.util.JsRuntimeValidator;
 import com.noriter.agent.message.MessageBus;
 import com.noriter.domain.Project;
 import com.noriter.domain.Stage;
@@ -155,6 +156,43 @@ public class PipelineOrchestrator {
                                 retryValidation.errors());
                     }
                 }
+            }
+
+            // JS 런타임 검증 — Node.js로 실제 실행해서 Game/Renderer 인스턴스화 오류 잡기
+            String gameJsForRuntime = artifacts.getOrDefault("game.js", "");
+            JsRuntimeValidator.ValidationResult runtimeValidation = JsRuntimeValidator.validate(gameJsForRuntime);
+            if (!runtimeValidation.valid()) {
+                log.warn("[파이프라인] 런타임 검증 실패 - {}", runtimeValidation.summary());
+                logService.createLog(projectId, LogLevel.WARN, AgentRole.QA, StageType.IMPLEMENTATION,
+                        "런타임 오류 감지: " + runtimeValidation.summary() + " — BackendAgent 재시도");
+
+                // 런타임 오류 발생 시 BackendAgent 재시도 (bugReport로 오류 전달)
+                AgentContext runtimeFixContext = AgentContext.builder()
+                        .projectId(projectId)
+                        .stageType(StageType.IMPLEMENTATION)
+                        .requirement(project.getRequirement())
+                        .previousArtifacts(new HashMap<>(artifacts))
+                        .bugReport("런타임 오류: " + runtimeValidation.summary())
+                        .debugAttempt(0)
+                        .build();
+                AgentResult runtimeFixResult = backendAgent.executeFix(runtimeFixContext);
+                if (runtimeFixResult.getStatus() != AgentResult.Status.FAILED) {
+                    artifacts.putAll(runtimeFixResult.getArtifacts());
+                    mergeCode(projectId, frontResult, runtimeFixResult, artifacts);
+                    JsRuntimeValidator.ValidationResult retryRuntime =
+                            JsRuntimeValidator.validate(artifacts.getOrDefault("game.js", ""));
+                    if (retryRuntime.valid()) {
+                        log.info("[파이프라인] 런타임 재시도 후 통과");
+                        logService.createLog(projectId, LogLevel.INFO, AgentRole.QA, StageType.IMPLEMENTATION,
+                                "런타임 오류 자동 수정 완료!");
+                    } else {
+                        log.warn("[파이프라인] 런타임 재시도 후에도 실패 - QA에서 처리: {}", retryRuntime.summary());
+                    }
+                }
+            } else {
+                log.info("[파이프라인] 런타임 검증 통과 - Game/Renderer 인스턴스화 성공");
+                logService.createLog(projectId, LogLevel.INFO, AgentRole.QA, StageType.IMPLEMENTATION,
+                        "런타임 검증 통과! Game/Renderer 정상 로드 확인.");
             }
 
             Stage implStage = findStage(stages, StageType.IMPLEMENTATION);

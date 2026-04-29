@@ -53,7 +53,7 @@ public class StageExecutor {
 
         // 로그 기록: 에이전트 작업 시작
         logService.createLog(projectId, LogLevel.INFO, role, stageType,
-                String.format("%s 에이전트가 작업을 시작합니다.", getAgentDisplayName(role)));
+                String.format("%s, 작업 시작할게요!", getAgentDisplayName(role)));
 
         try {
             // 에이전트 실행
@@ -88,7 +88,7 @@ public class StageExecutor {
                 }
 
                 logService.createLog(projectId, LogLevel.INFO, role, stageType,
-                        String.format("%s 에이전트 작업 완료.", getAgentDisplayName(role)));
+                        String.format("%s 완료! 다음 팀에게 넘길게요.", getAgentDisplayName(role)));
 
                 auditService.log(AuditEventType.STAGE_COMPLETED, projectId,
                         String.format("%s 스테이지 완료 (%s)", stageType, role), null);

@@ -41,9 +41,10 @@ public class CtoAgent implements BaseAgent {
 
         log.info("[CTO] 기술 아키텍처 설계 완료 - projectId={}", context.getProjectId());
 
+        String message = extractChatMessage(response.content(), "아키텍처 설계 완료! 프론트/백엔드팀, 인터페이스 계약 확인하고 개발 시작해주세요.");
         return AgentResult.success(
                 Map.of("architecture.json", response.content()),
-                "기술 아키텍처 설계를 완료했습니다.",
+                message,
                 response.inputTokens(), response.outputTokens()
         );
     }
@@ -71,9 +72,10 @@ public class CtoAgent implements BaseAgent {
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
         log.info("[CTO] 피드백 분석 완료 - projectId={}", context.getProjectId());
 
+        String message = extractChatMessage(response.content(), "피드백 분석 완료! 수정 지시서 넘길게요.");
         return AgentResult.success(
                 Map.of("debug-instruction.json", response.content()),
-                "피드백 분석 완료.",
+                message,
                 response.inputTokens(), response.outputTokens()
         );
     }
@@ -98,11 +100,20 @@ public class CtoAgent implements BaseAgent {
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
 
+        String message = extractChatMessage(response.content(), "버그 원인 파악 완료! 수정 지시서 확인해주세요.");
         return AgentResult.success(
                 Map.of("debug-instruction.json", response.content()),
-                "디버그 분석을 완료했습니다.",
+                message,
                 response.inputTokens(), response.outputTokens()
         );
+    }
+
+    private String extractChatMessage(String json, String fallback) {
+        com.fasterxml.jackson.databind.JsonNode node = com.noriter.util.JsonParser.parse(json);
+        if (node != null && node.has("chatMessage") && !node.get("chatMessage").asText().isBlank()) {
+            return node.get("chatMessage").asText();
+        }
+        return fallback;
     }
 
     /**

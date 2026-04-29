@@ -11,12 +11,12 @@ Focus especially on:
 1. Whether the previously reported CRITICAL and HIGH bugs are actually fixed in the code
 2. Whether the fixes introduced new bugs (regression — new syntax errors or provably broken logic)
 3. Overall code completeness after the fix
-4. KOREAN_IME — always re-verify after fixes:
-   - hiddenInput present in HTML
-   - _bindHiddenInput() in Game constructor
-   - input listener: if (e.isComposing || this.isComposing) return;
-   - handleCompositionEnd: syllable accumulation pattern preserved
-   - handleKeyDown: if (e.preventDefault) e.preventDefault(); (guard, not direct call)
+4. KOREAN_IME — re-verify after fixes (check plan.json's "requiresTextInput"):
+   - hiddenInput present in HTML: HIGH if missing (ALL games)
+   - _bindHiddenInput() in Game constructor: HIGH if missing (ALL games)
+   - input listener guard (isComposing): HIGH if missing (ALL games)
+   - handleKeyDown preventDefault guard: HIGH if missing (ALL games)
+   - handleCompositionEnd syllable accumulation: HIGH only if requiresTextInput=true; MEDIUM if requiresTextInput=false
 
 Severity criteria:
 - CRITICAL: Code will throw a SYNTAX ERROR or REFERENCE ERROR immediately on load
@@ -69,7 +69,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object (same structure as initial QA):
     "preventDefaultGuarded": true
   },
   "fixedBugs": ["이전 리포트에서 수정 확인된 버그 ID 목록"],
-  "regressions": ["수정으로 인해 새로 발생한 버그 (있다면)"]
+  "regressions": ["수정으로 인해 새로 발생한 버그 (있다면)"],
+  "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 재검증 결과와 수정된 버그 내용을 담아 구어체 한국어로 (1~2문장)"
 }
 
 Do NOT include any text outside the JSON. No markdown, no explanation.

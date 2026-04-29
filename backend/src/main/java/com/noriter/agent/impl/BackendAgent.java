@@ -23,6 +23,10 @@ public class BackendAgent implements BaseAgent {
     private final ClaudeApiClient claudeApiClient;
     private final PromptRegistry promptRegistry;
 
+    // MESSAGE 섹션 파싱
+    private static final Pattern MESSAGE_PATTERN =
+            Pattern.compile("===MESSAGE===\\s*([\\s\\S]*?)===END_MESSAGE===", Pattern.MULTILINE);
+
     // 신규 포맷: ===GAME_JS=== ... ===END_GAME_JS===
     private static final Pattern GAME_JS_END_PATTERN =
             Pattern.compile("===GAME_JS===\\s*([\\s\\S]*?)===END_GAME_JS===", Pattern.MULTILINE);
@@ -57,9 +61,10 @@ public class BackendAgent implements BaseAgent {
 
         log.info("[백엔드팀] 게임 로직 구현 완료 - projectId={}", context.getProjectId());
 
+        String message = extractMessage(response.content(), "게임 로직 완성! 렌더러랑 연결해서 QA 돌려주세요.");
         return AgentResult.success(
                 Map.of("gameJsLogicSection", gameLogic),
-                "게임 로직 구현 완료.",
+                message,
                 response.inputTokens(), response.outputTokens()
         );
     }
@@ -125,10 +130,20 @@ public class BackendAgent implements BaseAgent {
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
         String fixedLogic = parseGameJs(response.content());
 
+        String message = extractMessage(response.content(), "게임 로직 버그 수정 완료! 다시 QA 돌려봐주세요.");
         return AgentResult.success(
                 Map.of("gameJsLogicSection", fixedLogic),
-                "게임 로직 버그 수정 완료.",
+                message,
                 response.inputTokens(), response.outputTokens()
         );
+    }
+
+    private String extractMessage(String content, String fallback) {
+        Matcher m = MESSAGE_PATTERN.matcher(content);
+        if (m.find()) {
+            String msg = m.group(1).trim();
+            if (!msg.isBlank()) return msg;
+        }
+        return fallback;
     }
 }

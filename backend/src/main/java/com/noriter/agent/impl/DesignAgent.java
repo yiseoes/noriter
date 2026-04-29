@@ -6,6 +6,7 @@ import com.noriter.agent.prompt.PromptTemplate;
 import com.noriter.domain.enums.AgentRole;
 import com.noriter.infrastructure.claude.ClaudeApiClient;
 import com.noriter.infrastructure.claude.ClaudeApiClient.ClaudeResponse;
+import com.noriter.util.JsonParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
@@ -42,10 +43,19 @@ public class DesignAgent implements BaseAgent {
 
         log.info("[디자인팀] 디자인 스펙 작성 완료 - projectId={}", context.getProjectId());
 
+        String message = extractChatMessage(response.content(), "디자인 시스템 완성! 색상 테마랑 이펙트 가이드 확인해주세요.");
         return AgentResult.success(
                 Map.of("design.json", response.content()),
-                "디자인 스펙 작성 완료.",
+                message,
                 response.inputTokens(), response.outputTokens()
         );
+    }
+
+    private String extractChatMessage(String json, String fallback) {
+        com.fasterxml.jackson.databind.JsonNode node = JsonParser.parse(json);
+        if (node != null && node.has("chatMessage") && !node.get("chatMessage").asText().isBlank()) {
+            return node.get("chatMessage").asText();
+        }
+        return fallback;
     }
 }

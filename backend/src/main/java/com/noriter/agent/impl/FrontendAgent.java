@@ -26,6 +26,10 @@ public class FrontendAgent implements BaseAgent {
     private final ClaudeApiClient claudeApiClient;
     private final PromptRegistry promptRegistry;
 
+    // MESSAGE 섹션 파싱
+    private static final Pattern MESSAGE_PATTERN =
+            Pattern.compile("===MESSAGE===\\s*([\\s\\S]*?)===END_MESSAGE===", Pattern.MULTILINE);
+
     // 신규 포맷: ===SECTION=== ... ===END_SECTION===
     private static final Pattern SECTION_END_PATTERN =
             Pattern.compile("===([A-Z_]+)===\\s*([\\s\\S]*?)===END_\\1===", Pattern.MULTILINE);
@@ -77,7 +81,8 @@ public class FrontendAgent implements BaseAgent {
         }
 
         log.info("[프론트팀] HTML/CSS/렌더링 구현 완료 - projectId={}", context.getProjectId());
-        return AgentResult.success(artifacts, "프론트엔드 구현 완료.", response.inputTokens(), response.outputTokens());
+        String message = extractMessage(content, "HTML/CSS/렌더러 구현 완료! 백엔드팀, 게임 로직 붙여주세요.");
+        return AgentResult.success(artifacts, message, response.inputTokens(), response.outputTokens());
     }
 
     /**
@@ -186,7 +191,17 @@ public class FrontendAgent implements BaseAgent {
         artifacts.putIfAbsent("style.css", styleCss);
         artifacts.putIfAbsent("gameJsRenderSection", renderCode);
 
-        return AgentResult.success(artifacts, "프론트엔드 버그 수정 완료.",
+        String message = extractMessage(content, "프론트엔드 버그 수정 완료! CTO 지시대로 고쳤어요.");
+        return AgentResult.success(artifacts, message,
                 response.inputTokens(), response.outputTokens());
+    }
+
+    private String extractMessage(String content, String fallback) {
+        Matcher m = MESSAGE_PATTERN.matcher(content);
+        if (m.find()) {
+            String msg = m.group(1).trim();
+            if (!msg.isBlank()) return msg;
+        }
+        return fallback;
     }
 }

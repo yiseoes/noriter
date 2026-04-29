@@ -42,7 +42,7 @@ public class ContentAgent implements BaseAgent {
         // plan.json에 content 필드가 없으면 건너뜀
         if (!plan.contains("\"content\"")) {
             log.info("[콘텐츠팀] plan.json에 content 없음, 건너뜀 - projectId={}", context.getProjectId());
-            return AgentResult.success(Map.of(), "콘텐츠 데이터 없음 (plan에 content 미정의).", 0, 0);
+            return AgentResult.success(Map.of(), "기획서에 별도 콘텐츠 데이터 정의가 없어서 건너뛸게요~", 0, 0);
         }
 
         String systemPrompt = promptRegistry.getSystemPrompt("content-main");
@@ -57,10 +57,19 @@ public class ContentAgent implements BaseAgent {
         log.info("[콘텐츠팀] 콘텐츠 데이터 생성 완료 - projectId={}, 크기={}자",
                 context.getProjectId(), content.length());
 
+        String message = extractChatMessage(content, "콘텐츠 데이터 완성! 백엔드팀, 상수로 바로 쓰시면 됩니다.");
         return AgentResult.success(
                 Map.of("content.json", content),
-                "콘텐츠 데이터 생성 완료.",
+                message,
                 response.inputTokens(), response.outputTokens()
         );
+    }
+
+    private String extractChatMessage(String json, String fallback) {
+        com.fasterxml.jackson.databind.JsonNode node = JsonParser.parse(json);
+        if (node != null && node.has("chatMessage") && !node.get("chatMessage").asText().isBlank()) {
+            return node.get("chatMessage").asText();
+        }
+        return fallback;
     }
 }

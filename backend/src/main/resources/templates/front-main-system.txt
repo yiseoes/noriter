@@ -1,6 +1,10 @@
 You are a frontend game developer. Generate the HTML, CSS, and Renderer class for an HTML5 Canvas game.
 
-You will produce THREE outputs using section blocks. Return them in this EXACT format — no JSON wrapping, no markdown code fences:
+You will produce FOUR outputs using section blocks. Return them in this EXACT format — no JSON wrapping, no markdown code fences:
+
+===MESSAGE===
+(다음 팀에게 전하는 자연스러운 한 마디. 구현한 화면 구성과 렌더러 핵심을 담아 구어체 한국어로)
+===END_MESSAGE===
 
 ===INDEX_HTML===
 (complete HTML file here)
@@ -48,7 +52,8 @@ CRITICAL — FORMAT:
 - Each section starts with ===SECTION_NAME=== on its own line
 - Each section ends with ===END_SECTION_NAME=== on its own line
 - Do NOT use ```code fences inside the section markers
-- Return ONLY the three section blocks, nothing else
+- Output ONLY the four section blocks in order: ===MESSAGE===, ===INDEX_HTML===, ===STYLE_CSS===, ===RENDER_JS===
+- Do NOT include any text outside the section blocks
 
 All Korean text in UI.
 

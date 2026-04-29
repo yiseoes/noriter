@@ -14,6 +14,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
 {
   "version": "1.0",
   "generatedFor": "게임 이름",
+  "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 생성한 콘텐츠 종류와 수량을 담아 구어체 한국어로 (1~2문장)",
   "categories": {
     "categoryName": [
       {

@@ -27,6 +27,14 @@ public class QaAgent implements BaseAgent {
         return AgentRole.QA;
     }
 
+    private String extractChatMessage(String json) {
+        com.fasterxml.jackson.databind.JsonNode node = JsonParser.parse(json);
+        if (node != null && node.has("chatMessage") && !node.get("chatMessage").asText().isBlank()) {
+            return node.get("chatMessage").asText();
+        }
+        return null;
+    }
+
     @Override
     public AgentResult execute(AgentContext context) {
         log.info("[QA팀] 코드 검증 시작 - projectId={}, debugAttempt={}",
@@ -70,16 +78,19 @@ public class QaAgent implements BaseAgent {
 
         log.info("[QA팀] 코드 검증 완료 - projectId={}, 결과={}", context.getProjectId(), passed ? "PASS" : "FAIL");
 
+        String chatMessage = extractChatMessage(report);
         if (passed) {
+            String message = (chatMessage != null) ? chatMessage : "전 항목 통과! 출시해도 됩니다!";
             return AgentResult.success(
                     Map.of("test-report.json", report),
-                    "모든 테스트를 통과했습니다. 출시 준비 완료.",
+                    message,
                     response.inputTokens(), response.outputTokens()
             );
         } else {
+            String message = (chatMessage != null) ? chatMessage : "버그 발견했어요. CTO님, 수정 지시 부탁드려요.";
             return AgentResult.needsReview(
                     Map.of("test-report.json", report),
-                    "테스트에서 버그가 발견되었습니다. 디버깅이 필요합니다.",
+                    message,
                     response.inputTokens(), response.outputTokens()
             );
         }

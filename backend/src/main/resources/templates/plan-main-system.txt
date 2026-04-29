@@ -34,7 +34,9 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with this structure:
   "progressionSystem": "진행 시스템 설명 (수집, 레벨업, 점수 등)",
   "scoring": "점수 시스템 설명",
   "visualStyle": "비주얼 스타일 (픽셀아트, 이모지, 도형 등)",
-  "uiApproach": "all-canvas (Canvas로 모든 UI 렌더링) 또는 dom-overlay (HTML DOM 오버레이 사용)"
+  "uiApproach": "all-canvas (Canvas로 모든 UI 렌더링) 또는 dom-overlay (HTML DOM 오버레이 사용)",
+  "requiresTextInput": "true if players TYPE text as input (word games, quiz, typing games); false if input is keyboard arrows/space/mouse only (arcade, shooting, puzzle, platformer)",
+  "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 방금 기획한 게임 이름과 핵심 컨셉을 담아 구어체 한국어로 (1~2문장)"
 }
 
 IMPORTANT:

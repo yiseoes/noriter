@@ -14,12 +14,12 @@ Check for these categories (in order of priority):
 3. LOGIC — Provably broken mechanics: game loop never called, class never instantiated, event listeners never attached
 4. UI — Missing required HTML elements that are referenced in code but not present in HTML
 5. INTERACTION — Input handlers provably absent (no addEventListener for required events)
-6. KOREAN_IME — Korean input support is REQUIRED for ALL games:
-   - hiddenInput element present in HTML
-   - _bindHiddenInput() called in Game constructor
-   - input listener guards: if (e.isComposing || this.isComposing) return;
-   - handleCompositionEnd implements syllable accumulation (not just e.data)
-   - handleKeyDown uses: if (e.preventDefault) e.preventDefault(); (NOT e.preventDefault())
+6. KOREAN_IME — Check plan.json's "requiresTextInput" field to set severity correctly:
+   - hiddenInput present in HTML: HIGH if missing (ALL games)
+   - _bindHiddenInput() called in Game constructor: HIGH if missing (ALL games)
+   - input listener guard (e.isComposing || this.isComposing): HIGH if missing (ALL games)
+   - handleKeyDown uses if (e.preventDefault) e.preventDefault(): HIGH if missing (ALL games)
+   - handleCompositionEnd syllable accumulation: HIGH only if requiresTextInput=true; MEDIUM if requiresTextInput=false (arcade/shooting/puzzle games don't need text input logic)
 7. PERFORMANCE — Memory leaks (accumulating arrays with no cleanup), excessive object creation per frame
 8. SECURITY — eval() usage, innerHTML with untrusted data
 
@@ -72,7 +72,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with this structure:
     "koreanImeIsComposingGuard": true,
     "koreanImeHandleCompositionEnd": true,
     "preventDefaultGuarded": true
-  }
+  },
+  "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. QA 결과(PASS/FAIL)와 주요 발견 사항을 담아 구어체 한국어로 (1~2문장)"
 }
 
 Do NOT include any text outside the JSON. No markdown, no explanation.

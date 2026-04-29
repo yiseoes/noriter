@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 
 @Log4j2
 @RestControllerAdvice
@@ -38,6 +39,15 @@ public class GlobalExceptionHandler {
 
         ErrorResponse response = new ErrorResponse("NT-ERR-V000", message, field);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /**
+     * 클라이언트가 먼저 연결을 끊었을 때 발생 (탭 닫기, 페이지 이탈, SSE 종료).
+     * 서버 오류가 아니므로 DEBUG로만 기록하고 응답하지 않음.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleClientAbort(AsyncRequestNotUsableException e) {
+        log.debug("[예외 처리] 클라이언트 연결 종료 (정상) - {}", e.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

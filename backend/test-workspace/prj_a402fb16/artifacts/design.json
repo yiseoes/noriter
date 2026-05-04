@@ -1,0 +1,16 @@
+{
+  "colorPalette": {
+    "primary": "#1a1a2e", "secondary": "#16213e",
+    "accent": "#e94560", "background": "#0f3460",
+    "text": "#ffffff", "success": "#00ff88", "danger": "#ff4444"
+  },
+  "typography": {
+    "fontFamily": "'Press Start 2P', monospace",
+    "fontCdn": "https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap",
+    "fontSize": {"title": "32px", "subtitle": "18px", "body": "14px", "score": "24px"}
+  },
+  "layout": {"canvasWidth": 800, "canvasHeight": 600, "uiElements": []},
+  "screens": {},
+  "sprites": {"style": "기하학적 도형"},
+  "effects": []
+}

@@ -199,8 +199,14 @@ public class ProjectService {
         project.updateStatus(ProjectStatus.REVISION);
         log.info("[수정 요청] 상태 변경 완료 - id={}, REVISION, feedbackCount={}", projectId, project.getFeedbackCount());
 
-        auditService.log(AuditEventType.USER_ACTION, projectId,
-                "수정 요청 접수", String.format("{\"feedback\":\"%s\"}", feedback));
+        String feedbackJson;
+        try {
+            feedbackJson = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(java.util.Map.of("feedback", feedback));
+        } catch (Exception e) {
+            feedbackJson = "{\"feedback\":\"(인코딩 오류)\"}";
+        }
+        auditService.log(AuditEventType.USER_ACTION, projectId, "수정 요청 접수", feedbackJson);
 
         return project;
     }

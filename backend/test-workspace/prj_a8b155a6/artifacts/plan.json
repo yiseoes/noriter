@@ -1,0 +1,29 @@
+{
+  "gameName": "미니게임",
+  "genre": "액션",
+  "concept": "테스트용 요구사항 열자 이상입니다",
+  "rules": {
+    "objective": "높은 점수 달성",
+    "winCondition": "제한 시간 생존",
+    "loseCondition": "HP가 0",
+    "scoring": "적 처치당 10점"
+  },
+  "controls": {
+    "movement": "WASD 또는 방향키",
+    "attack": "자동",
+    "special": "스페이스바"
+  },
+  "gameObjects": [
+    {"name": "Player", "description": "플레이어 캐릭터"},
+    {"name": "Enemy", "description": "적 오브젝트"}
+  ],
+  "screens": [
+    {"name": "TitleScreen", "description": "타이틀 화면"},
+    {"name": "GameScreen", "description": "게임 화면"},
+    {"name": "GameOverScreen", "description": "게임오버 화면"}
+  ],
+  "difficulty": {
+    "progression": "시간에 따라 난이도 상승",
+    "levels": "1분마다 레벨업"
+  }
+}

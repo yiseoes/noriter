@@ -1,0 +1,19 @@
+{
+  "gameType": "single-page",
+  "fileStructure": [
+    {"path": "index.html", "description": "메인 HTML"},
+    {"path": "style.css", "description": "스타일시트"},
+    {"path": "game.js", "description": "게임 로직"}
+  ],
+  "technology": {
+    "renderer": "Canvas2D",
+    "language": "JavaScript (ES6+)",
+    "styling": "CSS3"
+  },
+  "modules": [
+    {"name": "Game", "responsibility": "게임 루프, 상태 관리", "file": "game.js"},
+    {"name": "Player", "responsibility": "플레이어 로직", "file": "game.js"},
+    {"name": "Renderer", "responsibility": "렌더링", "file": "game.js"}
+  ],
+  "notes": "Canvas 2D API 기반 단순 구조"
+}

@@ -35,6 +35,23 @@ public class StageExecutor {
     private final MessageBus messageBus;
 
     /**
+     * 파이프라인 순서상 각 에이전트의 다음 대화 대상
+     * 에이전트끼리 직접 대화하는 형태로 chatMessage 전송
+     */
+    private static AgentRole getNextChatTarget(AgentRole role) {
+        return switch (role) {
+            case PLANNING  -> AgentRole.CTO;
+            case CONTENT   -> AgentRole.CTO;
+            case CTO       -> AgentRole.DESIGN;
+            case DESIGN    -> AgentRole.FRONTEND;
+            case FRONTEND  -> AgentRole.BACKEND;
+            case BACKEND   -> AgentRole.QA;
+            case QA        -> AgentRole.CTO;   // QA 실패 시 CTO에게, 성공 시도 CTO가 최종 확인
+            default        -> AgentRole.SYSTEM;
+        };
+    }
+
+    /**
      * 에이전트를 실행하고 결과를 처리한다
      */
     public AgentResult executeAgent(BaseAgent agent, AgentContext context, Stage stage) {
@@ -72,9 +89,10 @@ public class StageExecutor {
                 log.info("[스테이지 실행] 에이전트 성공 - projectId={}, stage={}, agent={}",
                         projectId, stageType, role);
 
-                // 에이전트 대화 메시지 → ChatTab으로 라우팅 (로그가 아닌 대화탭에 표시)
+                // 에이전트 대화 메시지 → 다음 에이전트에게 직접 전달 (에이전트 간 대화 형태)
                 if (result.getMessage() != null && !result.getMessage().isBlank()) {
-                    messageBus.send(projectId, role, AgentRole.SYSTEM,
+                    AgentRole chatTarget = getNextChatTarget(role);
+                    messageBus.send(projectId, role, chatTarget,
                             MessageType.CHAT, result.getMessage(), null);
                 }
 

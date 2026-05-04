@@ -35,6 +35,44 @@ public class QaAgent implements BaseAgent {
         return null;
     }
 
+    /**
+     * QA 실패 시 유저가 읽기 쉬운 버그 리포트 메시지 생성
+     */
+    private String buildFailureMessage(JsonNode reportNode, String fallbackMessage) {
+        if (reportNode == null) return fallbackMessage;
+
+        StringBuilder sb = new StringBuilder();
+
+        // 요약
+        String summary = reportNode.has("summary") ? reportNode.get("summary").asText() : null;
+        int failed = reportNode.has("testsFailed") ? reportNode.get("testsFailed").asInt() : 0;
+        sb.append("QA 검증 결과: FAIL");
+        if (failed > 0) sb.append(" (").append(failed).append("건 실패)");
+        if (summary != null && !summary.isBlank()) sb.append("\n").append(summary);
+
+        // CRITICAL/HIGH 버그만 나열
+        JsonNode bugs = reportNode.has("bugs") ? reportNode.get("bugs") : null;
+        if (bugs != null && bugs.isArray()) {
+            for (JsonNode bug : bugs) {
+                String severity = bug.has("severity") ? bug.get("severity").asText() : "";
+                if (!"CRITICAL".equals(severity) && !"HIGH".equals(severity)) continue;
+
+                String icon = "CRITICAL".equals(severity) ? "🔴 CRITICAL" : "🟠 HIGH";
+                String category = bug.has("category") ? bug.get("category").asText() : "";
+                String desc = bug.has("description") ? bug.get("description").asText() : "";
+                String location = bug.has("location") ? bug.get("location").asText() : "";
+                String fix = bug.has("suggestedFix") ? bug.get("suggestedFix").asText() : "";
+
+                sb.append("\n\n").append(icon).append(" [").append(category).append("]");
+                if (!location.isBlank()) sb.append(" — ").append(location);
+                if (!desc.isBlank()) sb.append("\n→ ").append(desc);
+                if (!fix.isBlank()) sb.append("\n→ 수정: ").append(fix);
+            }
+        }
+
+        return sb.toString();
+    }
+
     @Override
     public AgentResult execute(AgentContext context) {
         log.info("[QA팀] 코드 검증 시작 - projectId={}, debugAttempt={}",
@@ -87,7 +125,7 @@ public class QaAgent implements BaseAgent {
                     response.inputTokens(), response.outputTokens()
             );
         } else {
-            String message = (chatMessage != null) ? chatMessage : "버그 발견했어요. CTO님, 수정 지시 부탁드려요.";
+            String message = buildFailureMessage(reportNode, (chatMessage != null) ? chatMessage : "버그 발견했어요. CTO님, 수정 지시 부탁드려요.");
             return AgentResult.needsReview(
                     Map.of("test-report.json", report),
                     message,

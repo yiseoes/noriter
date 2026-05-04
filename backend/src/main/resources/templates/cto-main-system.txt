@@ -14,7 +14,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
   "htmlStructure": "HTML 레이아웃 설명",
   "gameInterface": {
     "gameClass": {
-      "constructor": "constructor(canvas) — 설명",
+      "constructor": "constructor(canvas, renderer) — 설명",
       "publicMethods": [
         {"name": "update", "signature": "update(dt: number): void", "description": "매 프레임 게임 상태 업데이트. dt = 경과 시간(초)"},
         {"name": "handleClick", "signature": "handleClick(x: number, y: number): void", "description": "캔버스 클릭 처리"},
@@ -44,7 +44,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
     {"name": "구조체명", "fields": {"field": "type"}, "usage": "용도"}
   ],
   "contentIntegration": "plan.json의 content 데이터를 코드에 통합하는 방법 설명 (예: CAT_DATABASE 배열로 직접 삽입)",
-  "initializationCode": "window.addEventListener('load', () => { const canvas = document.getElementById('gameCanvas'); const renderer = new Renderer(); renderer.init(canvas); const game = new Game(canvas, renderer); /* event listeners */ });",
+  "initializationCode": "window.addEventListener('load', () => {\n  const canvas = document.getElementById('gameCanvas');\n  canvas.focus();\n  const renderer = new Renderer();\n  renderer.init(canvas);\n  const game = new Game(canvas, renderer);\n  let lastTimestamp = 0;\n  function gameLoop(timestamp) {\n    const dt = lastTimestamp ? Math.min((timestamp - lastTimestamp) / 1000, 0.05) : 0;\n    lastTimestamp = timestamp;\n    game.update(dt);\n    renderer.render(game);\n    requestAnimationFrame(gameLoop);\n  }\n  requestAnimationFrame(gameLoop);\n  /* event listeners here */\n});",
   "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 설계한 Game/Renderer 인터페이스 핵심과 주의사항을 담아 구어체 한국어로 (1~2문장)"
 }
 

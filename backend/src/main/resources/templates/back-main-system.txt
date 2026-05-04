@@ -25,10 +25,12 @@ REQUIREMENTS:
   - Constant names MUST use UPPERCASE_SNAKE_CASE (e.g., WORD_DATABASE, STAGE_DATA, ITEM_LIST)
   - Check architecture.json's "contentIntegration" field for the exact constant name to use
 
-GAME LOOP:
-- Implement requestAnimationFrame loop inside the Game class
-- Calculate delta time (dt in seconds)
-- Call this.renderer.render(this) each frame
+GAME LOOP — CRITICAL:
+- The Game class MUST NOT implement requestAnimationFrame — the external initialization code handles the loop
+- The Game class only implements: update(dt), getGameState(), and input handlers
+- Do NOT add gameLoop(), requestAnimationFrame(), or any loop inside the Game class
+- Rendering is done externally: the init code calls game.update(dt) then renderer.render(game) each frame
+- If you include requestAnimationFrame inside Game, it creates a DUPLICATE LOOP that causes jitter and crashes
 
 STATE MANAGEMENT:
 - Screens: 'start', 'playing', 'paused', 'gameover' (or as defined in architecture)

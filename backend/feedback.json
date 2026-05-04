@@ -1,0 +1,1 @@
+{"feedback":"handleInput method should return immediately when _isComposing is true. Fix the bug where Korean IME composition is reset mid-input. In handleInput(), add: if (this._isComposing) return; as the first line."}

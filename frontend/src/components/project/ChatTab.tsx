@@ -44,7 +44,7 @@ export default function ChatTab({ messages }: ChatTabProps) {
                   {msg.messageType}
                 </span>
               </div>
-              <div className="text-sm text-text-secondary">{msg.content}</div>
+              <div className="text-sm text-text-secondary whitespace-pre-line">{msg.content}</div>
               {msg.artifactName && (
                 <div className="text-xs text-brand mt-1.5">📎 {msg.artifactName}</div>
               )}

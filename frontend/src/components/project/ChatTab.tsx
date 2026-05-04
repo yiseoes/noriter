@@ -14,6 +14,7 @@ const typeColors: Record<string, string> = {
   BUG_REPORT: 'bg-danger-bg text-danger',
   REVIEW_REQUEST: 'bg-warning-bg text-warning',
   FEEDBACK: 'bg-brand-bg text-brand',
+  CHAT: 'bg-bg-tertiary text-text-secondary',
 };
 
 interface ChatTabProps {

@@ -13,9 +13,11 @@ interface LogTabProps {
 
 export default function LogTab({ logs }: LogTabProps) {
   const [filter, setFilter] = useState('전체');
-  const filters = ['전체', 'INFO', 'AGENT', 'WARN', 'ERROR'];
+  const filters = ['전체', 'INFO', 'WARN', 'ERROR'];
 
-  const filtered = filter === '전체' ? logs : logs.filter(l => l.level === filter);
+  const filtered = filter === '전체'
+    ? logs.filter(l => l.level !== 'AGENT')
+    : logs.filter(l => l.level === filter);
 
   return (
     <div>

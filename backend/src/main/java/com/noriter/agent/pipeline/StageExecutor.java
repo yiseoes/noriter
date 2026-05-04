@@ -3,9 +3,11 @@ package com.noriter.agent.pipeline;
 import com.noriter.agent.core.AgentContext;
 import com.noriter.agent.core.AgentResult;
 import com.noriter.agent.core.BaseAgent;
+import com.noriter.agent.message.MessageBus;
 import com.noriter.domain.Stage;
 import com.noriter.domain.enums.AgentRole;
 import com.noriter.domain.enums.AuditEventType;
+import com.noriter.domain.enums.MessageType;
 import com.noriter.domain.enums.StageType;
 import com.noriter.service.AuditService;
 import com.noriter.service.LogService;
@@ -30,6 +32,7 @@ public class StageExecutor {
     private final AuditService auditService;
     private final TokenUsageService tokenUsageService;
     private final SseEmitterService sseEmitterService;
+    private final MessageBus messageBus;
 
     /**
      * 에이전트를 실행하고 결과를 처리한다
@@ -69,9 +72,10 @@ public class StageExecutor {
                 log.info("[스테이지 실행] 에이전트 성공 - projectId={}, stage={}, agent={}",
                         projectId, stageType, role);
 
-                // 에이전트가 전달한 상세 메시지 로그
+                // 에이전트 대화 메시지 → ChatTab으로 라우팅 (로그가 아닌 대화탭에 표시)
                 if (result.getMessage() != null && !result.getMessage().isBlank()) {
-                    logService.createLog(projectId, LogLevel.AGENT, role, stageType, result.getMessage());
+                    messageBus.send(projectId, role, AgentRole.SYSTEM,
+                            MessageType.CHAT, result.getMessage(), null);
                 }
 
                 // 산출물 목록 로그

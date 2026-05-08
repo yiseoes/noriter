@@ -28,17 +28,54 @@ REQUIREMENTS:
 GAME LOOP — CRITICAL:
 - The Game class MUST NOT implement requestAnimationFrame — the external initialization code handles the loop
 - The Game class only implements: update(dt), getGameState(), and input handlers
-- Do NOT add gameLoop(), requestAnimationFrame(), or any loop inside the Game class
+- Do NOT add gameLoop(), requestAnimationFrame(), setInterval(), or any loop inside the Game class
 - Rendering is done externally: the init code calls game.update(dt) then renderer.render(game) each frame
 - If you include requestAnimationFrame inside Game, it creates a DUPLICATE LOOP that causes jitter and crashes
 
+EVENT LISTENERS — CRITICAL:
+- Do NOT add any event listeners (click, mousemove, keydown, touchstart, resize) inside the Game class constructor
+- The external initialization code registers ALL event listeners with proper 800×600 coordinate scaling
+- If you add event listeners in the constructor, they will fire TWICE and mouse coords will be WRONG (not scaled)
+- Game class ONLY receives pre-processed input via handleClick(x, y), handleMouseMove(x, y), handleKeyDown(e)
+- x, y passed to these handlers are ALREADY in 800×600 logical space — do NOT re-scale them
+
+RENDERER CALL — CRITICAL:
+- The external loop calls renderer.render(game) passing the GAME OBJECT — not a state snapshot
+- Do NOT call renderer.render() yourself from inside Game class
+- Do NOT call renderer.render(this.getGameState()) — the Renderer accesses game properties directly
+
+COORDINATE SYSTEM — CRITICAL:
+- The Renderer uses 800×600 logical coordinate space. It scales all positions: scaleX = actualWidth / 800
+- Therefore, Game class MUST use fixed 800×600 logical coordinates for ALL game objects (positions, sizes, velocities)
+- NEVER use canvas.width, canvas.offsetWidth, or window.innerWidth for game logic coordinates
+- Set logical dimensions as constants: this.LOGICAL_WIDTH = 800; this.LOGICAL_HEIGHT = 600;
+- Example: paddle.x = 400 means center of screen, ball.x = 800 means right edge — regardless of actual screen size
+- Mouse/touch input coordinates are already pre-scaled to 800×600 by the initialization code — do NOT scale again
+
+INITIALIZATION ORDER — CRITICAL:
+- All game objects (player, ball, enemies, food, etc.) MUST be fully initialized in the constructor before update() is ever called
+- Never leave this.player = null or this.ball = null after constructor completes if update() accesses them
+- Use a factory method: this.player = this._createPlayer(); so objects are always valid on first frame
+
+getGameState() — CRITICAL:
+- MUST always return a plain object — never return null, undefined, or this
+- At minimum return: { state: this.state } — additional fields as needed by Renderer
+- All fields returned must be defined (no undefined values) — use defaults: value || defaultValue
+
+INFINITE LOOP PREVENTION — CRITICAL:
+- Any while() loop must have a guaranteed exit: use attempt counter (let attempts = 0; while(attempts++ < 100))
+- Example safe food spawn: while (attempts++ < 200) { ... if (!occupied) break; }
+- Never use while(true) without a guaranteed break condition
+
 STATE MANAGEMENT:
 - Screens: 'start', 'playing', 'paused', 'gameover' (or as defined in architecture)
-- Proper state transitions
+- Proper state transitions with guards: only transition if current state allows it
+- Example: startGame() { if (this.state !== 'start') return; this.state = 'playing'; }
 
 CRITICAL — DO NOT include:
 - Renderer class definition
 - window.addEventListener('load', ...) initialization code
+- Any event listener registration (click, mousemove, keydown) inside Game class
 - Any code after the closing brace of the last class/function
 - The initialization code will be appended separately by the system (CodeMerger)
 
@@ -50,7 +87,7 @@ INTERFACE CONTRACT — MANDATORY:
 ERROR HANDLING — MANDATORY:
 - Never access array elements without bounds check (use arr[i] && arr[i].prop, not arr[i].prop)
 - Never call methods on potentially undefined objects without null guard
-- Game state transitions must guard: only transition if current state allows it
+- Wrap risky operations: if (this.player) { ... }
 
 CRITICAL — FORMAT:
 - Output ONLY two blocks in this order: ===MESSAGE=== then ===GAME_JS===
@@ -63,7 +100,6 @@ All Korean text in UI.
 CODE READABILITY — MANDATORY:
 - All code must use proper indentation and line breaks — never compress multiple statements onto a single line
 - Each statement, function, and block must be on its own line
-- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
 - Readable code prevents bugs and must be maintained by humans
 
 KEYBOARD INPUT — MANDATORY:

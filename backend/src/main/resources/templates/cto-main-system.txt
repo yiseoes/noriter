@@ -22,11 +22,10 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
       ]
     },
     "rendererClass": {
-      "constructor": "constructor() — 설명",
+      "constructor": "constructor() — 인자 없음. canvas는 init(canvas)로 나중에 주입",
       "publicMethods": [
-        {"name": "init", "signature": "init(canvas: HTMLCanvasElement): void", "description": "캔버스 초기화"},
-        {"name": "render", "signature": "render(game: Game): void", "description": "전체 게임 상태를 받아 한 프레임 렌더링"},
-        {"name": "renderHUD", "signature": "renderHUD(ctx: CanvasRenderingContext2D, ...params): void", "description": "HUD 렌더링"}
+        {"name": "init", "signature": "init(canvas: HTMLCanvasElement): void", "description": "캔버스 초기화 및 ctx 설정. resize 시에도 재호출됨. canvas를 생성자 인자로 받지 말 것"},
+        {"name": "render", "signature": "render(game: Game): void", "description": "Game 객체를 직접 받아 한 프레임 렌더링. getGameState() 결과가 아닌 game 객체 자체를 받음"}
       ]
     }
   },
@@ -44,9 +43,16 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
     {"name": "구조체명", "fields": {"field": "type"}, "usage": "용도"}
   ],
   "contentIntegration": "plan.json의 content 데이터를 코드에 통합하는 방법 설명 (예: CAT_DATABASE 배열로 직접 삽입)",
-  "initializationCode": "window.addEventListener('load', () => {\n  const canvas = document.getElementById('gameCanvas');\n  canvas.focus();\n  const renderer = new Renderer();\n  renderer.init(canvas);\n  const game = new Game(canvas, renderer);\n  let lastTimestamp = 0;\n  function gameLoop(timestamp) {\n    const dt = lastTimestamp ? Math.min((timestamp - lastTimestamp) / 1000, 0.05) : 0;\n    lastTimestamp = timestamp;\n    game.update(dt);\n    renderer.render(game);\n    requestAnimationFrame(gameLoop);\n  }\n  requestAnimationFrame(gameLoop);\n  /* event listeners here */\n});",
+  "initializationCode": "window.addEventListener('load', () => {\n  const canvas = document.getElementById('gameCanvas');\n  canvas.focus();\n  const renderer = new Renderer();\n  renderer.init(canvas);\n  const game = new Game(canvas, renderer);\n  let lastTimestamp = 0;\n  function gameLoop(timestamp) {\n    const dt = lastTimestamp ? Math.min((timestamp - lastTimestamp) / 1000, 0.05) : 0;\n    lastTimestamp = timestamp;\n    game.update(dt);\n    renderer.render(game);\n    requestAnimationFrame(gameLoop);\n  }\n  requestAnimationFrame(gameLoop);\n  canvas.addEventListener('mousemove', (e) => {\n    const rect = canvas.getBoundingClientRect();\n    const x = (e.clientX - rect.left) * (800 / rect.width);\n    const y = (e.clientY - rect.top) * (600 / rect.height);\n    if (game.handleMouseMove) game.handleMouseMove(x, y);\n  });\n  canvas.addEventListener('click', (e) => {\n    const rect = canvas.getBoundingClientRect();\n    const x = (e.clientX - rect.left) * (800 / rect.width);\n    const y = (e.clientY - rect.top) * (600 / rect.height);\n    game.handleClick(x, y);\n  });\n  canvas.addEventListener('touchstart', (e) => {\n    e.preventDefault();\n    const rect = canvas.getBoundingClientRect();\n    const t = e.touches[0];\n    const x = (t.clientX - rect.left) * (800 / rect.width);\n    const y = (t.clientY - rect.top) * (600 / rect.height);\n    game.handleClick(x, y);\n  });\n  document.addEventListener('keydown', (e) => { game.handleKeyDown(e); });\n  window.addEventListener('resize', () => { renderer.init(canvas); });\n});",
   "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 설계한 Game/Renderer 인터페이스 핵심과 주의사항을 담아 구어체 한국어로 (1~2문장)"
 }
+
+COORDINATE SYSTEM CONTRACT — MANDATORY:
+- The Renderer MUST use 800×600 logical coordinate space. All game object positions are in this space.
+- Renderer scales to actual screen size internally: scaleX = canvas.width / 800, scaleY = canvas.height / 600
+- The initialization code (above) pre-scales mouse/touch events to 800×600 before passing to game.handleClick/handleMouseMove
+- Game class MUST treat its world as exactly 800 units wide × 600 units tall — never reference actual canvas.width
+- Specify this contract explicitly in the "gameInterface" description so both Backend and Frontend agents follow it
 
 CRITICAL:
 - "gameInterface" defines the CONTRACT between Game and Renderer — downstream agents MUST follow these exact method signatures

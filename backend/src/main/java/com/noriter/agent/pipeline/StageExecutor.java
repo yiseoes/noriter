@@ -119,6 +119,13 @@ public class StageExecutor {
                 log.info("[스테이지 실행] QA 검토 필요 - projectId={}, stage={}",
                         projectId, stageType);
 
+                // QA 버그 리포트를 채팅으로 전송 (사용자가 볼 수 있도록)
+                if (result.getMessage() != null && !result.getMessage().isBlank()) {
+                    AgentRole chatTarget = getNextChatTarget(role);
+                    messageBus.send(projectId, role, chatTarget,
+                            MessageType.CHAT, result.getMessage(), null);
+                }
+
                 logService.createLog(projectId, LogLevel.WARN, role, stageType,
                         "QA 테스트에서 버그가 발견되었습니다. 디버깅이 필요합니다.");
 

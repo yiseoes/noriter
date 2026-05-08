@@ -23,31 +23,62 @@ REQUIREMENTS FOR index.html:
 - <canvas id="gameCanvas" style="display:block"></canvas>
 - ALWAYS include: <input id="hiddenInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
   - This is required for ALL games to support Korean IME keyboard input
-- If uiApproach is "dom-overlay": add UI overlay divs (score, health, pokedex panel, etc.)
+- If uiApproach is "dom-overlay": add UI overlay divs (score, health, etc.)
 - If uiApproach is "all-canvas": ONLY the canvas tag + hiddenInput, no other UI elements
-- Link style.css, load game.js at end of body
+- Load ONLY game.js at end of body — NEVER add <script src="renderer.js"> separately
+  - Renderer class is merged INTO game.js automatically by the system — a separate renderer.js does not exist
 - Responsive meta viewport tag
 
 REQUIREMENTS FOR style.css:
-- Full-page canvas filling the iframe exactly — use this pattern (DO NOT use 100vw/100vh on canvas, it causes iframe alignment issues):
+- Full-page canvas filling the iframe exactly — ALWAYS use this exact pattern:
   html, body { width:100%; height:100%; margin:0; padding:0; overflow:hidden; background:#000; }
   #gameCanvas { position:absolute; top:0; left:0; width:100%; height:100%; display:block; }
-- body { margin:0; overflow:hidden; background:#000 }
+- DO NOT use width:100vw or height:100vh — these include scrollbar width and cause canvas to overflow right
+- CURSOR RULE — CRITICAL: NEVER use cursor:none on #gameCanvas unless you draw a custom cursor on canvas every frame
+  - Default to cursor:crosshair for action games, cursor:default for others
 - ALWAYS include hiddenInput styles:
   #hiddenInput { position:absolute; opacity:0; pointer-events:none; left:-9999px; top:-9999px; width:1px; height:1px; border:none; outline:none; background:transparent; color:transparent; caret-color:transparent; font-size:16px; }
-- If dom-overlay: overlay element positioning (fixed, z-index, pointer-events rules)
-- Mobile-friendly touch targets
 
 REQUIREMENTS FOR RENDER_JS (Renderer class):
+
+CONSTRUCTOR RULE — CRITICAL:
+- Renderer constructor MUST take NO arguments: constructor() { this.canvas = null; this.ctx = null; ... }
+- Do NOT write constructor(canvas) — canvas is injected later via init(canvas)
+- The initialization code calls new Renderer() then renderer.init(canvas) — this order is fixed and cannot change
+
+init(canvas) METHOD — CRITICAL:
+- MUST store: this.canvas = canvas; this.ctx = canvas.getContext('2d');
+- Do NOT compute scaleX/scaleY here — canvas.offsetWidth may be 0 at load time inside an iframe
+- Scale factors must be computed every frame inside render()
+
+render(game) METHOD — CRITICAL:
+- Receives the GAME OBJECT directly — access game.state, game.score etc. directly on the game object
+- Do NOT call game.getGameState() — the game object's properties are accessed directly
+- FIRST LINE: update scale factors every frame:
+    this.scaleX = (this.canvas.offsetWidth || this.canvas.width || 800) / 800;
+    this.scaleY = (this.canvas.offsetHeight || this.canvas.height || 600) / 600;
+- SECOND LINE: clear the canvas completely:
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  OR fill with background color
+- Wrap all drawing in ctx.save() ... ctx.restore() — MUST be balanced (every save needs a restore)
+
+CTX STATE HYGIENE — CRITICAL (causes invisible/broken rendering if violated):
+- After changing ctx.globalAlpha, ALWAYS reset: ctx.globalAlpha = 1;
+- After changing ctx.textAlign or ctx.textBaseline, reset to defaults after use
+- After ctx.scale(), ctx.translate(), ctx.rotate() — wrap in ctx.save()/ctx.restore() to contain transforms
+- Never leave ctx in a modified state between render calls — accumulated transforms break all future frames
+
+COORDINATE SYSTEM:
+- All game objects use 800×600 logical coordinates
+- Apply scaleX/scaleY when drawing: ctx.fillRect(x * this.scaleX, y * this.scaleY, w * this.scaleX, h * this.scaleY)
+- OR use ctx.save(); ctx.scale(this.scaleX, this.scaleY); /* draw in logical space */ ctx.restore();
+- Font sizes should also scale: ctx.font = `${20 * Math.min(this.scaleX, this.scaleY)}px sans-serif`
+
+OTHER RULES:
 - MUST implement ALL methods listed in architecture.json's "gameInterface.rendererClass.publicMethods"
-- Use EXACT method signatures from the architecture — do not rename or change parameters
-- Key required methods:
-  - init(canvas): setup canvas context, resize handler
-  - render(game): main render entry point — receives the full game state object
-  - Any additional methods specified in the architecture
-- Use Canvas 2D API only
-- Support window resize
-- Do NOT include: game loop, Game class, state management, initialization code, window.addEventListener('load', ...)
+- Use EXACT method signatures from the architecture
+- Use Canvas 2D API only — no external libraries
+- Do NOT include: game loop, Game class, state management, window.addEventListener('load', ...)
 - Do NOT re-define anything from the Game class
 
 CRITICAL — FORMAT:
@@ -62,5 +93,4 @@ All Korean text in UI.
 CODE READABILITY — MANDATORY:
 - All code must use proper indentation and line breaks — never compress multiple statements onto a single line
 - Each statement, function, and block must be on its own line
-- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
 - Readable code prevents bugs and must be maintained by humans

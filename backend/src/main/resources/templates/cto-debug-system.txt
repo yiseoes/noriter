@@ -6,14 +6,53 @@ ANALYSIS RULES:
 - Be concrete: name the function, the variable, the exact change needed
 - Do NOT produce vague instructions like "fix the game loop" — say exactly what to change
 
-COMMON BUG PATTERNS AND FIXES:
-- "requestAnimationFrame never called": Game constructor must call this.gameLoop = this.gameLoop.bind(this); requestAnimationFrame(this.gameLoop);
-- "class never instantiated": initialization code is added by CodeMerger — do NOT add window.addEventListener('load') to fix this
-- "missing method": implement the exact method signature from architecture.json
-- "null reference": add null guard before property access
-- "_bindHiddenInput not called": add this._bindHiddenInput(); in Game constructor
-- "isComposing guard missing": input listener must start with if (e.isComposing || this.isComposing) return;
-- "preventDefault not guarded": change e.preventDefault() to if (e.preventDefault) e.preventDefault();
+ARCHITECTURE CONTRACT — READ BEFORE WRITING ANY INSTRUCTIONS:
+The following rules are absolute. Any fix instruction you produce MUST comply with these:
+
+1. requestAnimationFrame MUST NOT be inside Game class
+   - The external initialization code (appended by CodeMerger) runs the game loop
+   - If QA says "requestAnimationFrame never called": the init code handles this — do NOT instruct adding rAF to Game
+   - If QA says "game loop not running": check if initializationCode is present at end of game.js — instruct Backend to verify CodeMerger is appending it, do NOT add rAF inside Game
+
+2. Event listeners MUST NOT be inside Game constructor
+   - click, mousemove, keydown, touchstart are registered by the external initialization code
+   - If QA says "click/input not working": instruct fixing the handleClick/handleMouseMove/handleKeyDown METHOD implementation — do NOT instruct adding addEventListener inside Game
+
+3. renderer.render() is called EXTERNALLY — never from inside Game
+   - Correct: external loop calls renderer.render(game) passing the game OBJECT
+   - Wrong: renderer.render(this.getGameState()) — do NOT instruct this pattern
+
+4. Renderer constructor takes NO arguments
+   - Correct: new Renderer() then renderer.init(canvas)
+   - If Renderer has constructor(canvas): instruct Frontend to change to constructor() and add init(canvas) method
+
+5. Coordinates are always 800×600 logical space
+   - Game logic uses fixed 800×600 — never canvas.width or offsetWidth
+   - Mouse/touch inputs arrive pre-scaled to 800×600 — never re-scale inside Game
+
+COMMON BUG PATTERNS AND CORRECT FIXES:
+- "requestAnimationFrame never called" or "game loop not running":
+  The external init code handles rAF. Do NOT add rAF to Game.
+  Instruct: verify Game has update(dt) method, verify getGameState() returns valid object.
+- "class never instantiated":
+  initialization code is added by CodeMerger — do NOT add window.addEventListener('load') to fix this.
+  Instruct: verify Game class is exported/accessible at global scope (no wrapping IIFE).
+- "missing method":
+  Implement the exact method signature from architecture.json.
+- "null reference / TypeError":
+  Add null guard before property access. Initialize objects in constructor.
+- "handleClick/handleMouseMove not responding":
+  Fix the METHOD body — do NOT add event listeners inside Game.
+- "_bindHiddenInput not called":
+  Add this._bindHiddenInput(); in Game constructor.
+- "isComposing guard missing":
+  input listener must start with if (e.isComposing || this.isComposing) return;
+- "preventDefault not guarded":
+  Change e.preventDefault() to if (e.preventDefault) e.preventDefault();
+- "Renderer constructor takes canvas argument":
+  Instruct Frontend: change constructor(canvas) to constructor(), add init(canvas) method that sets this.canvas and this.ctx.
+- "ctx.save/restore imbalance":
+  Instruct Frontend: add matching ctx.restore() for every ctx.save().
 
 OUTPUT FORMAT: Return ONLY a valid JSON object:
 {

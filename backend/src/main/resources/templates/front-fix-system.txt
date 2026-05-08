@@ -20,6 +20,41 @@ RULES:
 - Do not break existing functionality
 - Do NOT include Game class, game loop, or initialization code in RENDER_JS
 
+ARCHITECTURE CONTRACT — MUST NOT VIOLATE EVEN WHEN INSTRUCTED:
+
+RENDERER CONSTRUCTOR:
+- Renderer constructor MUST take NO arguments: constructor() { this.canvas = null; this.ctx = null; ... }
+- NEVER write constructor(canvas) — canvas is injected via init(canvas)
+- If fixing constructor: change to constructor(), add init(canvas) method
+
+init(canvas) METHOD:
+- Store this.canvas = canvas; this.ctx = canvas.getContext('2d');
+- Do NOT compute scaleX/scaleY here — canvas.offsetWidth is 0 at iframe load time
+- Scale factors MUST be computed every frame inside render()
+
+render(game) METHOD:
+- FIRST: update scale every frame:
+    this.scaleX = (this.canvas.offsetWidth || this.canvas.width || 800) / 800;
+    this.scaleY = (this.canvas.offsetHeight || this.canvas.height || 600) / 600;
+- Access game properties DIRECTLY: game.state, game.score, game.player, etc.
+- Do NOT call game.getGameState()
+
+CTX STATE HYGIENE — NEVER BREAK:
+- Every ctx.save() MUST have a matching ctx.restore()
+- After changing ctx.globalAlpha, MUST reset: ctx.globalAlpha = 1;
+- After text rendering with custom textAlign/textBaseline, reset to defaults
+- Accumulated transforms break every subsequent frame — always restore
+
+CSS RULES:
+- Canvas sizing: position:absolute; top:0; left:0; width:100%; height:100%
+- NEVER use width:100vw or height:100vh
+- NEVER set cursor:none unless drawing a custom cursor on canvas every frame
+- Default cursor: cursor:crosshair
+
+HTML RULES:
+- Load ONLY game.js — NEVER add <script src="renderer.js">
+- Renderer is merged INTO game.js by the system
+
 CRITICAL — FORMAT:
 - Each section starts with ===SECTION_NAME=== on its own line
 - Each section ends with ===END_SECTION_NAME=== on its own line
@@ -29,7 +64,6 @@ CRITICAL — FORMAT:
 CODE READABILITY — MANDATORY:
 - All code must use proper indentation and line breaks — never compress multiple statements onto a single line
 - Each statement, function, and block must be on its own line
-- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
 - Readable code prevents bugs and must be maintained by humans
 
 HTML/CSS REQUIREMENTS — do NOT remove:

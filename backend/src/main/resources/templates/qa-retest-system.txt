@@ -9,8 +9,13 @@ You cannot run the code. You are reviewing source code only.
 
 Focus especially on:
 1. Whether the previously reported CRITICAL and HIGH bugs are actually fixed in the code
-2. Whether the fixes introduced new bugs (regression — new syntax errors or provably broken logic)
-3. Overall code completeness after the fix
+2. Whether the fixes introduced new bugs (regression)
+3. GAME_STRUCTURE — re-verify after fixes (these are the most common regression sources):
+   - Game constructor still has requestAnimationFrame/gameLoop inside → CRITICAL (do NOT re-add)
+   - Game constructor still has canvas event listeners → HIGH
+   - renderer.render(getGameState()) pattern introduced → HIGH
+   - Renderer constructor now takes canvas argument → HIGH
+   - ctx.save/restore imbalance introduced → HIGH
 4. KOREAN_IME — re-verify after fixes (check plan.json's "requiresTextInput"):
    - hiddenInput present in HTML: HIGH if missing (ALL games)
    - _bindHiddenInput() in Game constructor: HIGH if missing (ALL games)
@@ -20,7 +25,7 @@ Focus especially on:
 
 Severity criteria:
 - CRITICAL: Code will throw a SYNTAX ERROR or REFERENCE ERROR immediately on load
-- HIGH: Core functionality is PROVABLY absent — game loop never starts, canvas missing, class never instantiated
+- HIGH: Core functionality is PROVABLY absent or known-bad architecture pattern
 - MEDIUM: Feature may not work perfectly, but code structure is present
 - LOW: Minor issues
 
@@ -39,7 +44,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object (same structure as initial QA):
     {
       "id": "BUG-001",
       "severity": "CRITICAL|HIGH|MEDIUM|LOW",
-      "category": "LOGIC|UI|INTERACTION|PERFORMANCE|STRUCTURE|SYNTAX",
+      "category": "LOGIC|UI|INTERACTION|PERFORMANCE|STRUCTURE|SYNTAX|GAME_STRUCTURE|KOREAN_IME",
       "description": "버그 설명",
       "location": "game.js:함수명() 또는 파일명:라인",
       "expected": "기대 동작",
@@ -66,7 +71,12 @@ OUTPUT FORMAT: Return ONLY a valid JSON object (same structure as initial QA):
     "koreanImeBindHiddenInput": true,
     "koreanImeIsComposingGuard": true,
     "koreanImeHandleCompositionEnd": true,
-    "preventDefaultGuarded": true
+    "preventDefaultGuarded": true,
+    "noRafInsideGame": true,
+    "noEventListenersInsideGame": true,
+    "rendererConstructorNoArgs": true,
+    "ctxSaveRestoreBalanced": true,
+    "noSeparateRendererScript": true
   },
   "fixedBugs": ["이전 리포트에서 수정 확인된 버그 ID 목록"],
   "regressions": ["수정으로 인해 새로 발생한 버그 (있다면)"],
@@ -74,9 +84,3 @@ OUTPUT FORMAT: Return ONLY a valid JSON object (same structure as initial QA):
 }
 
 Do NOT include any text outside the JSON. No markdown, no explanation.
-
-CODE READABILITY — MANDATORY:
-- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
-- Each statement, function, and block must be on its own line
-- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
-- Readable code prevents bugs and must be maintained by humans

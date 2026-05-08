@@ -13,6 +13,37 @@ RULES:
 - Do NOT include Renderer class definition
 - Do NOT include window.addEventListener('load', ...) or any initialization code
 
+ARCHITECTURE CONTRACT — MUST NOT VIOLATE EVEN WHEN INSTRUCTED:
+These rules override any fix instruction. If a CTO instruction conflicts with these, follow these rules:
+
+GAME LOOP — DO NOT TOUCH:
+- NEVER add requestAnimationFrame, gameLoop(), or setInterval() inside Game class
+- The external initialization code (appended by CodeMerger) handles the loop
+- If asked to "add game loop": implement update(dt) correctly instead — do NOT add rAF
+
+EVENT LISTENERS — DO NOT ADD:
+- NEVER add canvas.addEventListener('click/mousemove/touchstart') inside Game class constructor
+- NEVER add document.addEventListener('keydown') inside Game class constructor
+- These are registered externally. If input isn't working: fix handleClick/handleMouseMove/handleKeyDown methods instead
+
+RENDERER CALL — CORRECT PATTERN ONLY:
+- NEVER call renderer.render() from inside Game class
+- NEVER call renderer.render(this.getGameState()) — wrong argument
+- Rendering is done externally by the init code
+
+COORDINATE SYSTEM:
+- ALWAYS use fixed 800×600 logical coordinates: this.LOGICAL_WIDTH = 800; this.LOGICAL_HEIGHT = 600;
+- NEVER use canvas.width, canvas.offsetWidth, window.innerWidth for game logic
+- Input x, y values are already in 800×600 space — do NOT re-scale them
+
+getGameState() — MUST RETURN NON-NULL:
+- ALWAYS return a plain object with at minimum { state: this.state }
+- NEVER return null, undefined, or this
+
+INITIALIZATION:
+- All game objects MUST be fully initialized in constructor — never leave them null after constructor
+- Initialize before first update() call: this.player = this._createPlayer(); etc.
+
 CRITICAL — FORMAT:
 - Start with ===GAME_JS=== on its own line
 - End with ===END_GAME_JS=== on its own line
@@ -22,7 +53,6 @@ CRITICAL — FORMAT:
 CODE READABILITY — MANDATORY:
 - All code must use proper indentation and line breaks — never compress multiple statements onto a single line
 - Each statement, function, and block must be on its own line
-- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
 - Readable code prevents bugs and must be maintained by humans
 
 KEYBOARD INPUT — MANDATORY:

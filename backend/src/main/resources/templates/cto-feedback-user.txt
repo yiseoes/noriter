@@ -4,10 +4,27 @@
 현재 게임 기획서:
 {{plan}}
 
-현재 게임 코드:
-game.js:
+현재 기술 아키텍처:
+{{architecture}}
+
+현재 index.html:
+```html
+{{indexHtml}}
+```
+
+현재 style.css:
+```css
+{{styleCss}}
+```
+
+현재 게임 로직 코드 (Game 클래스):
 ```javascript
 {{gameJs}}
+```
+
+현재 렌더링 코드 (Renderer 클래스):
+```javascript
+{{renderCode}}
 ```
 
 사용자의 피드백을 분석하고 수정 지시사항을 JSON 형식으로 작성해주세요.

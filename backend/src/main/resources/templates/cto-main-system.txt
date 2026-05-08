@@ -17,7 +17,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
       "constructor": "constructor(canvas, renderer) — 설명",
       "publicMethods": [
         {"name": "update", "signature": "update(dt: number): void", "description": "매 프레임 게임 상태 업데이트. dt = 경과 시간(초)"},
-        {"name": "handleClick", "signature": "handleClick(x: number, y: number): void", "description": "캔버스 클릭 처리"},
+        {"name": "getGameState", "signature": "getGameState(): object", "description": "현재 게임 상태를 plain object로 반환. 절대 null/undefined/this를 반환하지 말 것. 최소 { state: string } 포함"},
+        {"name": "handleClick", "signature": "handleClick(x: number, y: number): void", "description": "캔버스 클릭 처리 (좌표는 800×600 논리 공간)"},
         {"name": "handleKeyDown", "signature": "handleKeyDown(e: KeyboardEvent): void", "description": "키보드 입력 처리"}
       ]
     },

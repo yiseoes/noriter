@@ -48,9 +48,3 @@ IMPORTANT:
   - false: player uses arrows/WASD/space/mouse only (arcade, shooting, puzzle, platformer, snake)
 
 Do NOT include any text outside the JSON. No markdown, no explanation.
-
-CODE READABILITY — MANDATORY:
-- All code must use proper indentation and line breaks — never compress multiple statements onto a single line
-- Each statement, function, and block must be on its own line
-- Event listeners, callbacks, and init code must be fully expanded (no one-liner blocks)
-- Readable code prevents bugs and must be maintained by humans

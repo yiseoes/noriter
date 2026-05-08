@@ -63,10 +63,17 @@ public class CtoAgent implements BaseAgent {
                 : arts.getOrDefault("game.js", "");
         String gameJs = truncateGameJs(rawGameJs);
 
+        String architecture = arts.getOrDefault("architecture.json", "");
+        String indexHtml = arts.getOrDefault("index.html", "");
+        String styleCss = arts.getOrDefault("style.css", "");
+        String renderCode = arts.getOrDefault("gameJsRenderSection", "");
+
         String systemPrompt = promptRegistry.getSystemPrompt("cto-feedback");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("cto-feedback"),
-                Map.of("feedback", feedback, "plan", plan, "gameJs", gameJs)
+                Map.of("feedback", feedback, "plan", plan, "architecture", architecture,
+                       "indexHtml", indexHtml, "styleCss", styleCss,
+                       "gameJs", gameJs, "renderCode", renderCode)
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
@@ -92,10 +99,14 @@ public class CtoAgent implements BaseAgent {
         String gameJs = truncateGameJs(rawGameJs);
         String indexHtml = arts.getOrDefault("index.html", "");
 
+        String styleCss = arts.getOrDefault("style.css", "");
+        String renderCode = arts.getOrDefault("gameJsRenderSection", "");
+
         String systemPrompt = promptRegistry.getSystemPrompt("cto-debug");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("cto-debug"),
-                Map.of("bugReport", bugReport, "gameJs", gameJs, "indexHtml", indexHtml)
+                Map.of("bugReport", bugReport, "gameJs", gameJs,
+                       "indexHtml", indexHtml, "styleCss", styleCss, "renderCode", renderCode)
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());

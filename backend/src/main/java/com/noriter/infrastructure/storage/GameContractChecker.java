@@ -1,5 +1,6 @@
 package com.noriter.infrastructure.storage;
 
+import com.noriter.controller.dto.response.SaveSourceResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,9 @@ import java.util.regex.*;
  *   - index.html 저장 시: game.js / style.css 가 참조하는 ID·클래스가 HTML에 존재하는지
  *   - game.js   저장 시: getElementById/querySelector 호출 대상이 index.html에 존재하는지
  *   - style.css  저장 시: CSS 선택자가 index.html의 요소를 타겟하는지
+ *
+ * 자동 수정 추론:
+ *   - 고아 참조 1개 + 미사용 HTML ID 1개 → 리네임으로 추론, Fix 반환
  */
 @Log4j2
 @Service
@@ -22,8 +26,9 @@ public class GameContractChecker {
 
     private final FileStorageService fileStorageService;
 
-    public List<String> check(String projectId, String changedFile, String changedContent) {
+    public SaveSourceResponse check(String projectId, String changedFile, String changedContent) {
         List<String> warnings = new ArrayList<>();
+        List<SaveSourceResponse.Fix> fixes = new ArrayList<>();
 
         try {
             Map<String, String> others = new HashMap<>();
@@ -35,38 +40,56 @@ public class GameContractChecker {
             }
 
             switch (changedFile) {
-                case "index.html" -> checkHtml(changedContent, others, warnings);
-                case "game.js"    -> checkJs(changedContent, others, warnings);
-                case "style.css"  -> checkCss(changedContent, others, warnings);
+                case "index.html" -> checkHtml(changedContent, others, warnings, fixes);
+                case "game.js"    -> checkJs(changedContent, others, warnings, fixes);
+                case "style.css"  -> checkCss(changedContent, others, warnings, fixes);
             }
 
-            log.info("[커플링 감지] 완료 - projectId={}, file={}, warnings={}건",
-                    projectId, changedFile, warnings.size());
+            log.info("[커플링 감지] 완료 - projectId={}, file={}, warnings={}건, fixes={}건",
+                    projectId, changedFile, warnings.size(), fixes.size());
 
         } catch (Exception e) {
             log.warn("[커플링 감지] 오류 - projectId={}, error={}", projectId, e.getMessage());
         }
 
-        return warnings;
+        return new SaveSourceResponse(warnings, fixes);
     }
 
     /* ------------------------------------------------------------------ */
     /* index.html 저장 시: game.js·style.css 가 참조하는 ID가 HTML에 있는지 */
     /* ------------------------------------------------------------------ */
-    private void checkHtml(String html, Map<String, String> others, List<String> warnings) {
+    private void checkHtml(String html, Map<String, String> others,
+                           List<String> warnings, List<SaveSourceResponse.Fix> fixes) {
         Set<String> htmlIds = extractHtmlIds(html);
         Set<String> htmlClasses = extractHtmlClasses(html);
 
-        // game.js 가 getElementById/querySelector 로 참조하는 ID 검사
+        // game.js 검사
         String gameJs = others.get("game.js");
         if (gameJs != null) {
-            for (String id : extractJsReferencedIds(gameJs)) {
-                if (!htmlIds.contains(id)) {
-                    warnings.add(String.format(
-                            "⚠️ game.js에서 getElementById('%s')를 호출하는데, index.html에 id=\"%s\" 요소가 없습니다 → index.html도 함께 수정하세요",
-                            id, id));
-                }
+            Set<String> jsIds = extractJsReferencedIds(gameJs);
+
+            Set<String> orphanedJsIds = new HashSet<>(jsIds);
+            orphanedJsIds.removeAll(htmlIds);                 // JS에 있지만 HTML에 없는 ID
+
+            Set<String> unusedHtmlIds = new HashSet<>(htmlIds);
+            unusedHtmlIds.removeAll(jsIds);                   // HTML에 있지만 JS가 참조 안 하는 ID
+
+            for (String id : orphanedJsIds) {
+                warnings.add(String.format(
+                        "⚠️ game.js에서 getElementById('%s')를 호출하는데, index.html에 id=\"%s\" 요소가 없습니다 → game.js도 함께 수정하세요",
+                        id, id));
             }
+
+            // 1:1 리네임 추론 → Fix 생성
+            if (orphanedJsIds.size() == 1 && unusedHtmlIds.size() == 1) {
+                String from = orphanedJsIds.iterator().next();
+                String to = unusedHtmlIds.iterator().next();
+                fixes.add(new SaveSourceResponse.Fix(
+                        "game.js", from, to,
+                        String.format("game.js의 '%s' → '%s' 일괄 치환 (index.html 변경 반영)", from, to)));
+            }
+
+            // 클래스 참조
             for (String cls : extractJsReferencedClasses(gameJs)) {
                 if (!htmlClasses.contains(cls)) {
                     warnings.add(String.format(
@@ -76,20 +99,35 @@ public class GameContractChecker {
             }
         }
 
-        // style.css 가 타겟하는 ID·클래스가 HTML에 있는지 검사
+        // style.css 검사
         String css = others.get("style.css");
         if (css != null) {
-            for (String id : extractCssIdSelectors(css)) {
-                if (!htmlIds.contains(id)) {
-                    warnings.add(String.format(
-                            "⚠️ style.css에 #%s 선택자가 있는데, index.html에 id=\"%s\" 요소가 없습니다 → index.html도 함께 수정하세요",
-                            id, id));
-                }
+            Set<String> cssIds = extractCssIdSelectors(css);
+
+            Set<String> orphanedCssIds = new HashSet<>(cssIds);
+            orphanedCssIds.removeAll(htmlIds);
+
+            Set<String> unusedHtmlIds = new HashSet<>(htmlIds);
+            unusedHtmlIds.removeAll(cssIds);
+
+            for (String id : orphanedCssIds) {
+                warnings.add(String.format(
+                        "⚠️ style.css에 #%s 선택자가 있는데, index.html에 id=\"%s\" 요소가 없습니다 → style.css도 함께 수정하세요",
+                        id, id));
             }
+
+            if (orphanedCssIds.size() == 1 && unusedHtmlIds.size() == 1) {
+                String from = orphanedCssIds.iterator().next();
+                String to = unusedHtmlIds.iterator().next();
+                fixes.add(new SaveSourceResponse.Fix(
+                        "style.css", from, to,
+                        String.format("style.css의 '%s' → '%s' 일괄 치환 (index.html 변경 반영)", from, to)));
+            }
+
             for (String cls : extractCssClassSelectors(css)) {
                 if (!htmlClasses.contains(cls)) {
                     warnings.add(String.format(
-                            "⚠️ style.css에 .%s 선택자가 있는데, index.html에 class=\"%s\" 요소가 없습니다 → index.html도 함께 수정하세요",
+                            "⚠️ style.css에 .%s 선택자가 있는데, index.html에 class=\"%s\" 요소가 없습니다 → style.css도 함께 수정하세요",
                             cls, cls));
                 }
             }
@@ -99,19 +137,34 @@ public class GameContractChecker {
     /* ------------------------------------------------------------------ */
     /* game.js 저장 시: 참조하는 ID가 index.html 에 실제로 존재하는지       */
     /* ------------------------------------------------------------------ */
-    private void checkJs(String gameJs, Map<String, String> others, List<String> warnings) {
+    private void checkJs(String gameJs, Map<String, String> others,
+                         List<String> warnings, List<SaveSourceResponse.Fix> fixes) {
         String html = others.get("index.html");
         if (html == null) return;
 
         Set<String> htmlIds = extractHtmlIds(html);
         Set<String> htmlClasses = extractHtmlClasses(html);
 
-        for (String id : extractJsReferencedIds(gameJs)) {
-            if (!htmlIds.contains(id)) {
-                warnings.add(String.format(
-                        "⚠️ game.js에서 getElementById('%s')를 호출하는데, index.html에 id=\"%s\" 요소가 없습니다 → index.html도 함께 수정하세요",
-                        id, id));
-            }
+        Set<String> jsIds = extractJsReferencedIds(gameJs);
+        Set<String> orphanedJsIds = new HashSet<>(jsIds);
+        orphanedJsIds.removeAll(htmlIds);
+
+        Set<String> unusedHtmlIds = new HashSet<>(htmlIds);
+        unusedHtmlIds.removeAll(jsIds);
+
+        for (String id : orphanedJsIds) {
+            warnings.add(String.format(
+                    "⚠️ game.js에서 getElementById('%s')를 호출하는데, index.html에 id=\"%s\" 요소가 없습니다 → index.html도 함께 수정하세요",
+                    id, id));
+        }
+
+        // game.js 자체를 수정하는 Fix (현재 저장된 JS의 참조를 올바른 HTML ID로 교체)
+        if (orphanedJsIds.size() == 1 && unusedHtmlIds.size() == 1) {
+            String from = orphanedJsIds.iterator().next();
+            String to = unusedHtmlIds.iterator().next();
+            fixes.add(new SaveSourceResponse.Fix(
+                    "game.js", from, to,
+                    String.format("game.js의 '%s' → '%s' 일괄 치환 (index.html 기준 반영)", from, to)));
         }
 
         for (String cls : extractJsReferencedClasses(gameJs)) {
@@ -126,23 +179,36 @@ public class GameContractChecker {
     /* ------------------------------------------------------------------ */
     /* style.css 저장 시: CSS 선택자 대상이 index.html 에 존재하는지         */
     /* ------------------------------------------------------------------ */
-    private void checkCss(String css, Map<String, String> others, List<String> warnings) {
+    private void checkCss(String css, Map<String, String> others,
+                          List<String> warnings, List<SaveSourceResponse.Fix> fixes) {
         String html = others.get("index.html");
         if (html == null) return;
 
         Set<String> htmlIds = extractHtmlIds(html);
         Set<String> htmlClasses = extractHtmlClasses(html);
 
-        for (String id : extractCssIdSelectors(css)) {
-            if (!htmlIds.contains(id)) {
-                warnings.add(String.format(
-                        "⚠️ style.css에 #%s 선택자가 있는데, index.html에 id=\"%s\" 요소가 없습니다 → index.html도 함께 수정하세요",
-                        id, id));
-            }
+        Set<String> cssIds = extractCssIdSelectors(css);
+        Set<String> orphanedCssIds = new HashSet<>(cssIds);
+        orphanedCssIds.removeAll(htmlIds);
+
+        Set<String> unusedHtmlIds = new HashSet<>(htmlIds);
+        unusedHtmlIds.removeAll(cssIds);
+
+        for (String id : orphanedCssIds) {
+            warnings.add(String.format(
+                    "⚠️ style.css에 #%s 선택자가 있는데, index.html에 id=\"%s\" 요소가 없습니다 → index.html도 함께 수정하세요",
+                    id, id));
+        }
+
+        if (orphanedCssIds.size() == 1 && unusedHtmlIds.size() == 1) {
+            String from = orphanedCssIds.iterator().next();
+            String to = unusedHtmlIds.iterator().next();
+            fixes.add(new SaveSourceResponse.Fix(
+                    "style.css", from, to,
+                    String.format("style.css의 '%s' → '%s' 일괄 치환 (index.html 기준 반영)", from, to)));
         }
 
         for (String cls : extractCssClassSelectors(css)) {
-            // body, html 같은 태그 선택자는 제외 — 전역 스타일이라 커플링 경고 불필요
             if (!htmlClasses.contains(cls)) {
                 warnings.add(String.format(
                         "⚠️ style.css에 .%s 선택자가 있는데, index.html에 class=\"%s\" 요소가 없습니다 → index.html도 함께 수정하세요",
@@ -178,7 +244,6 @@ public class GameContractChecker {
         Set<String> ids = new HashSet<>();
         Matcher m = Pattern.compile("getElementById\\s*\\(\\s*[\"']([^\"']+)[\"']\\s*\\)").matcher(js);
         while (m.find()) ids.add(m.group(1).trim());
-        // querySelector('#id') 형태도 추출
         Matcher m2 = Pattern.compile("querySelector\\s*\\(\\s*[\"']#([\\w-]+)[\"']\\s*\\)").matcher(js);
         while (m2.find()) ids.add(m2.group(1).trim());
         return ids;

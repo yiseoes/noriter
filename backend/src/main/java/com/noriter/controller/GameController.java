@@ -128,12 +128,13 @@ public class GameController {
         fileStorageService.saveGameFile(id, path, content);
         log.info("[API-GAM-003b] 소스 파일 저장 완료 - projectId={}, path={}", id, path);
 
-        java.util.List<String> warnings = gameContractChecker.check(id, path, content);
-        if (!warnings.isEmpty()) {
-            log.warn("[API-GAM-003b] 계약 위반 감지 - projectId={}, path={}, {}건", id, path, warnings.size());
+        SaveSourceResponse result = gameContractChecker.check(id, path, content);
+        if (!result.warnings().isEmpty() || !result.fixes().isEmpty()) {
+            log.warn("[API-GAM-003b] 커플링 감지 - projectId={}, path={}, warnings={}건, fixes={}건",
+                    id, path, result.warnings().size(), result.fixes().size());
         }
 
-        return ResponseEntity.ok(new SaveSourceResponse(warnings));
+        return ResponseEntity.ok(result);
     }
 
     /**

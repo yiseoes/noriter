@@ -87,6 +87,7 @@
 17. [향후 로드맵](#17-향후-로드맵)
 18. [로컬 실행 방법](#18-로컬-실행-방법)
 19. [프로젝트 구조](#19-프로젝트-구조)
+20. [소스코드 편집 & 커플링 감지](#20-소스코드-편집--커플링-감지)
 
 <br>
 
@@ -122,6 +123,8 @@
 | **실시간 파이프라인 모니터링** | SSE로 진행 단계, 에이전트 대화, 로그를 실시간으로 확인 |
 | **수정 요청** | 완성된 게임에 자연어로 수정 요청 → 파이프라인 재실행 |
 | **게임 미리보기·다운로드** | 브라우저 내 iframe 실행 + ZIP 다운로드 |
+| **소스코드 직접 편집** | 생성된 index.html / style.css / game.js를 브라우저에서 직접 수정·저장 |
+| **크로스파일 커플링 감지 & 자동 수정** | 파일 저장 시 다른 파일과의 ID·클래스 불일치를 정적 분석으로 감지 → 🔧 자동 수정 버튼 한 번으로 일괄 치환 |
 
 <br>
 
@@ -1345,6 +1348,8 @@ AI API를 호출하는 E2E 테스트는 **비용이 발생**하므로 실행 전
   - GAME_STRUCTURE QA 체크 카테고리 신설
 - [x] **역할별 모델 분리** (Sonnet 4.6 코드 에이전트 + Haiku 4.5 기획/설계)
 - [x] **JS 런타임 사전검증기** (JsRuntimeValidator — Node.js 브라우저 환경 모킹)
+- [x] **소스코드 직접 편집 탭** (브라우저에서 index.html / style.css / game.js 직접 수정·저장)
+- [x] **크로스파일 커플링 감지 & 자동 수정** (저장 시 ID·클래스 불일치 정적 분석 → 🔧 원클릭 일괄 치환)
 - [ ] 새 게임으로 강화된 프롬프트 E2E 검증
 - [ ] 생성 실패율 통계 수집 및 분석
 
@@ -1539,6 +1544,7 @@ workspace_NORITER/
 | 비용 절감 | 실패 단계만 재실행 + 토큰 사용량 추적 + claude-haiku | 게임 1개 약 $0.01~$0.02 |
 | QA 오탐 | 정적 분석 전용 + severity 기준 명확화 + benefit of doubt | 불필요한 디버깅 루프 감소 |
 | 코드 중복 생성 | `stripClass` + `deduplicateClasses` (중괄호 depth 추적) | 중복 클래스 완전 제거 |
+| 크로스파일 커플링 | 정적 분석(정규식) + 고아 참조 1:1 매핑으로 리네임 추론 | 원클릭 자동 수정 |
 
 <br>
 
@@ -1553,3 +1559,71 @@ workspace_NORITER/
 ---
 
 *Java 17 · Spring Boot 3.4.4 · React 19 · TypeScript · TanStack Query · Tailwind CSS · MySQL · Claude API · SSE · JWT*
+
+<br>
+
+---
+
+## 20. 소스코드 편집 & 커플링 감지
+
+### 개요
+
+AI가 생성한 게임의 `index.html`, `style.css`, `game.js`를 브라우저에서 직접 수정할 수 있는 인라인 에디터입니다.
+코드를 읽기 어려운 사용자도 특정 값(숫자, 색상, 텍스트)을 찾아 수정·저장하는 것이 목적입니다.
+
+### 주요 기능
+
+| 기능 | 설명 |
+|------|------|
+| **인라인 에디터** | 파일 선택 → ✏️ 편집 → 수정 → 💾 저장 & 반영 |
+| **라인 번호 뷰어** | 읽기 모드에서 줄번호 표시, 검색어 하이라이트 |
+| **파일 내 검색** | 🔍 찾기 버튼 → 키워드 입력 → Enter로 다음 매칭 이동 |
+| **커플링 경고** | 저장 시 다른 파일과 ID·클래스 불일치를 자동 감지 → ⚠️ 배너 표시 |
+| **자동 수정** | 고아 참조가 1:1로 매핑되면 🔧 자동 수정 버튼 활성화 → 원클릭 일괄 치환 |
+
+### 커플링 감지 원리
+
+저장 시 `GameContractChecker`가 세 파일을 정적 분석합니다.
+
+```
+index.html 저장 시
+  → game.js의 getElementById / querySelector 참조 ID 추출
+  → style.css의 #id / .class 선택자 추출
+  → HTML에 존재하지 않는 참조 → ⚠️ 경고
+
+game.js 저장 시
+  → 참조하는 모든 ID를 index.html의 실제 ID와 대조
+  → 불일치 → ⚠️ 경고
+
+style.css 저장 시
+  → CSS 선택자를 index.html의 ID·클래스와 대조
+  → 불일치 → ⚠️ 경고
+```
+
+### 자동 수정 추론 (리네임 감지)
+
+```
+고아 참조(JS에 있지만 HTML에 없는 ID) = 1개
+미사용 HTML ID(HTML에 있지만 JS가 참조 안 하는 ID) = 1개
+  → 동일 조건이면 리네임으로 추론
+  → Fix { file, from, to, description } 생성
+  → 프론트엔드에서 🔧 자동 수정 버튼 표시
+  → 클릭 시 해당 파일 전체에서 from → to 일괄 치환 후 PUT 저장
+```
+
+**예시:**
+```
+사용자가 index.html에서 id="gameCanvas" → id="myCanvas" 로 수정 후 저장
+  ⚠️ game.js에서 getElementById('gameCanvas')를 호출하는데, HTML에 해당 ID가 없습니다
+  🔧 자동 수정 (1건) → game.js의 'gameCanvas' → 'myCanvas' 일괄 치환
+```
+
+### 구현 파일
+
+| 파일 | 역할 |
+|------|------|
+| `GameContractChecker.java` | 정적 분석 + 리네임 추론 + Fix 반환 |
+| `SaveSourceResponse.java` | `{ warnings, fixes }` 응답 DTO |
+| `GameController.java` | `PUT /source/{path:.+}` — 저장 후 커플링 검사 |
+| `gameApi.ts` | `saveGameSource` + `SourceFix` 타입 |
+| `SourceTab.tsx` | 에디터 UI, 경고 배너, 자동 수정 버튼 |

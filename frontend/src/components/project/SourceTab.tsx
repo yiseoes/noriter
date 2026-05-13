@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { saveGameSource } from '../../api/gameApi';
+import { saveGameSource, type SourceFix } from '../../api/gameApi';
 
 interface SourceFile {
   name: string;
@@ -18,6 +18,8 @@ export default function SourceTab({ files, projectId }: SourceTabProps) {
   const [editContent, setEditContent] = useState('');
   const [savedFile, setSavedFile] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [fixes, setFixes] = useState<SourceFix[]>([]);
+  const [applyingFix, setApplyingFix] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [matchIndex, setMatchIndex] = useState(0);
@@ -37,13 +39,6 @@ export default function SourceTab({ files, projectId }: SourceTabProps) {
     : [];
 
   const currentMatchLine = matchedLines[matchIndex] ?? -1;
-
-  // 저장 성공 시 warnings 반영
-  useEffect(() => {
-    if (saveMutation.isSuccess) {
-      setWarnings(saveMutation.data?.warnings ?? []);
-    }
-  }, [saveMutation.isSuccess, saveMutation.data]);
 
   // 매칭 줄로 자동 스크롤
   useEffect(() => {
@@ -65,19 +60,40 @@ export default function SourceTab({ files, projectId }: SourceTabProps) {
   const saveMutation = useMutation({
     mutationFn: ({ path, content }: { path: string; content: string }) =>
       saveGameSource(projectId, path, content),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['gameFiles', projectId] });
+    onSuccess: (data) => {
+      setWarnings(data?.warnings ?? []);
+      setFixes(data?.fixes ?? []);
       setSavedFile(activeFile);
       setEditMode(false);
       setTimeout(() => setSavedFile(null), 2000);
+      queryClient.invalidateQueries({ queryKey: ['gameFiles', projectId] });
     },
   });
+
+  const handleApplyFixes = async () => {
+    if (fixes.length === 0 || applyingFix) return;
+    setApplyingFix(true);
+    try {
+      for (const fix of fixes) {
+        const target = files.find(f => f.name === fix.file);
+        if (!target) continue;
+        const updated = target.content.split(fix.from).join(fix.to);
+        await saveGameSource(projectId, fix.file, updated);
+      }
+      setFixes([]);
+      setWarnings([]);
+      queryClient.invalidateQueries({ queryKey: ['gameFiles', projectId] });
+    } finally {
+      setApplyingFix(false);
+    }
+  };
 
   const handleEdit = () => {
     setEditContent(currentFile?.content || '');
     setEditMode(true);
     saveMutation.reset();
     setWarnings([]);
+    setFixes([]);
     setSearchOpen(false);
     setSearchQuery('');
   };
@@ -87,6 +103,7 @@ export default function SourceTab({ files, projectId }: SourceTabProps) {
     setEditContent('');
     saveMutation.reset();
     setWarnings([]);
+    setFixes([]);
   };
 
   const handleSave = () => {
@@ -101,6 +118,7 @@ export default function SourceTab({ files, projectId }: SourceTabProps) {
     setActiveFile(name);
     saveMutation.reset();
     setWarnings([]);
+    setFixes([]);
     setSearchQuery('');
     setMatchIndex(0);
   };
@@ -210,6 +228,43 @@ export default function SourceTab({ files, projectId }: SourceTabProps) {
           </div>
         </div>
 
+        {/* 커플링 경고 */}
+        {warnings.length > 0 && (
+          <div className="rounded-xl border border-yellow-400/50 bg-yellow-50 dark:bg-yellow-900/20 p-3 flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-yellow-700 dark:text-yellow-400">
+                ⚠️ 커플링 경고 — 함께 수정해야 할 파일이 있습니다
+              </span>
+              <div className="flex items-center gap-2">
+                {fixes.length > 0 && (
+                  <button
+                    onClick={handleApplyFixes}
+                    disabled={applyingFix}
+                    className="px-2.5 py-1 text-xs font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                  >
+                    {applyingFix ? '적용 중...' : `🔧 자동 수정 (${fixes.length}건)`}
+                  </button>
+                )}
+                <button onClick={() => { setWarnings([]); setFixes([]); }} className="text-yellow-500 hover:text-yellow-700 text-xs px-1">✕</button>
+              </div>
+            </div>
+            <ul className="flex flex-col gap-1">
+              {warnings.map((w, i) => (
+                <li key={i} className="text-xs text-yellow-700 dark:text-yellow-300 font-mono leading-relaxed">{w}</li>
+              ))}
+            </ul>
+            {fixes.length > 0 && (
+              <div className="border-t border-yellow-300/50 pt-2 flex flex-col gap-1">
+                {fixes.map((fix, i) => (
+                  <div key={i} className="text-xs text-blue-600 dark:text-blue-400 font-mono">
+                    🔧 {fix.description}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 검색 바 */}
         {searchOpen && !editMode && (
           <div className="flex items-center gap-2 bg-bg-secondary border border-border-light rounded-xl px-3 py-2">
@@ -268,25 +323,6 @@ export default function SourceTab({ files, projectId }: SourceTabProps) {
                 {searchQuery.trim() ? highlightText(line) : line}
               </div>
             ))}
-          </div>
-        )}
-
-        {/* 커플링 경고 */}
-        {warnings.length > 0 && (
-          <div className="rounded-xl border border-yellow-400/50 bg-yellow-50 dark:bg-yellow-900/20 p-3 flex flex-col gap-1.5">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-yellow-700 dark:text-yellow-400">
-              ⚠️ 커플링 경고 — 다른 파일과 불일치가 감지되었습니다
-            </div>
-            <ul className="flex flex-col gap-1">
-              {warnings.map((w, i) => (
-                <li key={i} className="text-xs text-yellow-700 dark:text-yellow-300 font-mono leading-relaxed">
-                  {w}
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5">
-              위 항목을 확인하고 관련 파일도 함께 수정하세요.
-            </p>
           </div>
         )}
 

@@ -13,9 +13,16 @@ export const getGameFiles = (projectId: string) =>
 export const getGameSource = (projectId: string, path: string) =>
   client.get<string>(`/projects/${projectId}/source/${path}`).then(r => r.data);
 
+export interface SourceFix {
+  file: string;
+  from: string;
+  to: string;
+  description: string;
+}
+
 /** API-GAM-003b: 소스파일 저장 */
 export const saveGameSource = (projectId: string, path: string, content: string) =>
-  client.put<{ warnings: string[] }>(`/projects/${projectId}/source/${path}`, content, {
+  client.put<{ warnings: string[]; fixes: SourceFix[] }>(`/projects/${projectId}/source/${path}`, content, {
     headers: { 'Content-Type': 'text/plain' },
   }).then(r => r.data);
 

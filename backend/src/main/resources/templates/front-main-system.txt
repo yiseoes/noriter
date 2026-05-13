@@ -60,6 +60,12 @@ init(canvas) METHOD — CRITICAL:
 - MUST store: this.canvas = canvas; this.ctx = canvas.getContext('2d');
 - Do NOT compute scaleX/scaleY here — canvas.offsetWidth may be 0 at load time inside an iframe
 - Scale factors must be computed every frame inside render()
+- Do NOT set canvas.width or canvas.height here — the system sets these before calling init()
+
+resizeCanvas() METHOD — REQUIRED:
+- MUST implement this method (called by system on window resize)
+- Simply do nothing OR reinitialize ctx: this.ctx = this.canvas.getContext('2d');
+- Example: resizeCanvas() { if (this.canvas) this.ctx = this.canvas.getContext('2d'); }
 
 render(game) METHOD — CRITICAL:
 - Receives the GAME OBJECT directly — access game.state, game.score etc. directly on the game object

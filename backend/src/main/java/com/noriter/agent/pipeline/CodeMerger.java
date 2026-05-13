@@ -17,6 +17,14 @@ public class CodeMerger {
             "window.addEventListener('load', () => {\n" +
             "  const canvas = document.getElementById('gameCanvas');\n" +
             "  const hiddenInput = document.getElementById('hiddenInput');\n" +
+            "\n" +
+            "  // canvas 해상도를 논리 좌표계(800×600)에 맞게 설정 — 미설정 시 CSS stretch로 인한 확대 버그 발생\n" +
+            "  function resizeCanvas() {\n" +
+            "    canvas.width = canvas.offsetWidth || 800;\n" +
+            "    canvas.height = canvas.offsetHeight || 600;\n" +
+            "  }\n" +
+            "  resizeCanvas();\n" +
+            "\n" +
             "  const renderer = new Renderer();\n" +
             "  renderer.init(canvas);\n" +
             "  const game = new Game(canvas, renderer);\n" +
@@ -59,7 +67,8 @@ public class CodeMerger {
             "  });\n" +
             "\n" +
             "  window.addEventListener('resize', () => {\n" +
-            "    renderer.resizeCanvas();\n" +
+            "    resizeCanvas();\n" +
+            "    if (typeof renderer.resizeCanvas === 'function') renderer.resizeCanvas();\n" +
             "  });\n" +
             "});\n";
 

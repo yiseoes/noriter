@@ -1,3 +1,6 @@
+기술 아키텍처 (gameDataStructures 포함):
+{{architecture}}
+
 QA 버그 리포트:
 {{bugReport}}
 

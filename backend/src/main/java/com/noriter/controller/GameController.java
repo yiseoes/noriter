@@ -1,10 +1,12 @@
 package com.noriter.controller;
 
 import com.noriter.controller.dto.response.GameFileResponse;
+import com.noriter.controller.dto.response.SaveSourceResponse;
 import com.noriter.exception.ErrorCode;
 import com.noriter.exception.NoriterException;
 import com.noriter.infrastructure.storage.FileStorageService;
 import com.noriter.infrastructure.storage.FileStorageService.GameFileInfo;
+import com.noriter.infrastructure.storage.GameContractChecker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.*;
@@ -24,6 +26,7 @@ import java.util.List;
 public class GameController {
 
     private final FileStorageService fileStorageService;
+    private final GameContractChecker gameContractChecker;
 
     /**
      * API-GAM-001: 게임 미리보기
@@ -85,7 +88,7 @@ public class GameController {
      * GET /api/projects/{id}/source/{path}
      * 응답: text/plain
      */
-    @GetMapping("/source/{path}")
+    @GetMapping("/source/{path:.+}")
     public ResponseEntity<String> getSourceFile(@PathVariable String id, @PathVariable String path) {
         log.info("[API-GAM-003] 소스 파일 조회 - projectId={}, path={}", id, path);
 
@@ -100,6 +103,37 @@ public class GameController {
         return ResponseEntity.ok()
                 .contentType(new MediaType("text", "plain", StandardCharsets.UTF_8))
                 .body(content);
+    }
+
+    /**
+     * API-GAM-003b: 소스 파일 수정 저장
+     * PUT /api/projects/{id}/source/{path}
+     * 요청: text/plain
+     */
+    @PutMapping("/source/{path:.+}")
+    public ResponseEntity<SaveSourceResponse> saveSourceFile(@PathVariable String id,
+                                                             @PathVariable String path,
+                                                             @RequestBody String content) {
+        log.info("[API-GAM-003b] 소스 파일 저장 - projectId={}, path={}, 크기={}bytes", id, path, content.length());
+
+        String[] allowed = {"index.html", "style.css", "game.js"};
+        boolean isAllowed = false;
+        for (String name : allowed) {
+            if (name.equals(path)) { isAllowed = true; break; }
+        }
+        if (!isAllowed) {
+            throw new NoriterException(ErrorCode.GAME_NOT_FOUND);
+        }
+
+        fileStorageService.saveGameFile(id, path, content);
+        log.info("[API-GAM-003b] 소스 파일 저장 완료 - projectId={}, path={}", id, path);
+
+        java.util.List<String> warnings = gameContractChecker.check(id, path, content);
+        if (!warnings.isEmpty()) {
+            log.warn("[API-GAM-003b] 계약 위반 감지 - projectId={}, path={}, {}건", id, path, warnings.size());
+        }
+
+        return ResponseEntity.ok(new SaveSourceResponse(warnings));
     }
 
     /**

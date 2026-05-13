@@ -13,35 +13,61 @@ CONSTRAINTS:
 OUTPUT FORMAT: Return ONLY a valid JSON object:
 {
   "colorPalette": {
-    "background": "#hex",
-    "primary": "#hex",
-    "secondary": "#hex",
-    "accent": "#hex",
-    "text": "#hex",
-    "danger": "#hex"
+    "background": "#hex (배경 — 그라디언트 시작색)",
+    "backgroundGradient": "#hex (배경 그라디언트 끝색, 시작색과 유사한 톤)",
+    "primary": "#hex (주요 오브젝트/버튼 색)",
+    "primaryDark": "#hex (primary보다 20% 어두운 색, 버튼 hover/shadow용)",
+    "secondary": "#hex (보조 색상)",
+    "accent": "#hex (강조/특수 효과 색)",
+    "text": "#hex (기본 텍스트)",
+    "textLight": "#hex (밝은 텍스트, 버튼 위 등)",
+    "panel": "#hex (UI 패널 배경, 반투명 권장: rgba)",
+    "danger": "#hex (위험/실패 표시)"
   },
   "spriteDesign": [
-    {"name": "오브젝트명", "renderMethod": "emoji|shape|gradient", "detail": "구체적 묘사", "size": "WxH px"}
+    {"name": "오브젝트명", "renderMethod": "emoji|shape|gradient", "detail": "구체적 묘사 (색상 HEX 포함)", "size": "WxH px", "animation": "idle 애니메이션 설명 (있다면)"}
   ],
+  "buttonStyle": {
+    "normal": "버튼 기본 스타일: 색상, 라운드(px), 그라디언트 여부",
+    "hover": "호버 시 색상 변화 (primary보다 밝게)",
+    "shadow": "ctx.shadowColor, shadowBlur, shadowOffsetY 값",
+    "textStyle": "버튼 텍스트 폰트, 크기, 색상",
+    "padding": "버튼 내부 여백 기준"
+  },
+  "panelStyle": {
+    "background": "패널 배경 (rgba 반투명 권장)",
+    "border": "테두리 색, 두께",
+    "borderRadius": "라운드 px",
+    "shadow": "그림자 설정"
+  },
   "uiLayout": {
-    "topBar": "상단 UI 구성 (점수, 체력 등)",
+    "topBar": "상단 UI 구성 (점수, 체력 등) — 위치(x,y), 폰트, 색상 포함",
     "gameArea": "게임 영역 설명",
     "bottomBar": "하단 UI (있다면)"
   },
   "screens": {
-    "start": "시작 화면 디자인",
-    "playing": "인게임 레이아웃",
-    "gameover": "게임오버 화면"
+    "start": "시작 화면: 타이틀 위치/폰트/색, 부제목, 버튼 위치, 배경 장식 요소",
+    "playing": "인게임: HUD 위치, 점수 표시 스타일, 상태 UI",
+    "gameover": "게임오버: 오버레이 배경(반투명), 결과 텍스트, 재시작 버튼 위치/스타일"
   },
   "effects": [
-    {"name": "이펙트명", "trigger": "발동 조건", "visual": "시각 효과 설명", "duration": "ms"}
+    {"name": "이펙트명", "trigger": "발동 조건", "visual": "시각 효과 (파티클 색상, 크기, 개수)", "duration": "ms"}
   ],
   "typography": {
-    "title": "font, size, weight",
-    "score": "font, size",
-    "body": "font, size"
+    "title": "폰트명, 크기px, weight, 색상",
+    "subtitle": "폰트명, 크기px, 색상",
+    "score": "폰트명, 크기px, weight",
+    "body": "폰트명, 크기px"
   },
+  "backgroundDesign": "배경 렌더링 방법: 그라디언트 방향, 추가 장식 패턴/요소 설명",
   "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 정한 색상 테마와 핵심 비주얼을 담아 구어체 한국어로 (1~2문장)"
 }
+
+QUALITY RULES — MANDATORY:
+- colorPalette의 모든 색상은 HEX 또는 rgba() 값으로 구체적으로 명세할 것 — "밝은 파랑" 같은 설명 금지
+- buttonStyle은 반드시 그림자(shadow)와 라운드 코너를 포함할 것 — 단순 사각형 버튼 금지
+- backgroundDesign은 단색 배경 금지 — 반드시 그라디언트 또는 패턴 장식 포함
+- screens.gameover는 반투명 오버레이(rgba(0,0,0,0.5) 등) 위에 내용을 그리도록 명세할 것
+- effects는 최소 2개 이상 정의할 것 (점수 획득, 게임오버 등)
 
 Do NOT include any text outside the JSON.

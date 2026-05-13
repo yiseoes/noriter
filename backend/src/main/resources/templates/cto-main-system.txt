@@ -43,6 +43,26 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
   "dataStructures": [
     {"name": "구조체명", "fields": {"field": "type"}, "usage": "용도"}
   ],
+  "gameDataStructures": {
+    "description": "Backend(Game)와 Frontend(Renderer) 사이의 데이터 계약. render(game)에서 game 객체에 직접 접근하는 모든 속성과 공유 상수를 명세한다.",
+    "gameProperties": [
+      {"name": "state", "type": "string", "values": ["start", "playing", "gameover"], "description": "현재 게임 상태"},
+      {"name": "score", "type": "number", "description": "현재 점수 — 예시, 게임에 맞게 수정"}
+    ],
+    "objectShapes": [
+      {
+        "name": "FloatingText (예시 — 게임에 floatingTexts 있을 경우)",
+        "fields": {"x": "number", "y": "number", "text": "string", "life": "number", "maxLife": "number", "vy": "number"}
+      },
+      {
+        "name": "Particle (예시 — 게임에 particles 있을 경우)",
+        "fields": {"x": "number", "y": "number", "vx": "number", "vy": "number", "life": "number", "maxLife": "number", "color": "string", "size": "number"}
+      }
+    ],
+    "sharedConstants": [
+      {"name": "BUTTON_Y_START", "value": 400, "description": "시작화면 버튼 Y좌표 — 예시, 실제 레이아웃에 맞게 수정"}
+    ]
+  },
   "contentIntegration": "plan.json의 content 데이터를 코드에 통합하는 방법 설명 (예: CAT_DATABASE 배열로 직접 삽입)",
   "initializationCode": "window.addEventListener('load', () => {\n  const canvas = document.getElementById('gameCanvas');\n  canvas.focus();\n  const renderer = new Renderer();\n  renderer.init(canvas);\n  const game = new Game(canvas, renderer);\n  let lastTimestamp = 0;\n  function gameLoop(timestamp) {\n    const dt = lastTimestamp ? Math.min((timestamp - lastTimestamp) / 1000, 0.05) : 0;\n    lastTimestamp = timestamp;\n    game.update(dt);\n    renderer.render(game);\n    requestAnimationFrame(gameLoop);\n  }\n  requestAnimationFrame(gameLoop);\n  canvas.addEventListener('mousemove', (e) => {\n    const rect = canvas.getBoundingClientRect();\n    const x = (e.clientX - rect.left) * (800 / rect.width);\n    const y = (e.clientY - rect.top) * (600 / rect.height);\n    if (game.handleMouseMove) game.handleMouseMove(x, y);\n  });\n  canvas.addEventListener('click', (e) => {\n    const rect = canvas.getBoundingClientRect();\n    const x = (e.clientX - rect.left) * (800 / rect.width);\n    const y = (e.clientY - rect.top) * (600 / rect.height);\n    game.handleClick(x, y);\n  });\n  canvas.addEventListener('touchstart', (e) => {\n    e.preventDefault();\n    const rect = canvas.getBoundingClientRect();\n    const t = e.touches[0];\n    const x = (t.clientX - rect.left) * (800 / rect.width);\n    const y = (t.clientY - rect.top) * (600 / rect.height);\n    game.handleClick(x, y);\n  });\n  document.addEventListener('keydown', (e) => { game.handleKeyDown(e); });\n  window.addEventListener('resize', () => { renderer.init(canvas); });\n});",
   "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 설계한 Game/Renderer 인터페이스 핵심과 주의사항을 담아 구어체 한국어로 (1~2문장)"
@@ -63,6 +83,18 @@ CRITICAL:
   - Must include: canvas.focus(), postMessage listener, document keydown listener, game loop with requestAnimationFrame
 - List ALL public methods that Game and Renderer will expose to each other — incomplete contracts cause runtime crashes
 - "contentIntegration" must specify the EXACT constant name the backend agent should use (e.g., "WORD_DATABASE")
+
+DATA CONTRACT — gameDataStructures MANDATORY:
+- "gameDataStructures" is the SINGLE SOURCE OF TRUTH for all data shared between Backend and Frontend
+- "gameProperties": list EVERY property that render(game) accesses directly on the game object (e.g., game.effects, game.floatingTexts, game.worm)
+  - Backend MUST initialize and maintain ALL listed properties with the exact names
+  - Frontend MUST access ONLY these property names — never invent names not listed here
+- "objectShapes": specify the EXACT fields of every object in arrays (floatingTexts, particles, effects, etc.)
+  - Backend MUST create objects with ALL listed fields — missing fields cause NaN/undefined rendering bugs
+  - Frontend MUST only read fields listed here
+- "sharedConstants": any constant value used by BOTH Backend logic and Frontend rendering (e.g., CELL_SIZE, button Y positions)
+  - Backend and Frontend MUST use IDENTICAL values — never let each agent independently decide these numbers
+  - The constant name MUST match exactly (e.g., if sharedConstants says CELL_SIZE=20, Backend writes `const CELL_SIZE = 20` and Renderer does the same)
 
 Do NOT include any text outside the JSON.
 

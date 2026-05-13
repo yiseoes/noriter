@@ -31,26 +31,37 @@ Check for these categories (in order of priority):
    - cursor:none in CSS with no canvas cursor rendering code in Renderer → MEDIUM
      (user cannot see mouse position)
 
-4. LOGIC — Provably broken mechanics: game loop never called, class never instantiated, event listeners never attached
+4. DATA_CONTRACT — Read architecture.json's "gameDataStructures" field and verify the following (HIGH if violated):
+   - gameProperties: every property listed must exist in Game class (this.xxx) AND be accessed with identical name in Renderer (game.xxx)
+     Example violation: architecture says "effects" → Backend has `this.effects` but Renderer reads `game.activeEffects` → HIGH
+   - objectShapes: every field in each object shape must be present in EVERY push() call for that object type in Backend
+     Example violation: FloatingText shape has field "maxLife" → Backend's floatingTexts.push() is missing maxLife → HIGH
+     (missing field = NaN in alpha calculation = entire canvas goes black after first eat)
+   - sharedConstants: same constant name and value must appear in BOTH Backend and Frontend
+     Example violation: architecture says CELL_SIZE=20 → Renderer writes `const CELL = 10` → HIGH
+   - Button position consistency: handleClick() and Renderer must use IDENTICAL Y coordinates for the same button
+     Example violation: handleClick() uses btnY=400 but Renderer draws button at btnY=500 → HIGH (button unclickable)
+
+5. LOGIC — Provably broken mechanics: game loop never called, class never instantiated, event listeners never attached
    - "game loop never called" → check initializationCode at BOTTOM of game.js for requestAnimationFrame
      If present: NOT a bug. If absent: CRITICAL.
    - Game class defined but never instantiated in init code → CRITICAL
    - getGameState() method missing from Game class → HIGH
 
-5. UI — Missing required HTML elements that are referenced in code but not present in HTML
+6. UI — Missing required HTML elements that are referenced in code but not present in HTML
 
-6. INTERACTION — Input handlers provably absent (handleClick/handleMouseMove/handleKeyDown missing from Game class)
+7. INTERACTION — Input handlers provably absent (handleClick/handleMouseMove/handleKeyDown missing from Game class)
 
-7. KOREAN_IME — Check plan.json's "requiresTextInput" field:
+8. KOREAN_IME — Check plan.json's "requiresTextInput" field:
    - hiddenInput present in HTML: HIGH if missing (ALL games)
    - _bindHiddenInput() called in Game constructor: HIGH if missing (ALL games)
    - input listener guard (e.isComposing || this.isComposing): HIGH if missing (ALL games)
    - handleKeyDown uses if (e.preventDefault) e.preventDefault(): HIGH if missing (ALL games)
    - handleCompositionEnd syllable accumulation: HIGH only if requiresTextInput=true; MEDIUM if requiresTextInput=false
 
-8. PERFORMANCE — Memory leaks (arrays accumulating with no cleanup), excessive object creation per frame
+9. PERFORMANCE — Memory leaks (arrays accumulating with no cleanup), excessive object creation per frame
 
-9. SECURITY — eval() usage, innerHTML with untrusted data
+10. SECURITY — eval() usage, innerHTML with untrusted data
 
 Severity criteria:
 - CRITICAL: Code will throw a SYNTAX ERROR or REFERENCE ERROR immediately on load, OR game loop never starts
@@ -105,7 +116,11 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with this structure:
     "noEventListenersInsideGame": true,
     "rendererConstructorNoArgs": true,
     "ctxSaveRestoreBalanced": true,
-    "noSeparateRendererScript": true
+    "noSeparateRendererScript": true,
+    "dataContractGamePropertiesMatch": true,
+    "dataContractObjectShapesComplete": true,
+    "dataContractSharedConstantsMatch": true,
+    "dataContractButtonPositionsConsistent": true
   },
   "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. QA 결과(PASS/FAIL)와 주요 발견 사항을 담아 구어체 한국어로 (1~2문장)"
 }

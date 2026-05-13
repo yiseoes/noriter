@@ -30,6 +30,20 @@ The following rules are absolute. Any fix instruction you produce MUST comply wi
    - Game logic uses fixed 800×600 — never canvas.width or offsetWidth
    - Mouse/touch inputs arrive pre-scaled to 800×600 — never re-scale inside Game
 
+DATA CONTRACT MISMATCH — CHECK FIRST BEFORE OTHER BUGS:
+Read architecture.json's "gameDataStructures" field. Then verify:
+1. gameProperties: Every property listed must exist in Backend (game.xxx) and be accessed with the EXACT same name in Frontend
+   - Mismatch example: architecture says "effects" → Backend has `this.effects` ✅ but Frontend accesses `game.activeEffects` ❌
+   - Fix: instruct Frontend to use `game.effects` OR instruct Backend to rename to match — pick one and apply consistently
+2. objectShapes: Every field in each shape must be present in EVERY push() call in Backend
+   - Mismatch example: FloatingText shape has "maxLife" → Backend does `floatingTexts.push({x, y, text, life, vy})` missing maxLife ❌
+   - Fix: instruct Backend to add missing fields to EVERY push() call for that object type
+3. sharedConstants: Same name and value must appear in BOTH Backend and Frontend files
+   - Mismatch example: architecture says CELL_SIZE=20 → Frontend writes `const CELL = 10` ❌
+   - Fix: instruct Frontend to rename/change to match the architecture constant EXACTLY
+4. Button positions: if handleClick() and Renderer draw the same button at different Y values, they MUST be unified
+   - Fix: instruct both to use the value from sharedConstants, or explicitly set the same literal value
+
 COMMON BUG PATTERNS AND CORRECT FIXES:
 - "requestAnimationFrame never called" or "game loop not running":
   The external init code handles rAF. Do NOT add rAF to Game.

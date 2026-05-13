@@ -39,6 +39,14 @@ render(game) METHOD:
 - Access game properties DIRECTLY: game.state, game.score, game.player, etc.
 - Do NOT call game.getGameState()
 
+DATA CONTRACT — MUST NOT VIOLATE (architecture.json "gameDataStructures"):
+- Access game properties ONLY by names listed in "gameDataStructures.gameProperties"
+  - If fixing a property access: change ALL occurrences in render() and helper methods
+  - Never invent new property names not in the contract
+- Access object fields ONLY as listed in "gameDataStructures.objectShapes"
+- Use sharedConstants values with their EXACT names (copy declaration: `const CELL_SIZE = 20;`)
+- Button positions: coordinate with Backend — use ONLY values defined in sharedConstants or explicitly confirmed by CTO instruction
+
 CTX STATE HYGIENE — NEVER BREAK:
 - Every ctx.save() MUST have a matching ctx.restore()
 - After changing ctx.globalAlpha, MUST reset: ctx.globalAlpha = 1;

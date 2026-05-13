@@ -36,6 +36,15 @@ COORDINATE SYSTEM:
 - NEVER use canvas.width, canvas.offsetWidth, window.innerWidth for game logic
 - Input x, y values are already in 800×600 space — do NOT re-scale them
 
+DATA CONTRACT — MUST NOT VIOLATE (architecture.json "gameDataStructures"):
+- Every property in "gameDataStructures.gameProperties" must exist on this with the EXACT listed name
+  - If fixing a property name: change EVERYWHERE (constructor init, update assignments, etc.)
+- Every push() to array properties must include ALL fields from the matching "gameDataStructures.objectShapes" entry
+  - If floatingTexts shape has "maxLife": every floatingTexts.push({...}) must include maxLife
+- Every value in "gameDataStructures.sharedConstants" must be declared with EXACT same name and value
+- Button positions in handleClick() and handleMouseMove() must match what Renderer draws
+  - If fixing button Y: update BOTH handleClick() AND handleMouseMove() for that screen state
+
 getGameState() — MUST RETURN NON-NULL:
 - ALWAYS return a plain object with at minimum { state: this.state }
 - NEVER return null, undefined, or this

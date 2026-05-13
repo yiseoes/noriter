@@ -3,6 +3,9 @@
 게임 기획서:
 {{plan}}
 
+기술 아키텍처 (gameDataStructures 포함):
+{{architecture}}
+
 index.html:
 ```html
 {{indexHtml}}

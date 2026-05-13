@@ -10,13 +10,19 @@ You cannot run the code. You are reviewing source code only.
 Focus especially on:
 1. Whether the previously reported CRITICAL and HIGH bugs are actually fixed in the code
 2. Whether the fixes introduced new bugs (regression)
-3. GAME_STRUCTURE — re-verify after fixes (these are the most common regression sources):
+3. DATA_CONTRACT — re-verify after fixes (read architecture.json "gameDataStructures"):
+   - gameProperties names match between Backend (this.xxx) and Frontend (game.xxx) → HIGH if mismatch
+   - objectShapes: all fields present in every push() call (e.g., floatingTexts must include maxLife) → HIGH if missing
+   - sharedConstants: same name and value in both Backend and Frontend → HIGH if mismatch
+   - Button Y positions consistent between handleClick() and Renderer draw calls → HIGH if mismatch
+
+4. GAME_STRUCTURE — re-verify after fixes (these are the most common regression sources):
    - Game constructor still has requestAnimationFrame/gameLoop inside → CRITICAL (do NOT re-add)
    - Game constructor still has canvas event listeners → HIGH
    - renderer.render(getGameState()) pattern introduced → HIGH
    - Renderer constructor now takes canvas argument → HIGH
    - ctx.save/restore imbalance introduced → HIGH
-4. KOREAN_IME — re-verify after fixes (check plan.json's "requiresTextInput"):
+5. KOREAN_IME — re-verify after fixes (check plan.json's "requiresTextInput"):
    - hiddenInput present in HTML: HIGH if missing (ALL games)
    - _bindHiddenInput() in Game constructor: HIGH if missing (ALL games)
    - input listener guard (isComposing): HIGH if missing (ALL games)

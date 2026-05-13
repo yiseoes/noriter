@@ -74,6 +74,15 @@ COORDINATE SYSTEM:
 - OR use ctx.save(); ctx.scale(this.scaleX, this.scaleY); /* draw in logical space */ ctx.restore();
 - Font sizes should also scale: ctx.font = `${20 * Math.min(this.scaleX, this.scaleY)}px sans-serif`
 
+DATA CONTRACT — MANDATORY (architecture.json "gameDataStructures"):
+- render(game) accesses the game object DIRECTLY — ONLY use property names listed in "gameDataStructures.gameProperties"
+  - Example: if gameProperties says {name: "effects"}, write `game.effects` — NOT `game.activeEffects`
+  - If a property is NOT listed in gameDataStructures, do NOT access it
+- When reading objects from arrays (floatingTexts, particles, etc.), ONLY access fields listed in "gameDataStructures.objectShapes"
+  - Example: if FloatingText shape has {life, maxLife}, you may use `ft.life / ft.maxLife` — but ONLY because both fields are in the contract
+- Every value in "gameDataStructures.sharedConstants" MUST be declared with the EXACT same name and value as in the architecture
+  - Example: if sharedConstants says {name: "CELL_SIZE", value: 20}, write `const CELL_SIZE = 20;` — never use a different number
+
 OTHER RULES:
 - MUST implement ALL methods listed in architecture.json's "gameInterface.rendererClass.publicMethods"
 - Use EXACT method signatures from the architecture
@@ -89,6 +98,42 @@ CRITICAL — FORMAT:
 - Do NOT include any text outside the section blocks
 
 All Korean text in UI.
+
+VISUAL QUALITY — MANDATORY (design.json 명세를 반드시 반영):
+Read design.json carefully and apply every color, style, and layout spec. Do NOT substitute your own defaults.
+
+BACKGROUND — NEVER flat solid color:
+- ALWAYS render background as a gradient: ctx.createLinearGradient() with colorPalette.background → colorPalette.backgroundGradient
+- Add at least ONE decorative layer (subtle dots, grid lines, or pattern with low opacity: 0.05~0.15)
+- Example: small circles, cross-hatching, or wave pattern drawn with globalAlpha=0.08
+
+BUTTONS — polished style mandatory:
+- Always use rounded rectangles (use roundRect() or manual arc path), radius ≥ 10px
+- Always apply shadow before drawing: ctx.shadowColor, ctx.shadowBlur=8~12, ctx.shadowOffsetY=3~4
+- Use gradient fill (createLinearGradient top-to-bottom) — top slightly lighter, bottom = primary color
+- Hover state: brighter fill (primaryDark inverted or +20% lightness)
+- Reset shadow after button: ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+
+UI PANELS (score, info boxes) — polished style mandatory:
+- Use semi-transparent background: fillStyle = 'rgba(r,g,b,0.75)'
+- Rounded corners ≥ 8px
+- Thin border: strokeStyle with 1~2px line
+- Subtle shadow
+
+SCREENS:
+- Start screen: title with text shadow (ctx.shadowBlur=15), subtitle text, decorative animated element (e.g., demo sprite)
+- Gameover screen: semi-transparent dark overlay (rgba(0,0,0,0.55)) over game area, centered result box with rounded panel
+- All screen transitions: use globalAlpha fade if possible
+
+TYPOGRAPHY:
+- Title font: 'bold 40~48px Arial, sans-serif' with shadow
+- Score/HUD: bold, easy-to-read, with contrasting background
+- Never render text directly on busy background without a backing panel or shadow
+
+PARTICLES & EFFECTS:
+- Implement at least the effects listed in design.json
+- Floating score text: rises upward, fades out smoothly using alpha = life/maxLife
+- Hit/collect effect: burst of 6~12 small circles in accent color
 
 CODE READABILITY — MANDATORY:
 - All code must use proper indentation and line breaks — never compress multiple statements onto a single line

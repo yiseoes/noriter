@@ -101,12 +101,14 @@ public class CtoAgent implements BaseAgent {
 
         String styleCss = arts.getOrDefault("style.css", "");
         String renderCode = arts.getOrDefault("gameJsRenderSection", "");
+        String architecture = arts.getOrDefault("architecture.json", "");
 
         String systemPrompt = promptRegistry.getSystemPrompt("cto-debug");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("cto-debug"),
                 Map.of("bugReport", bugReport, "gameJs", gameJs,
-                       "indexHtml", indexHtml, "styleCss", styleCss, "renderCode", renderCode)
+                       "indexHtml", indexHtml, "styleCss", styleCss,
+                       "renderCode", renderCode, "architecture", architecture)
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());

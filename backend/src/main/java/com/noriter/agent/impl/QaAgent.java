@@ -82,6 +82,7 @@ public class QaAgent implements BaseAgent {
         String promptId = isRetest ? "qa-retest" : "qa-main";
 
         String plan = context.getPreviousArtifacts().getOrDefault("plan.json", "");
+        String architecture = context.getPreviousArtifacts().getOrDefault("architecture.json", "");
         String indexHtml = context.getPreviousArtifacts().getOrDefault("index.html", "");
         String styleCss = context.getPreviousArtifacts().getOrDefault("style.css", "");
         String gameJs = context.getPreviousArtifacts().getOrDefault("game.js", "");
@@ -93,14 +94,14 @@ public class QaAgent implements BaseAgent {
             String previousReport = context.getPreviousArtifacts().getOrDefault("test-report.json", "");
             userPrompt = PromptTemplate.render(
                     promptRegistry.getUserPrompt(promptId),
-                    Map.of("previousReport", previousReport, "indexHtml", indexHtml,
-                            "styleCss", styleCss, "gameJs", gameJs)
+                    Map.of("previousReport", previousReport, "architecture", architecture,
+                            "indexHtml", indexHtml, "styleCss", styleCss, "gameJs", gameJs)
             );
         } else {
             userPrompt = PromptTemplate.render(
                     promptRegistry.getUserPrompt(promptId),
-                    Map.of("plan", plan, "indexHtml", indexHtml,
-                            "styleCss", styleCss, "gameJs", gameJs)
+                    Map.of("plan", plan, "architecture", architecture,
+                            "indexHtml", indexHtml, "styleCss", styleCss, "gameJs", gameJs)
             );
         }
 

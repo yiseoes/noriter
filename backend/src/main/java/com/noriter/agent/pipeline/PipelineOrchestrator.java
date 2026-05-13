@@ -660,8 +660,20 @@ public class PipelineOrchestrator {
         return stageExecutor.executeAgent(agent, context, stage != null ? stage : stages.get(3));
     }
 
+    private boolean isCancelled(String projectId) {
+        return projectRepository.findById(projectId)
+                .map(p -> p.getStatus() == ProjectStatus.CANCELLED)
+                .orElse(false);
+    }
+
     private boolean handleResult(Project project, AgentResult result, List<Stage> stages,
                                   StageType stageType, Map<String, String> artifacts) {
+        // 취소 체크 — 스테이지 완료 후 다음 단계 진입 전에 확인
+        if (isCancelled(project.getId())) {
+            log.info("[파이프라인] 취소 감지 - projectId={}, stage={}", project.getId(), stageType);
+            return false;
+        }
+
         if (result.getStatus() == AgentResult.Status.FAILED) {
             handlePipelineFailure(project, stageType + " 실패: " + result.getErrorMessage());
             return false;

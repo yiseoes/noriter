@@ -20,6 +20,17 @@ RULES:
 - Do not break existing functionality
 - Do NOT include Game class, game loop, or initialization code in RENDER_JS
 
+GOOGLE FONTS — DO NOT REMOVE WHEN FIXING:
+- index.html의 <head>에 Google Fonts <link> 태그가 있으면 반드시 보존할 것
+- ctx.font에 Google Font 이름이 있으면 유지할 것 — Arial로 교체 금지
+
+VISUAL QUALITY — DO NOT REMOVE WHEN FIXING:
+- sprite rendering (emoji fillText, gradient sprites, shape-based sprites) — preserve as-is unless the bug is in sprite rendering
+- idle animations (bounce, pulse, rotation) on sprites — preserve all animation logic
+- screen shake system (this.shakeX, this.shakeY, shake() method, shakeTimer logic) — preserve entirely
+- start screen demo objects (background moving objects) — preserve the demoObjects array and animation logic
+- If any of the above are missing from the broken code, ADD them as part of the fix
+
 ARCHITECTURE CONTRACT — MUST NOT VIOLATE EVEN WHEN INSTRUCTED:
 
 RENDERER CONSTRUCTOR:

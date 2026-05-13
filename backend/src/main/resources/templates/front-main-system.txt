@@ -20,6 +20,16 @@ You will produce FOUR outputs using section blocks. Return them in this EXACT fo
 
 REQUIREMENTS FOR index.html:
 - DOCTYPE html, lang="ko"
+- ALWAYS include @font-face in <style> tag in <head> using design.json typography.gameFontFile:
+  <style>
+    @font-face {
+      font-family: '{design.typography.gameFontFamily}';
+      src: url('/fonts/{design.typography.gameFontFile}') format('woff2');
+      font-display: swap;
+    }
+  </style>
+  - Use the EXACT gameFontFile and gameFontFamily values from design.json
+  - Do NOT use Google Fonts CDN — fonts are served locally from /fonts/
 - <canvas id="gameCanvas" style="display:block"></canvas>
 - ALWAYS include: <input id="hiddenInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
   - This is required for ALL games to support Korean IME keyboard input
@@ -125,10 +135,65 @@ SCREENS:
 - Gameover screen: semi-transparent dark overlay (rgba(0,0,0,0.55)) over game area, centered result box with rounded panel
 - All screen transitions: use globalAlpha fade if possible
 
-TYPOGRAPHY:
-- Title font: 'bold 40~48px Arial, sans-serif' with shadow
-- Score/HUD: bold, easy-to-read, with contrasting background
+TYPOGRAPHY — MANDATORY (로컬 서빙 게임 폰트 반드시 사용):
+- design.json typography.gameFontFamily 값을 ctx.font에 반드시 사용할 것
+  예) gameFontFamily가 "Orbitron"이면: ctx.font = 'bold 44px Orbitron, sans-serif'
+  예) gameFontFamily가 "'Press Start 2P'"이면: ctx.font = 'bold 24px "Press Start 2P", sans-serif'
+  예) gameFontFamily가 "'Fredoka One'"이면: ctx.font = 'bold 40px "Fredoka One", sans-serif'
+  — Arial, sans-serif만 쓰는 것은 금지. 반드시 gameFontFamily를 첫 번째로 명시
+- Title: 40~48px, bold, text shadow (ctx.shadowBlur=15, ctx.shadowColor=accent색)
+- Score/HUD: bold, Google Font 사용, contrasting background panel 위에 렌더링
 - Never render text directly on busy background without a backing panel or shadow
+
+SPRITE RENDERING — MANDATORY (design.json spriteDesign 반드시 반영):
+- renderMethod가 "emoji"인 경우: ctx.font = '${size}px serif'; ctx.fillText(emoji, x, y) 로 실제 이모지 렌더링
+  - NEVER substitute emoji sprites with plain colored rectangles
+- renderMethod가 "shape"인 경우: detail에 명시된 색상과 모양을 정확히 구현 (원, 다각형, 복합 도형)
+  - NEVER simplify to a single fillRect — use the described shape geometry
+- renderMethod가 "gradient"인 경우: createRadialGradient 또는 createLinearGradient로 detail의 색상 적용
+  - NEVER substitute gradient sprites with flat solid color
+
+IDLE ANIMATION — MANDATORY (design.json spriteDesign[].animation 반드시 구현):
+- 모든 스프라이트의 animation 필드에 명시된 idle 애니메이션을 반드시 구현할 것
+- 애니메이션 구현 패턴 (time은 Date.now() / 1000 또는 누적 dt 사용):
+  - bounce: y + Math.sin(time * Math.PI * 2 / period) * amplitude
+  - pulse: scale = 0.9 + 0.1 * Math.sin(time * Math.PI * 2 / period) → ctx.scale(scale, scale) 적용
+  - rotation: angle += rotationSpeed * dt → ctx.rotate(angle) 적용
+  - float: x += Math.cos(time * Math.PI * 2 / period) * amplitude (좌우 흔들림)
+- idle 애니메이션이 없는 스프라이트는 게임이 살아있지 않아 보임 — 최소 주요 오브젝트 1개 이상 필수
+
+SCREEN SHAKE — MANDATORY (design.json screenShake 반드시 구현):
+- Renderer 클래스에 shakeOffset 시스템 구현:
+  this.shakeX = 0; this.shakeY = 0; this.shakeMagnitude = 0; this.shakeDuration = 0; this.shakeTimer = 0;
+- shake(magnitude, duration) 메서드:
+  shake(magnitude, duration) { this.shakeMagnitude = magnitude; this.shakeDuration = duration; this.shakeTimer = duration; }
+- Renderer는 render(game) 시그니처를 변경하지 않고 내부적으로 performance.now()로 dt 계산:
+  render(game) {
+    const now = performance.now();
+    const dt = this._lastRenderTime ? (now - this._lastRenderTime) / 1000 : 0;
+    this._lastRenderTime = now;
+    ...
+  }
+- render() 첫 부분에서 shakeTimer 감소 및 offset 계산 (위 dt 사용):
+  if (this.shakeTimer > 0) {
+    this.shakeTimer -= dt * 1000;
+    const progress = Math.max(0, this.shakeTimer / this.shakeDuration);
+    this.shakeX = (Math.random() * 2 - 1) * this.shakeMagnitude * progress;
+    this.shakeY = (Math.random() * 2 - 1) * this.shakeMagnitude * progress;
+  } else { this.shakeX = 0; this.shakeY = 0; }
+- ctx.translate(this.shakeX * this.scaleX, this.shakeY * this.scaleY) 를 전체 렌더링 save/restore 안에서 최상단에 적용
+- Game 클래스에서 이벤트 발생 시 renderer.shake(magnitude, duration) 호출:
+  - 피격/충돌: design.json screenShake.hit 값 사용
+  - 점수 획득: design.json screenShake.score 값 사용
+  - 게임오버: design.json screenShake.gameover 값 사용
+
+START SCREEN DEMO — MANDATORY:
+- 시작 화면(state === 'start')에서 게임 오브젝트들이 배경에서 자동으로 움직이는 데모 미리보기를 구현할 것
+- design.json screens.start에 명시된 데모 오브젝트와 움직임을 반드시 구현
+- 구현 방법: Renderer 내부에 demoObjects 배열을 유지, render()에서 state === 'start'일 때 update하며 그림
+  - demoObjects가 화면 밖으로 나가면 반대편에서 재생성 (무한 루프)
+  - 실제 game 로직과 분리된 순수 시각 연출 (Renderer 책임)
+- 정적인 타이틀+버튼만 있는 시작 화면은 금지
 
 PARTICLES & EFFECTS:
 - Implement at least the effects listed in design.json

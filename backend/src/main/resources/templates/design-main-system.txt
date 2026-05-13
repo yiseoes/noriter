@@ -25,7 +25,13 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
     "danger": "#hex (위험/실패 표시)"
   },
   "spriteDesign": [
-    {"name": "오브젝트명", "renderMethod": "emoji|shape|gradient", "detail": "구체적 묘사 (색상 HEX 포함)", "size": "WxH px", "animation": "idle 애니메이션 설명 (있다면)"}
+    {
+      "name": "오브젝트명",
+      "renderMethod": "emoji|shape|gradient",
+      "detail": "구체적 묘사 (색상 HEX 포함, renderMethod가 shape/gradient면 정확한 그리기 방법 명시)",
+      "size": "WxH px",
+      "animation": "idle 애니메이션 설명 — 반드시 구체적으로: 예) '0.8초 주기로 y축 ±5px 위아래 bounce', '1초 주기로 scale 0.9→1.1 pulse', '2초 주기로 360도 rotation'"
+    }
   ],
   "buttonStyle": {
     "normal": "버튼 기본 스타일: 색상, 라운드(px), 그라디언트 여부",
@@ -46,18 +52,26 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
     "bottomBar": "하단 UI (있다면)"
   },
   "screens": {
-    "start": "시작 화면: 타이틀 위치/폰트/색, 부제목, 버튼 위치, 배경 장식 요소",
+    "start": "시작 화면: 타이틀 위치/폰트/색, 부제목, 버튼 위치, 배경 장식 요소 — 반드시 게임 오브젝트가 배경에서 자동으로 움직이는 데모 미리보기 포함 (예: 적들이 천천히 이동, 별이 흘러내림, 캐릭터가 점프). 구체적인 오브젝트 종류와 움직임 방향/속도 명시",
     "playing": "인게임: HUD 위치, 점수 표시 스타일, 상태 UI",
     "gameover": "게임오버: 오버레이 배경(반투명), 결과 텍스트, 재시작 버튼 위치/스타일"
   },
   "effects": [
     {"name": "이펙트명", "trigger": "발동 조건", "visual": "시각 효과 (파티클 색상, 크기, 개수)", "duration": "ms"}
   ],
+  "screenShake": {
+    "hit": "피격/충돌 시 흔들림: magnitude(px), duration(ms) — 예) magnitude:6, duration:300",
+    "score": "점수 획득 시 흔들림: magnitude(px), duration(ms) — 예) magnitude:3, duration:150",
+    "gameover": "게임오버 시 흔들림: magnitude(px), duration(ms) — 예) magnitude:10, duration:500"
+  },
   "typography": {
-    "title": "폰트명, 크기px, weight, 색상",
-    "subtitle": "폰트명, 크기px, 색상",
-    "score": "폰트명, 크기px, weight",
-    "body": "폰트명, 크기px"
+    "gameFont": "게임 장르/분위기에 맞게 아래 3개 중 하나 선택:\n  액션/슈팅/SF → Orbitron (파일: orbitron.woff2)\n  레트로/픽셀/아케이드 → Press Start 2P (파일: press-start-2p.woff2)\n  귀여운/캐주얼/퍼즐 → Fredoka One (파일: fredoka-one.woff2)",
+    "gameFontFile": "선택한 폰트의 파일명 — orbitron.woff2 또는 press-start-2p.woff2 또는 fredoka-one.woff2",
+    "gameFontFamily": "CSS font-family 이름 — Orbitron 또는 'Press Start 2P' 또는 'Fredoka One'",
+    "title": "폰트: gameFontFamily 사용, 크기px, weight, 색상",
+    "subtitle": "폰트: gameFontFamily 사용, 크기px, 색상",
+    "score": "폰트: gameFontFamily 사용, 크기px, weight",
+    "body": "폰트: gameFontFamily 사용 (한국어 fallback: sans-serif), 크기px"
   },
   "backgroundDesign": "배경 렌더링 방법: 그라디언트 방향, 추가 장식 패턴/요소 설명",
   "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 정한 색상 테마와 핵심 비주얼을 담아 구어체 한국어로 (1~2문장)"
@@ -69,5 +83,8 @@ QUALITY RULES — MANDATORY:
 - backgroundDesign은 단색 배경 금지 — 반드시 그라디언트 또는 패턴 장식 포함
 - screens.gameover는 반투명 오버레이(rgba(0,0,0,0.5) 등) 위에 내용을 그리도록 명세할 것
 - effects는 최소 2개 이상 정의할 것 (점수 획득, 게임오버 등)
+- spriteDesign의 모든 animation 필드는 구체적인 수치(주기ms, 범위px, 방향)를 포함할 것 — "부드럽게 움직임" 같은 설명 금지
+- screenShake의 모든 필드는 반드시 채울 것 — 게임 장르에 맞게 magnitude 조절 (퍼즐은 작게, 액션은 크게)
+- screens.start는 반드시 움직이는 데모 오브젝트를 포함할 것 — 정적인 타이틀+버튼만 있는 시작 화면 금지
 
 Do NOT include any text outside the JSON.

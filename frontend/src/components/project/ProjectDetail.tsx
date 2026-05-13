@@ -248,7 +248,7 @@ export default function ProjectDetail({ project, isDemo = false, onCreateReal, o
           refreshKey={previewRefreshKey}
         />
       )}
-      {activeTab === 'source' && <SourceTab files={gameFiles ?? []} projectId={project.id} />}
+      {activeTab === 'source' && <SourceTab files={gameFiles ?? []} projectId={project.id} onSaved={() => setPreviewRefreshKey(k => k + 1)} />}
     </div>
   );
 }

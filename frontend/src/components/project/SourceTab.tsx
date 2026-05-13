@@ -10,9 +10,10 @@ interface SourceFile {
 interface SourceTabProps {
   files: SourceFile[];
   projectId: string;
+  onSaved?: () => void;
 }
 
-export default function SourceTab({ files, projectId }: SourceTabProps) {
+export default function SourceTab({ files, projectId, onSaved }: SourceTabProps) {
   const [activeFile, setActiveFile] = useState(files[0]?.name || '');
   const [editMode, setEditMode] = useState(false);
   const [editContent, setEditContent] = useState('');
@@ -67,6 +68,7 @@ export default function SourceTab({ files, projectId }: SourceTabProps) {
       setEditMode(false);
       setTimeout(() => setSavedFile(null), 2000);
       queryClient.invalidateQueries({ queryKey: ['gameFiles', projectId] });
+      onSaved?.();
     },
   });
 

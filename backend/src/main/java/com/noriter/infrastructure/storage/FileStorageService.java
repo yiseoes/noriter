@@ -168,17 +168,37 @@ public class FileStorageService {
             return null;
         }
 
+        String[] fontFiles = {"orbitron.woff2", "press-start-2p.woff2", "fredoka-one.woff2"};
+
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
             for (GameFileInfo fileInfo : files) {
                 String content = readGameFile(projectId, fileInfo.path());
                 if (content != null) {
+                    // index.html의 폰트 경로를 서버 절대경로(/fonts/)에서 상대경로(fonts/)로 변환
+                    if ("index.html".equals(fileInfo.path())) {
+                        content = content.replace("url('/fonts/", "url('fonts/")
+                                         .replace("url(\"/fonts/", "url(\"fonts/");
+                    }
                     ZipEntry entry = new ZipEntry(fileInfo.path());
                     zos.putNextEntry(entry);
                     zos.write(content.getBytes(StandardCharsets.UTF_8));
                     zos.closeEntry();
                     log.debug("[ZIP 패키징] 파일 추가 - {}", fileInfo.path());
+                }
+            }
+
+            // 폰트 파일 추가 (static/fonts/ → ZIP의 fonts/)
+            for (String fontFile : fontFiles) {
+                try (java.io.InputStream is = getClass().getResourceAsStream("/static/fonts/" + fontFile)) {
+                    if (is != null) {
+                        ZipEntry entry = new ZipEntry("fonts/" + fontFile);
+                        zos.putNextEntry(entry);
+                        zos.write(is.readAllBytes());
+                        zos.closeEntry();
+                        log.debug("[ZIP 패키징] 폰트 추가 - fonts/{}", fontFile);
+                    }
                 }
             }
 

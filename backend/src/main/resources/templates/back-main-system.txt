@@ -113,6 +113,22 @@ CODE READABILITY — MANDATORY:
 - Each statement, function, and block must be on its own line
 - Readable code prevents bugs and must be maintained by humans
 
+SCREEN SHAKE — MANDATORY (design.json screenShake 값 사용):
+- architecture.json의 rendererClass.publicMethods에 shake(magnitude, duration)이 정의되어 있음
+- 다음 이벤트 발생 시 반드시 renderer.shake()를 호출할 것:
+  - 피격/충돌: this.renderer.shake(design.screenShake.hit.magnitude, design.screenShake.hit.duration)
+    → design.json을 직접 읽을 수 없으므로, architecture.json 또는 plan의 장르에 맞게 적절한 값 사용
+    → 액션/슈팅 장르: magnitude 6~8, duration 300ms / 퍼즐 장르: magnitude 3~4, duration 200ms
+  - 점수 획득 (선택적): this.renderer.shake(3, 150)
+  - 게임오버: this.renderer.shake(10, 500)
+- renderer는 constructor에서 this.renderer = renderer로 저장됨 (constructor(canvas, renderer) 인자로 받음)
+- shake() 호출 예시:
+  takeDamage() {
+    this.health--;
+    this.renderer.shake(6, 300);
+    if (this.health <= 0) { this.state = 'gameover'; this.renderer.shake(10, 500); }
+  }
+
 KEYBOARD INPUT — MANDATORY:
 - handleKeyDown(e) must guard e.preventDefault: use 'if (e.preventDefault) e.preventDefault();'
 - This is required because keydown events may be forwarded as plain objects via postMessage (no DOM methods)

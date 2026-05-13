@@ -33,7 +33,7 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with this structure:
   "screens": ["start", "playing", "gameover"],
   "progressionSystem": "진행 시스템 설명 (수집, 레벨업, 점수 등)",
   "scoring": "점수 시스템 설명",
-  "visualStyle": "비주얼 스타일 (픽셀아트, 이모지, 도형 등)",
+  "visualStyle": "비주얼 스타일 — 반드시 다음을 모두 포함: ① 색상 무드 (예: 다크/네온, 파스텔/밝은, 선명한/채도높은, 모노크롬), ② 스프라이트 방식 (이모지 위주, 도형 위주, 그라디언트 위주), ③ 게임 분위기 (귀여운/캐주얼, 레트로/픽셀, 미래적/SF, 판타지). 예: '파스텔 색조의 귀여운 스타일, 이모지 스프라이트, 밝고 따뜻한 분위기'",
   "uiApproach": "all-canvas (Canvas로 모든 UI 렌더링) 또는 dom-overlay (HTML DOM 오버레이 사용)",
   "requiresTextInput": false,
   "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. 방금 기획한 게임 이름과 핵심 컨셉을 담아 구어체 한국어로 (1~2문장)"

@@ -64,6 +64,10 @@ CODE READABILITY — MANDATORY:
 - Each statement, function, and block must be on its own line
 - Readable code prevents bugs and must be maintained by humans
 
+SCREEN SHAKE — DO NOT REMOVE WHEN FIXING:
+- renderer.shake(magnitude, duration) calls at hit/gameover events must be preserved
+- If shake calls are missing from broken code and bug is related to visual feedback, ADD them
+
 KEYBOARD INPUT — MANDATORY:
 - handleKeyDown(e): use 'if (e.preventDefault) e.preventDefault();' — events may be plain objects from postMessage
 

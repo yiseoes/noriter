@@ -7,9 +7,6 @@
 디자인 명세:
 {{design}}
 
-렌더링 코드 (Renderer 클래스 — 이미 구현됨, 참고용):
-{{renderCode}}
-
 콘텐츠 데이터:
 {{contentData}}
 

@@ -49,11 +49,12 @@ public class FrontendAgent implements BaseAgent {
         String plan = context.getPreviousArtifacts().getOrDefault("plan.json", "");
         String architecture = context.getPreviousArtifacts().getOrDefault("architecture.json", "");
         String design = context.getPreviousArtifacts().getOrDefault("design.json", "");
+        String backendCode = context.getPreviousArtifacts().getOrDefault("gameJsLogicSection", "");
 
         String systemPrompt = promptRegistry.getSystemPrompt("front-main");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("front-main"),
-                Map.of("plan", plan, "architecture", architecture, "design", design)
+                Map.of("plan", plan, "architecture", architecture, "design", design, "backendCode", backendCode)
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());

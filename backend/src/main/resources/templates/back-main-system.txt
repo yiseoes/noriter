@@ -59,8 +59,18 @@ INITIALIZATION ORDER — CRITICAL:
 
 getGameState() — CRITICAL:
 - MUST always return a plain object — never return null, undefined, or this
-- At minimum return: { state: this.state } — additional fields as needed by Renderer
-- All fields returned must be defined (no undefined values) — use defaults: value || defaultValue
+- MUST return EVERY property listed in architecture.json "gameDataStructures.gameProperties" — missing a field = Renderer gets undefined → crash
+- ALL listed fields must be present in EVERY call, even during 'start' or 'gameover' state (use defaults: this.score || 0)
+- Example: if gameProperties lists [{name:"state"}, {name:"score"}, {name:"lives"}, {name:"enemies"}], return exactly:
+  getGameState() {
+    return {
+      state: this.state,
+      score: this.score,
+      lives: this.lives,
+      enemies: this.enemies
+    };
+  }
+- Never return a subset: the Renderer always calls getGameState() expecting the full contract
 
 INFINITE LOOP PREVENTION — CRITICAL:
 - Any while() loop must have a guaranteed exit: use attempt counter (let attempts = 0; while(attempts++ < 100))
@@ -91,6 +101,15 @@ DATA CONTRACT — MANDATORY (architecture.json "gameDataStructures"):
 - Every object pushed to arrays MUST include ALL fields listed in "gameDataStructures.objectShapes"
   - Example: if FloatingText shape has fields {x, y, text, life, maxLife, vy}, then EVERY floatingTexts.push() must include all 6 fields
   - Missing even one field causes NaN/undefined in Renderer → broken rendering
+- ROTATION SHAPE CONTRACT — if a game piece can rotate (e.g., Tetris), you MUST declare shape type explicitly:
+  - If shape stores ALL rotations: shape = Array<Array<Array<number>>> (4 rotations × rows × cols)
+    → Add a comment above the declaration: // shape: Array<rotation> where each rotation is a 2D grid (Array<Array<number>>)
+    → Renderer MUST use shape[rotation] to get current grid — document this in objectShapes
+    → Example: { x, y, rotation: 0, shape: [rot0grid, rot1grid, rot2grid, rot3grid] }
+  - If shape stores only the CURRENT rotation: shape = Array<Array<number>> (single 2D grid, pre-resolved)
+    → Add a comment: // shape: current 2D grid, already resolved for this.rotation
+    → Renderer uses shape directly without indexing
+  - Ambiguous shape causes Renderer to treat every array-element as truthy → ALL cells render as filled squares
 - Every value in "gameDataStructures.sharedConstants" MUST be declared with the EXACT same name and value
   - Example: if sharedConstants says {name: "CELL_SIZE", value: 20}, write `const CELL_SIZE = 20;` at top of file
   - Never use a different number for the same concept (e.g., do NOT write `const CELL = 10` if architecture says CELL_SIZE=20)

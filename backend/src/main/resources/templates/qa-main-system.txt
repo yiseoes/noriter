@@ -32,6 +32,32 @@ Check for these categories (in order of priority):
      (user cannot see mouse position)
 
 4. DATA_CONTRACT — Read architecture.json's "gameDataStructures" field and verify the following (HIGH if violated):
+   ALGORITHM — execute these steps in order:
+   Step 1: Extract gameProperties list from architecture.json
+     - For each property {name, type} in gameProperties:
+       a. Search Backend Game class constructor: find `this.{name}` — if absent → HIGH: "Backend missing property init: {name}"
+       b. Search Renderer render() method: find `game.{name}` — if absent → HIGH: "Renderer never reads required property: {name}"
+       c. Search Renderer render() for `game.{WRONG_NAME}` where WRONG_NAME is similar but different → HIGH: "Property name mismatch"
+   Step 2: Extract objectShapes list from architecture.json
+     - For each objectShape {name, fields}:
+       a. Find all push() calls for that array type in Backend code
+       b. For each push() call, verify ALL fields from the shape are present — missing any field → HIGH
+       c. Special: if shape field has type Array<Array<Array<number>>> (rotation array), verify Renderer uses shape[rotation] not shape directly
+   Step 3: Extract sharedConstants list from architecture.json
+     - For each constant {name, value}:
+       a. Search Backend for `const {name}` or `{name} =` — verify value matches → if different value → HIGH
+       b. Search Renderer for same — verify value matches → if different value → HIGH
+       c. If either side uses a hardcoded number where the constant should be used → MEDIUM
+   Step 4: Button/click position consistency
+     - Find button Y positions in Renderer's drawButton calls
+     - Find same button Y positions in Game's handleClick comparison
+     - If any button's drawn Y ≠ clickable Y → HIGH (button unclickable)
+   Step 5: Layout boundary validation (800×600 logical space)
+     - For grid games: verify BOARD_X + BOARD_COLS × CELL_SIZE ≤ 800 AND BOARD_Y + BOARD_ROWS × CELL_SIZE ≤ 600
+       If board overflows canvas → HIGH: "Grid board exceeds 800×600 logical bounds"
+     - For entity spawn positions: verify all spawn X within [0, 800] and spawn Y within [0, 600]
+       If entities spawn off-screen → HIGH: "Entity spawns outside 800×600 canvas"
+     - For HUD/panel positions: verify panel X+width ≤ 800 and panel Y+height ≤ 600
    - gameProperties: every property listed must exist in Game class (this.xxx) AND be accessed with identical name in Renderer (game.xxx)
      Example violation: architecture says "effects" → Backend has `this.effects` but Renderer reads `game.activeEffects` → HIGH
    - objectShapes: every field in each object shape must be present in EVERY push() call for that object type in Backend
@@ -120,7 +146,9 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with this structure:
     "dataContractGamePropertiesMatch": true,
     "dataContractObjectShapesComplete": true,
     "dataContractSharedConstantsMatch": true,
-    "dataContractButtonPositionsConsistent": true
+    "dataContractButtonPositionsConsistent": true,
+    "layoutWithin800x600": true,
+    "shapeRotationCorrect": true
   },
   "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. QA 결과(PASS/FAIL)와 주요 발견 사항을 담아 구어체 한국어로 (1~2문장)"
 }

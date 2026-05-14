@@ -113,26 +113,32 @@ public class PipelineOrchestrator {
             if (!handleResult(project, designResult, stages, StageType.DESIGN, artifacts)) return;
             sendHandoff(projectId, AgentRole.DESIGN, AgentRole.FRONTEND, "디자인 스펙을 전달합니다. 구현 시작해주세요!", "design.json");
 
-            // STAGE 4: 구현 (프론트+백엔드 순차)
-            log.info("[파이프라인] STAGE 4 구현 진입 - projectId={}", projectId);
+            // STAGE 4: 구현 — Backend 먼저, Frontend가 Backend 코드 참조 후 구현 (B안)
+            log.info("[파이프라인] STAGE 4 구현 진입 (Backend→Frontend 순서) - projectId={}", projectId);
             project.updateProgress(57, StageType.IMPLEMENTATION);
             projectRepository.save(project);
 
-            AgentResult frontResult = executeStage(project, stages, StageType.IMPLEMENTATION,
-                    frontendAgent, artifacts);
-            if (frontResult.getStatus() == AgentResult.Status.FAILED) {
-                handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
-                return;
-            }
-            sendHandoff(projectId, AgentRole.FRONTEND, AgentRole.BACKEND, "HTML/CSS/렌더링 구현 완료. 게임 로직 부탁드립니다!", null);
-
+            // 4-1. Backend 먼저 실행 — Game 클래스 생성
             AgentResult backResult = executeStage(project, stages, StageType.IMPLEMENTATION,
                     backendAgent, artifacts);
             if (backResult.getStatus() == AgentResult.Status.FAILED) {
                 handlePipelineFailure(project, "백엔드 구현 실패: " + backResult.getErrorMessage());
                 return;
             }
-            sendHandoff(projectId, AgentRole.BACKEND, AgentRole.QA, "게임 로직 구현 완료. 코드 병합 후 검증 부탁드립니다!", null);
+            // Backend 결과를 artifacts에 저장 → Frontend가 참조 가능하도록
+            if (backResult.getArtifacts() != null) {
+                artifacts.putAll(backResult.getArtifacts());
+            }
+            sendHandoff(projectId, AgentRole.BACKEND, AgentRole.FRONTEND, "Game 클래스 구현 완료. Renderer 구현 시 참조해주세요!", "gameJsLogicSection");
+
+            // 4-2. Frontend 실행 — Backend의 gameJsLogicSection을 artifacts에서 참조
+            AgentResult frontResult = executeStage(project, stages, StageType.IMPLEMENTATION,
+                    frontendAgent, artifacts);
+            if (frontResult.getStatus() == AgentResult.Status.FAILED) {
+                handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
+                return;
+            }
+            sendHandoff(projectId, AgentRole.FRONTEND, AgentRole.QA, "HTML/CSS/Renderer 구현 완료. 코드 병합 후 검증 부탁드립니다!", null);
 
             // 코드 병합
             mergeCode(projectId, frontResult, backResult, artifacts);
@@ -279,15 +285,22 @@ public class PipelineOrchestrator {
                 project.updateProgress(57, StageType.IMPLEMENTATION);
                 projectRepository.save(project);
 
-                AgentResult frontResult = executeStage(project, stages, StageType.IMPLEMENTATION, frontendAgent, artifacts);
-                if (frontResult.getStatus() == AgentResult.Status.FAILED) {
-                    handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
-                    return;
-                }
-
+                // 4-1. Backend 먼저 실행 — Game 클래스 생성
                 AgentResult backResult = executeStage(project, stages, StageType.IMPLEMENTATION, backendAgent, artifacts);
                 if (backResult.getStatus() == AgentResult.Status.FAILED) {
                     handlePipelineFailure(project, "백엔드 구현 실패: " + backResult.getErrorMessage());
+                    return;
+                }
+                if (backResult.getArtifacts() != null) {
+                    artifacts.putAll(backResult.getArtifacts());
+                }
+                sendHandoff(projectId, AgentRole.BACKEND, AgentRole.FRONTEND,
+                        "Game 클래스 구현 완료. Renderer 구현 시 참조해주세요!", "gameJsLogicSection");
+
+                // 4-2. Frontend 실행 — Backend의 gameJsLogicSection을 artifacts에서 참조
+                AgentResult frontResult = executeStage(project, stages, StageType.IMPLEMENTATION, frontendAgent, artifacts);
+                if (frontResult.getStatus() == AgentResult.Status.FAILED) {
+                    handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
                     return;
                 }
 

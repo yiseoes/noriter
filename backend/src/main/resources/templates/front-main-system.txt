@@ -99,6 +99,31 @@ DATA CONTRACT — MANDATORY (architecture.json "gameDataStructures"):
 - Every value in "gameDataStructures.sharedConstants" MUST be declared with the EXACT same name and value as in the architecture
   - Example: if sharedConstants says {name: "CELL_SIZE", value: 20}, write `const CELL_SIZE = 20;` — never use a different number
 
+BACKEND CODE INTEGRATION — MANDATORY (when backendCode is provided):
+- Read the Game class code carefully before writing any Renderer code
+- Use ONLY the property names declared in the Game class constructor (e.g., if Game has `this.tetrominos`, use `game.tetrominos`)
+- Never invent property names that don't appear in the Game class
+- SHAPE ROTATION — CRITICAL: check how "shape" is declared in the Game class:
+  - If shape is a 3D array (Array of rotations): `this.pieces = [{ shape: [[rot0], [rot1], [rot2], [rot3]], rotation: 0 }]`
+    → Renderer MUST extract: `const grid = piece.shape[piece.rotation];` then iterate `grid` rows/cols
+    → NEVER iterate `piece.shape` directly — each element is an entire rotation array (truthy) → ALL cells render as filled squares
+  - If shape is a 2D array (already resolved): `this.currentPiece = { shape: [[0,1,0],[1,1,1]], rotation: 0 }`
+    → Renderer uses `piece.shape` directly
+  - Example correct Tetris cell rendering:
+    const grid = piece.shape[piece.rotation % piece.shape.length];
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < grid[r].length; c++) {
+        if (grid[r][c]) {
+          ctx.fillRect(
+            (BOARD_X + (piece.x + c) * CELL_SIZE) * this.scaleX,
+            (BOARD_Y + (piece.y + r) * CELL_SIZE) * this.scaleY,
+            CELL_SIZE * this.scaleX - 1,
+            CELL_SIZE * this.scaleY - 1
+          );
+        }
+      }
+    }
+
 OTHER RULES:
 - MUST implement ALL methods listed in architecture.json's "gameInterface.rendererClass.publicMethods"
 - Use EXACT method signatures from the architecture

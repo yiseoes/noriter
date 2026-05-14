@@ -7,7 +7,16 @@
 디자인 명세:
 {{design}}
 
-위 문서를 기반으로 게임의 HTML, CSS, Renderer 클래스를 생성해주세요.
+===BACKEND_CODE===
+{{backendCode}}
+===END_BACKEND_CODE===
+
+위 문서와 백엔드 Game 클래스를 기반으로 게임의 HTML, CSS, Renderer 클래스를 생성해주세요.
+
+백엔드 Game 클래스가 제공된 경우 반드시 지켜야 할 사항:
+- Game 클래스에 선언된 모든 속성명(game.xxx)을 그대로 사용하세요 — 절대 임의 이름 금지
+- sharedConstants 상수(CELL_SIZE, BOARD_X 등)는 백엔드 코드에서 선언된 값과 동일하게 사용하세요
+- Game 클래스가 shape를 Array<Array<Array<number>>> (4-rotation 배열)로 선언했다면 반드시 shape[rotation]으로 현재 회전을 추출하세요
 
 반드시 지켜야 할 규칙:
 1. architecture의 "gameInterface.rendererClass.publicMethods"에 정의된 모든 메서드를 Renderer 클래스에 구현하세요

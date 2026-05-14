@@ -46,14 +46,13 @@ public class BackendAgent implements BaseAgent {
         String plan = context.getPreviousArtifacts().getOrDefault("plan.json", "");
         String architecture = context.getPreviousArtifacts().getOrDefault("architecture.json", "");
         String design = context.getPreviousArtifacts().getOrDefault("design.json", "");
-        String renderCode = context.getPreviousArtifacts().getOrDefault("gameJsRenderSection", "");
         String contentData = context.getPreviousArtifacts().getOrDefault("content.json", "");
 
         String systemPrompt = promptRegistry.getSystemPrompt("back-main");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("back-main"),
                 Map.of("plan", plan, "architecture", architecture, "design", design,
-                       "renderCode", renderCode, "contentData", contentData)
+                       "contentData", contentData)
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());

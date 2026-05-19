@@ -94,7 +94,7 @@ public class QaAgent implements BaseAgent {
             String previousReport = context.getPreviousArtifacts().getOrDefault("test-report.json", "");
             userPrompt = PromptTemplate.render(
                     promptRegistry.getUserPrompt(promptId),
-                    Map.of("previousReport", previousReport, "architecture", architecture,
+                    Map.of("plan", plan, "previousReport", previousReport, "architecture", architecture,
                             "indexHtml", indexHtml, "styleCss", styleCss, "gameJs", gameJs)
             );
         } else {

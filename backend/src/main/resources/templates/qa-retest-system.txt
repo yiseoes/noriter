@@ -82,7 +82,14 @@ OUTPUT FORMAT: Return ONLY a valid JSON object (same structure as initial QA):
     "noEventListenersInsideGame": true,
     "rendererConstructorNoArgs": true,
     "ctxSaveRestoreBalanced": true,
-    "noSeparateRendererScript": true
+    "noSeparateRendererScript": true,
+    "dataContractGamePropertiesMatch": true,
+    "dataContractObjectShapesComplete": true,
+    "dataContractSharedConstantsMatch": true,
+    "dataContractButtonPositionsConsistent": true,
+    "layoutWithin800x600": true,
+    "shapeRotationCorrect": true,
+    "physicsSpeedSanity": true
   },
   "fixedBugs": ["이전 리포트에서 수정 확인된 버그 ID 목록"],
   "regressions": ["수정으로 인해 새로 발생한 버그 (있다면)"],

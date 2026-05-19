@@ -27,7 +27,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
       "publicMethods": [
         {"name": "init", "signature": "init(canvas: HTMLCanvasElement): void", "description": "캔버스 초기화 및 ctx 설정. resize 시에도 재호출됨. canvas를 생성자 인자로 받지 말 것"},
         {"name": "render", "signature": "render(game: Game): void", "description": "Game 객체를 직접 받아 한 프레임 렌더링. getGameState() 결과가 아닌 game 객체 자체를 받음"},
-        {"name": "shake", "signature": "shake(magnitude: number, duration: number): void", "description": "화면 흔들림 효과 트리거. magnitude=흔들림 강도(px), duration=지속시간(ms). Game 클래스에서 피격/점수/게임오버 이벤트 시 호출"}
+        {"name": "shake", "signature": "shake(magnitude: number, duration: number): void", "description": "화면 흔들림 효과 트리거. magnitude=흔들림 강도(px), duration=지속시간(ms). Game 클래스에서 피격/점수/게임오버 이벤트 시 호출"},
+        {"name": "setGame", "signature": "setGame(game: Game): void", "description": "Renderer가 Game 객체 참조를 저장. 초기화 코드에서 반드시 호출됨 — 구현 필수"}
       ]
     }
   },
@@ -105,6 +106,12 @@ DATA CONTRACT — gameDataStructures MANDATORY:
     - For scrolling games: verify spawn Y range and enemy positions are within [0, 600]
     - For button layouts: verify all button Y positions are within [0, 600]
     - If a calculated value exceeds bounds, reduce CELL_SIZE or adjust BOARD_X/BOARD_Y before outputting
+  PHYSICS SANITY CHECK — before finalizing sharedConstants, verify all speed constants:
+    - For any entity with vertical movement (vy): CANVAS_HEIGHT / speed must be < 30 seconds
+      If CANVAS_HEIGHT / speed ≥ 30, entity is effectively invisible — increase speed until condition passes
+      Example: speed=2 → 600/2=300s (INVISIBLE, FAIL) / speed=120 → 600/120=5s (OK)
+    - content.json의 speed 필드는 px/s 단위 — sharedConstants에 그 값을 그대로 사용할 것
+      content.json speed: 120 → sharedConstants ENEMY_SPEED = 120 (NOT 1.2, NOT 12)
 
 Do NOT include any text outside the JSON.
 

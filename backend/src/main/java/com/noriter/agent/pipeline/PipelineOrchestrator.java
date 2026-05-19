@@ -305,6 +305,38 @@ public class PipelineOrchestrator {
                 }
 
                 mergeCode(projectId, frontResult, backResult, artifacts);
+
+                // JS 문법 검증
+                String mergedJs = artifacts.getOrDefault("game.js", "");
+                JsSyntaxValidator.ValidationResult jsValidation = JsSyntaxValidator.validate(mergedJs);
+                if (!jsValidation.valid()) {
+                    log.warn("[파이프라인 재시도] JS 문법 오류 감지, BackendAgent 재시도 - errors={}", jsValidation.errors());
+                    AgentResult backRetryResult = executeStage(project, stages, StageType.IMPLEMENTATION, backendAgent, artifacts);
+                    if (backRetryResult.getStatus() != AgentResult.Status.FAILED) {
+                        mergeCode(projectId, frontResult, backRetryResult, artifacts);
+                    }
+                }
+
+                // JS 런타임 검증
+                String gameJsForRuntime = artifacts.getOrDefault("game.js", "");
+                JsRuntimeValidator.ValidationResult runtimeValidation = JsRuntimeValidator.validate(gameJsForRuntime);
+                if (!runtimeValidation.valid()) {
+                    log.warn("[파이프라인 재시도] 런타임 오류 감지, BackendAgent 재시도 - {}", runtimeValidation.summary());
+                    AgentContext runtimeFixContext = AgentContext.builder()
+                            .projectId(projectId)
+                            .stageType(StageType.IMPLEMENTATION)
+                            .requirement(project.getRequirement())
+                            .previousArtifacts(new HashMap<>(artifacts))
+                            .bugReport("런타임 오류: " + runtimeValidation.summary())
+                            .debugAttempt(0)
+                            .build();
+                    AgentResult runtimeFixResult = backendAgent.executeFix(runtimeFixContext);
+                    if (runtimeFixResult.getStatus() != AgentResult.Status.FAILED) {
+                        artifacts.putAll(runtimeFixResult.getArtifacts());
+                        mergeCode(projectId, frontResult, runtimeFixResult, artifacts);
+                    }
+                }
+
                 Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
                 if (implStage != null) { implStage.complete(null); stageRepository.save(implStage); }
             }
@@ -606,7 +638,16 @@ public class PipelineOrchestrator {
             AgentResult qaResult = qaAgent.execute(qaContext);
             if (qaResult.getArtifacts() != null) artifacts.putAll(qaResult.getArtifacts());
 
-            completeRelease(project, stages);
+            if (qaResult.getStatus() == AgentResult.Status.NEEDS_REVIEW) {
+                sendHandoff(projectId, AgentRole.QA, AgentRole.CTO, "수정 후 재검증에서 버그가 발견되었습니다.", "test-report.json");
+                handleQaFailure(project, stages, artifacts, qaResult);
+            } else if (qaResult.getStatus() == AgentResult.Status.SUCCESS) {
+                sendHandoff(projectId, AgentRole.QA, AgentRole.SYSTEM, "수정 후 모든 테스트 통과! 출시 준비 완료.", "test-report.json");
+                handleResult(project, qaResult, stages, StageType.QA, artifacts);
+                completeRelease(project, stages);
+            } else {
+                handlePipelineFailure(project, "수정 파이프라인 QA 실패: " + qaResult.getErrorMessage());
+            }
 
         } catch (Exception e) {
             log.error("[수정 파이프라인] 예외 발생 - projectId={}, error={}", projectId, e.getMessage(), e);

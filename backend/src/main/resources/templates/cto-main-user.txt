@@ -1,4 +1,9 @@
 게임 기획서:
 {{plan}}
 
+게임 콘텐츠 데이터 (content.json — 없으면 빈 값):
+{{contentData}}
+
 위 기획서를 기반으로 HTML5 Canvas 미니게임의 기술 아키텍처를 JSON 형식으로 설계해주세요.
+콘텐츠 데이터가 있는 경우, contentIntegration 상수명과 데이터 형태를 content.json 실제 구조에 맞게 명세할 것.
+speed 필드가 있다면 반드시 px/s 단위로 sharedConstants에 반영할 것.

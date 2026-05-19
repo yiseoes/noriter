@@ -171,6 +171,7 @@ public class FrontendAgent implements BaseAgent {
         log.info("[프론트팀] 버그 수정 시작 - projectId={}", context.getProjectId());
 
         String ctoInstruction = context.getCtoInstruction() != null ? context.getCtoInstruction() : "";
+        String bugReport = context.getBugReport() != null ? context.getBugReport() : "";
         String indexHtml = context.getPreviousArtifacts().getOrDefault("index.html", "");
         String styleCss = context.getPreviousArtifacts().getOrDefault("style.css", "");
         String renderCode = context.getPreviousArtifacts().getOrDefault("gameJsRenderSection", "");
@@ -178,8 +179,8 @@ public class FrontendAgent implements BaseAgent {
         String systemPrompt = promptRegistry.getSystemPrompt("front-fix");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("front-fix"),
-                Map.of("ctoInstruction", ctoInstruction, "indexHtml", indexHtml,
-                        "styleCss", styleCss, "renderCode", renderCode)
+                Map.of("bugReport", bugReport, "ctoInstruction", ctoInstruction,
+                        "indexHtml", indexHtml, "styleCss", styleCss, "renderCode", renderCode)
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());

@@ -20,9 +20,10 @@ RULES:
 - Do not break existing functionality
 - Do NOT include Game class, game loop, or initialization code in RENDER_JS
 
-GOOGLE FONTS — DO NOT REMOVE WHEN FIXING:
-- index.html의 <head>에 Google Fonts <link> 태그가 있으면 반드시 보존할 것
-- ctx.font에 Google Font 이름이 있으면 유지할 것 — Arial로 교체 금지
+FONTS — DO NOT REMOVE WHEN FIXING:
+- 폰트는 로컬 서빙 방식(@font-face)을 사용한다. index.html의 <style>에 @font-face 선언이 있으면 반드시 보존할 것
+- ctx.font에 지정된 폰트 이름이 있으면 유지할 것 — Arial이나 sans-serif로 임의 교체 금지
+- Google Fonts CDN <link> 태그는 추가하지 말 것 — 오프라인 환경에서 동작하지 않음
 
 VISUAL QUALITY — DO NOT REMOVE WHEN FIXING:
 - sprite rendering (emoji fillText, gradient sprites, shape-based sprites) — preserve as-is unless the bug is in sprite rendering

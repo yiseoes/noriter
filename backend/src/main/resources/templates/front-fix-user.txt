@@ -1,3 +1,6 @@
+QA 버그 리포트:
+{{bugReport}}
+
 CTO 수정 지시:
 {{ctoInstruction}}
 

@@ -164,13 +164,20 @@ KOREAN IME INPUT — MANDATORY for ALL games:
     hi.addEventListener('compositionend', (e) => {
       this.isComposing = false;
       this.composingText = '';
-      this.handleCompositionEnd(e.data || '');
+      if (typeof this.handleCompositionEnd === 'function') this.handleCompositionEnd(e.data || '');
     });
     hi.addEventListener('input', (e) => {
       if (e.isComposing || this.isComposing) return;
-      this.handleInput(this._hiddenInput.value);
+      if (typeof this.handleInput === 'function') this.handleInput(this._hiddenInput.value);
     });
   }
+- isComposing 플래그는 모든 게임에서 키 입력 처리 시 반드시 확인할 것:
+  handleKeyDown(e) {
+    if (this.isComposing) return; // IME 조합 중 키 무시
+    ...
+  }
+
+KOREAN IME INPUT — requiresTextInput=true 게임 전용 (타이핑 입력이 있는 게임):
 - handleCompositionEnd(value) MUST accumulate syllables (Chrome resets hiddenInput to just the committed syllable):
   handleCompositionEnd(value) {
     const hiddenValue = this._hiddenInput ? this._hiddenInput.value : value;
@@ -179,5 +186,7 @@ KOREAN IME INPUT — MANDATORY for ALL games:
     this.inputText = currentValue;
     // then check for match / prefix
   }
+- handleInput(value): hiddenInput value를 this.inputText에 반영한 뒤 정답 매칭 로직 실행
 - When game starts (startGame), call: if (this._hiddenInput) { this._hiddenInput.value = ''; this._hiddenInput.focus(); }
 - When game ends, call: if (this._hiddenInput) this._hiddenInput.blur();
+- requiresTextInput=false 게임(액션/슈팅/퍼즐 등)에서는 handleCompositionEnd / handleInput 구현 불필요

@@ -58,6 +58,12 @@ Check for these categories (in order of priority):
      - For entity spawn positions: verify all spawn X within [0, 800] and spawn Y within [0, 600]
        If entities spawn off-screen → HIGH: "Entity spawns outside 800×600 canvas"
      - For HUD/panel positions: verify panel X+width ≤ 800 and panel Y+height ≤ 600
+   Step 6: Physics sanity check — entity visibility
+     - For any entity with vertical movement (vy), find the speed constant used in Backend (_createEnemy, spawn logic, or sharedConstants)
+     - Calculate: CANVAS_HEIGHT / vy_value
+       - If result > 30 seconds → HIGH: "Entity speed too slow: takes {N}s to cross screen, entity will be invisible"
+       - This catches bugs like ENEMY_SPEED=2 where enemies spawn off-screen top and never reach visible area
+     - Common symptom: score goes up, effects fire, but NO enemy is visible → speed is the culprit
    - gameProperties: every property listed must exist in Game class (this.xxx) AND be accessed with identical name in Renderer (game.xxx)
      Example violation: architecture says "effects" → Backend has `this.effects` but Renderer reads `game.activeEffects` → HIGH
    - objectShapes: every field in each object shape must be present in EVERY push() call for that object type in Backend
@@ -148,7 +154,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object with this structure:
     "dataContractSharedConstantsMatch": true,
     "dataContractButtonPositionsConsistent": true,
     "layoutWithin800x600": true,
-    "shapeRotationCorrect": true
+    "shapeRotationCorrect": true,
+    "physicsSpeedSanity": true
   },
   "chatMessage": "다음 팀에게 전하는 자연스러운 한 마디. QA 결과(PASS/FAIL)와 주요 발견 사항을 담아 구어체 한국어로 (1~2문장)"
 }

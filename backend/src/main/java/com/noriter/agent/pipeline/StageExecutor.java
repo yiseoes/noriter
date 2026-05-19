@@ -43,9 +43,9 @@ public class StageExecutor {
             case PLANNING  -> AgentRole.CTO;
             case CONTENT   -> AgentRole.CTO;
             case CTO       -> AgentRole.DESIGN;
-            case DESIGN    -> AgentRole.FRONTEND;
-            case FRONTEND  -> AgentRole.BACKEND;
-            case BACKEND   -> AgentRole.QA;
+            case DESIGN    -> AgentRole.BACKEND;
+            case BACKEND   -> AgentRole.FRONTEND;
+            case FRONTEND  -> AgentRole.QA;
             case QA        -> AgentRole.CTO;   // QA 실패 시 CTO에게, 성공 시도 CTO가 최종 확인
             default        -> AgentRole.SYSTEM;
         };

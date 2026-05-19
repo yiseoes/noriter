@@ -30,11 +30,12 @@ public class CtoAgent implements BaseAgent {
         log.info("[CTO] 기술 아키텍처 설계 시작 - projectId={}", context.getProjectId());
 
         String plan = context.getPreviousArtifacts().getOrDefault("plan.json", "");
+        String contentData = context.getPreviousArtifacts().getOrDefault("content.json", "");
 
         String systemPrompt = promptRegistry.getSystemPrompt("cto-main");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("cto-main"),
-                Map.of("plan", plan)
+                Map.of("plan", plan, "contentData", contentData)
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
@@ -92,13 +93,13 @@ public class CtoAgent implements BaseAgent {
 
         String bugReport = context.getBugReport() != null ? context.getBugReport() : "";
         Map<String, String> arts = context.getPreviousArtifacts();
+        String plan = arts.getOrDefault("plan.json", "");
         // gameJsLogicSection(Game 클래스만) 우선 사용, 없으면 병합본 사용하되 크기 제한
         String rawGameJs = arts.containsKey("gameJsLogicSection") && !arts.get("gameJsLogicSection").isBlank()
                 ? arts.get("gameJsLogicSection")
                 : arts.getOrDefault("game.js", "");
         String gameJs = truncateGameJs(rawGameJs);
         String indexHtml = arts.getOrDefault("index.html", "");
-
         String styleCss = arts.getOrDefault("style.css", "");
         String renderCode = arts.getOrDefault("gameJsRenderSection", "");
         String architecture = arts.getOrDefault("architecture.json", "");
@@ -106,7 +107,7 @@ public class CtoAgent implements BaseAgent {
         String systemPrompt = promptRegistry.getSystemPrompt("cto-debug");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("cto-debug"),
-                Map.of("bugReport", bugReport, "gameJs", gameJs,
+                Map.of("plan", plan, "bugReport", bugReport, "gameJs", gameJs,
                        "indexHtml", indexHtml, "styleCss", styleCss,
                        "renderCode", renderCode, "architecture", architecture)
         );

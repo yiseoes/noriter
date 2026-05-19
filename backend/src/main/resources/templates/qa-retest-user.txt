@@ -1,3 +1,6 @@
+게임 기획서:
+{{plan}}
+
 이전 QA 리포트:
 {{previousReport}}
 

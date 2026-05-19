@@ -32,11 +32,12 @@ public class DesignAgent implements BaseAgent {
 
         String plan = context.getPreviousArtifacts().getOrDefault("plan.json", "");
         String architecture = context.getPreviousArtifacts().getOrDefault("architecture.json", "");
+        String contentData = context.getPreviousArtifacts().getOrDefault("content.json", "");
 
         String systemPrompt = promptRegistry.getSystemPrompt("design-main");
         String userPrompt = PromptTemplate.render(
                 promptRegistry.getUserPrompt("design-main"),
-                Map.of("plan", plan, "architecture", architecture)
+                Map.of("plan", plan, "architecture", architecture, "contentData", contentData)
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());

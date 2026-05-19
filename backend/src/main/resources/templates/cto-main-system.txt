@@ -28,7 +28,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
         {"name": "init", "signature": "init(canvas: HTMLCanvasElement): void", "description": "캔버스 초기화 및 ctx 설정. resize 시에도 재호출됨. canvas를 생성자 인자로 받지 말 것"},
         {"name": "render", "signature": "render(game: Game): void", "description": "Game 객체를 직접 받아 한 프레임 렌더링. getGameState() 결과가 아닌 game 객체 자체를 받음"},
         {"name": "shake", "signature": "shake(magnitude: number, duration: number): void", "description": "화면 흔들림 효과 트리거. magnitude=흔들림 강도(px), duration=지속시간(ms). Game 클래스에서 피격/점수/게임오버 이벤트 시 호출"},
-        {"name": "setGame", "signature": "setGame(game: Game): void", "description": "Renderer가 Game 객체 참조를 저장. 초기화 코드에서 반드시 호출됨 — 구현 필수"}
+        {"name": "setGame", "signature": "setGame(game: Game): void", "description": "Renderer가 Game 객체 참조를 저장. 초기화 코드에서 반드시 호출됨 — 구현 필수"},
+        {"name": "resizeCanvas", "signature": "resizeCanvas(): void", "description": "창 크기 변경 시 캔버스 해상도 재설정. 선택적 구현 — 초기화 코드가 typeof 체크 후 호출함"}
       ]
     }
   },

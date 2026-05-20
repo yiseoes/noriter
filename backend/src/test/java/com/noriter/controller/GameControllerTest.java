@@ -4,6 +4,7 @@ import com.noriter.exception.ErrorCode;
 import com.noriter.exception.NoriterException;
 import com.noriter.infrastructure.storage.FileStorageService;
 import com.noriter.infrastructure.storage.FileStorageService.GameFileInfo;
+import com.noriter.infrastructure.storage.GameContractChecker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,9 @@ class GameControllerTest {
 
     @MockitoBean
     private FileStorageService fileStorageService;
+
+    @MockitoBean
+    private GameContractChecker gameContractChecker;
 
     @Test
     @DisplayName("API-GAM-001: 게임 미리보기 성공 시 HTML을 반환한다")

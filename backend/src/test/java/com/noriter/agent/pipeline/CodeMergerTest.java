@@ -17,11 +17,11 @@ class CodeMergerTest {
 
         String merged = codeMerger.mergeGameJs(backendLogic, frontendRender);
 
-        assertThat(merged).contains("게임 로직 (백엔드팀)");
-        assertThat(merged).contains("렌더링·UI (프론트팀)");
+        assertThat(merged).contains("// === Game 로직 ===");
+        assertThat(merged).contains("// === Renderer ===");
         assertThat(merged).contains("class Game");
         assertThat(merged).contains("class Renderer");
-        assertThat(merged).contains("게임 시작");
+        assertThat(merged).contains("// === 초기화 ===");
         assertThat(merged).contains("window.addEventListener");
     }
 
@@ -41,7 +41,7 @@ class CodeMergerTest {
     void mergeGameJs_handlesNull() {
         String merged = codeMerger.mergeGameJs(null, null);
 
-        assertThat(merged).contains("게임 시작");
+        assertThat(merged).contains("// === 초기화 ===");
         assertThat(merged).contains("window.addEventListener");
     }
 }

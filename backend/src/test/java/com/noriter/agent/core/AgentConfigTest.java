@@ -4,6 +4,8 @@ import com.noriter.domain.enums.AgentRole;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AgentConfigTest {
@@ -55,11 +57,22 @@ class AgentConfigTest {
     }
 
     @Test
-    @DisplayName("모든 에이전트의 모델은 claude-sonnet-4-6이다")
-    void allAgents_useSameModel() {
-        for (AgentRole role : AgentRole.values()) {
-            if (role == AgentRole.SYSTEM) continue;
-            assertThat(AgentConfig.forRole(role).getModel()).isEqualTo("claude-sonnet-4-6");
+    @DisplayName("코드 생성 에이전트(Backend/Frontend/QA)는 claude-sonnet-4-6을 사용한다")
+    void codeGenerationAgents_useSonnet() {
+        for (AgentRole role : List.of(AgentRole.BACKEND, AgentRole.FRONTEND, AgentRole.QA)) {
+            assertThat(AgentConfig.forRole(role).getModel())
+                    .as(role + " 모델")
+                    .isEqualTo("claude-sonnet-4-6");
+        }
+    }
+
+    @Test
+    @DisplayName("기획/설계 에이전트(Planning/Content/CTO/Design)는 claude-haiku를 사용한다")
+    void planningAgents_useHaiku() {
+        for (AgentRole role : List.of(AgentRole.PLANNING, AgentRole.CONTENT, AgentRole.CTO, AgentRole.DESIGN)) {
+            assertThat(AgentConfig.forRole(role).getModel())
+                    .as(role + " 모델")
+                    .startsWith("claude-haiku");
         }
     }
 }

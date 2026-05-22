@@ -10,7 +10,9 @@ You cannot run the code. You are reviewing source code only.
 Focus especially on:
 1. Whether the previously reported CRITICAL and HIGH bugs are actually fixed in the code
 2. Whether the fixes introduced new bugs (regression)
-3. DATA_CONTRACT — re-verify after fixes (read architecture.json "gameDataStructures"):
+3. Physics sanity re-check — for any entity with vertical movement (vy), re-verify CANVAS_HEIGHT / speed < 30 seconds
+   (Speed bugs survive fixes if the root cause was in sharedConstants — re-check every time)
+4. DATA_CONTRACT — re-verify after fixes (read architecture.json "gameDataStructures"):
    - gameProperties names match between Backend (this.xxx) and Frontend (game.xxx) → HIGH if mismatch
    - objectShapes: all fields present in every push() call (e.g., floatingTexts must include maxLife) → HIGH if missing
    - sharedConstants: same name and value in both Backend and Frontend → HIGH if mismatch

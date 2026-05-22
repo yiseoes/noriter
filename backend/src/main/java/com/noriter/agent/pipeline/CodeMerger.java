@@ -41,12 +41,29 @@ public class CodeMerger {
             "    }\n" +
             "  });\n" +
             "\n" +
+            "  canvas.addEventListener('mousemove', (e) => {\n" +
+            "    if (typeof game.handleMouseMove !== 'function') return;\n" +
+            "    const rect = canvas.getBoundingClientRect();\n" +
+            "    const x = (e.clientX - rect.left) * (800 / rect.width);\n" +
+            "    const y = (e.clientY - rect.top) * (600 / rect.height);\n" +
+            "    game.handleMouseMove(x, y);\n" +
+            "  });\n" +
+            "\n" +
             "  canvas.addEventListener('click', (e) => {\n" +
             "    const rect = canvas.getBoundingClientRect();\n" +
-            "    const scaleX = canvas.width / rect.width;\n" +
-            "    const scaleY = canvas.height / rect.height;\n" +
-            "    game.handleClick((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);\n" +
+            "    const x = (e.clientX - rect.left) * (800 / rect.width);\n" +
+            "    const y = (e.clientY - rect.top) * (600 / rect.height);\n" +
+            "    game.handleClick(x, y);\n" +
             "  });\n" +
+            "\n" +
+            "  canvas.addEventListener('touchstart', (e) => {\n" +
+            "    e.preventDefault();\n" +
+            "    const rect = canvas.getBoundingClientRect();\n" +
+            "    const t = e.touches[0];\n" +
+            "    const x = (t.clientX - rect.left) * (800 / rect.width);\n" +
+            "    const y = (t.clientY - rect.top) * (600 / rect.height);\n" +
+            "    game.handleClick(x, y);\n" +
+            "  }, { passive: false });\n" +
             "\n" +
             "  document.addEventListener('keydown', (e) => {\n" +
             "    game.handleKeyDown(e);\n" +

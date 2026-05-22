@@ -212,6 +212,8 @@ public class PipelineOrchestrator {
                     qaAgent, artifacts);
 
             // QA 결과 처리
+            // test-report.json을 artifacts에 먼저 저장 — handleQaFailure의 CTO debug context에 필요
+            if (qaResult.getArtifacts() != null) artifacts.putAll(qaResult.getArtifacts());
             if (qaResult.getStatus() == AgentResult.Status.NEEDS_REVIEW) {
                 sendHandoff(projectId, AgentRole.QA, AgentRole.CTO, "테스트에서 버그가 발견되었습니다. 디버깅이 필요합니다.", "test-report.json");
                 handleQaFailure(project, stages, artifacts, qaResult);
@@ -343,6 +345,8 @@ public class PipelineOrchestrator {
 
             if (fromOrder <= 5) {
                 AgentResult qaResult = executeStage(project, stages, StageType.QA, qaAgent, artifacts);
+                // test-report.json을 artifacts에 먼저 저장 — handleQaFailure의 CTO debug context에 필요
+                if (qaResult.getArtifacts() != null) artifacts.putAll(qaResult.getArtifacts());
                 if (qaResult.getStatus() == AgentResult.Status.NEEDS_REVIEW) {
                     handleQaFailure(project, stages, artifacts, qaResult);
                 } else if (qaResult.getStatus() == AgentResult.Status.SUCCESS) {
@@ -362,7 +366,7 @@ public class PipelineOrchestrator {
     /** 기존 산출물 파일 로드 */
     private Map<String, String> loadExistingArtifacts(String projectId) {
         Map<String, String> artifacts = new HashMap<>();
-        String[] artifactFiles = {"plan.json", "architecture.json", "design.json"};
+        String[] artifactFiles = {"plan.json", "content.json", "architecture.json", "design.json"};
         for (String file : artifactFiles) {
             try {
                 String content = fileStorageService.readArtifact(projectId, file);

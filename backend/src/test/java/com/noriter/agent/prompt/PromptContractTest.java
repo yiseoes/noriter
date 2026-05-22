@@ -37,6 +37,8 @@ class PromptContractTest {
             Paths.get("src/main/java/com/noriter/agent/impl");
     private static final Path PIPELINE_DIR =
             Paths.get("src/main/java/com/noriter/agent/pipeline");
+    private static final Path ORCHESTRATOR_PATH =
+            PIPELINE_DIR.resolve("PipelineOrchestrator.java");
 
     private static final Pattern TEMPLATE_VAR = Pattern.compile("\\{\\{(\\w+)\\}\\}");
 
@@ -251,6 +253,108 @@ class PromptContractTest {
     }
 
     // =========================================================================
+    // 검사 4: PipelineOrchestrator — resume/revision 파이프라인 artifact 흐름
+    //
+    // 이 그룹은 Java 코드 패턴을 정적 분석한다.
+    // 아래 두 버그 유형을 자동으로 감지한다:
+    //   (A) loadExistingArtifacts()에 필요한 키가 빠져 있는 경우
+    //       → resumePipeline 재시작 시 에이전트가 빈 문자열 컨텍스트로 실행됨
+    //   (B) QA NEEDS_REVIEW 처리 전에 qaResult.getArtifacts()를 저장하지 않는 경우
+    //       → handleQaFailure의 CTO debug context에 test-report.json = "" 전달됨
+    // =========================================================================
+
+    /**
+     * resume/revision 파이프라인에서 필요한 모든 artifact를
+     * loadExistingArtifacts()가 로드하는지 전수 검사.
+     *
+     * 미포함 시: resumePipeline(fromStage >= ARCHITECTURE)에서
+     * 해당 artifact를 빈 문자열로 에이전트에 전달.
+     */
+    @ParameterizedTest(name = "\"{0}\" 가 loadExistingArtifacts()에 있어야 한다")
+    @MethodSource("resumeRequiredArtifacts")
+    @DisplayName("[검사 4-1] loadExistingArtifacts()가 resume 시 필요한 모든 artifact를 로드해야 한다")
+    void loadExistingArtifacts_mustLoadAllResumeArtifacts(String artifactKey) throws IOException {
+        String code = Files.readString(ORCHESTRATOR_PATH);
+        String methodBody = extractMethodBody(code, "loadExistingArtifacts");
+
+        assertThat(methodBody)
+                .as("""
+                    loadExistingArtifacts()에 "%s" 없음.
+                    → resumePipeline 재시작 시 해당 artifact를 빈 문자열로 에이전트에 전달.
+                    → artifactFiles (또는 gameFiles) 배열에 "%s" 추가 필요.
+                    """, artifactKey, artifactKey)
+                .contains("\"" + artifactKey + "\"");
+    }
+
+    static Stream<String> resumeRequiredArtifacts() {
+        // 각 항목은 이 artifact를 사용하는 에이전트와 함께 명시
+        // plan.json        → ContentAgent, CtoAgent, DesignAgent, BackendAgent, FrontendAgent, QaAgent
+        // content.json     → BackendAgent.execute()  (단어장/스테이지 데이터)
+        // architecture.json → DesignAgent, BackendAgent, FrontendAgent, QaAgent
+        // design.json      → BackendAgent, FrontendAgent
+        // game.js          → QaAgent, JsSyntaxValidator, JsRuntimeValidator
+        // index.html, style.css → QaAgent
+        return Stream.of(
+                "plan.json",
+                "content.json",
+                "architecture.json",
+                "design.json",
+                "game.js",
+                "index.html",
+                "style.css"
+        );
+    }
+
+    /**
+     * QA가 NEEDS_REVIEW를 반환할 때 handleQaFailure() 호출 전에
+     * qaResult.getArtifacts()를 artifacts map에 저장하는지 검사.
+     *
+     * 미저장 시:
+     * - handleQaFailure 내 CTO debug context: bugReport = "" → 수정 지시 없이 재시도
+     * - QA retest context: previousReport = "" → 이전 버그 내용 없이 재검증
+     *
+     * startPipeline / resumePipeline / startRevisionPipeline 3개 경로 모두 검사.
+     */
+    @Test
+    @DisplayName("[검사 4-2] handleQaFailure() 호출 전에 qaResult.getArtifacts()가 artifacts에 저장되어야 한다")
+    void qaArtifacts_mustBeSavedBeforeHandleQaFailure() throws IOException {
+        String code = Files.readString(ORCHESTRATOR_PATH);
+
+        int searchFrom = 0;
+        int handleQaCount = 0;
+
+        // "handleQaFailure(project," — 실제 호출 패턴
+        // 메서드 정의 "private void handleQaFailure(Project project," 는 타입명이 앞에 있어 제외됨
+        final String CALL_PATTERN = "handleQaFailure(project,";
+        while (true) {
+            int handleIdx = code.indexOf(CALL_PATTERN, searchFrom);
+            if (handleIdx < 0) break;
+            handleQaCount++;
+
+            // handleQaFailure 호출 앞 400자 내에 putAll이 있어야 함
+            int lookbackStart = Math.max(0, handleIdx - 400);
+            String lookback = code.substring(lookbackStart, handleIdx);
+
+            assertThat(lookback)
+                    .as("""
+                        handleQaFailure(project, ...) 호출(코드 위치 index=%d) 전에
+                        artifacts.putAll(qaResult.getArtifacts()) 없음.
+                        → CTO debug context: bugReport="" (test-report.json 미전달)
+                        → QA retest: previousReport="" (이전 버그 내용 없음)
+                        → handleQaFailure 호출 직전에 다음 추가:
+                          if (qaResult.getArtifacts() != null) artifacts.putAll(qaResult.getArtifacts());
+                        """, handleIdx)
+                    .contains("putAll");
+
+            searchFrom = handleIdx + 1;
+        }
+
+        assertThat(handleQaCount)
+                .as("handleQaFailure(project, ...) 호출이 1회도 없음 — 파이프라인 구조 변경 확인 필요")
+                .isGreaterThanOrEqualTo(1);
+    }
+
+    // =========================================================================
     // 헬퍼
     // =========================================================================
 
@@ -265,5 +369,42 @@ class PromptContractTest {
             vars.add(m.group(1));
         }
         return vars;
+    }
+
+    /**
+     * 소스코드에서 특정 메서드의 본문을 추출한다.
+     *
+     * 두 가지 문제를 방지:
+     * (1) call vs definition 구분 — access modifier(private/protected/public)로 정의만 탐색
+     * (2) 문자열 리터럴 내 {} 무시 — log.info("...{}...") 패턴에서 오탐 방지
+     */
+    private String extractMethodBody(String source, String methodName) {
+        // 메서드 정의만 매칭: (private|protected|public) [반환타입] methodName(
+        // [^({]+ : 괄호·중괄호 없는 반환 타입 (greedy → backtrack으로 methodName 앞에 멈춤)
+        Pattern defPattern = Pattern.compile(
+                "(?:private|protected|public)\\s[^({]+\\b" + Pattern.quote(methodName) + "\\s*\\("
+        );
+        Matcher m = defPattern.matcher(source);
+        if (!m.find()) return "";
+        int sigIdx = m.start();
+
+        // m.end() = "methodName(" 이후. 문자열 리터럴 내 {}를 무시하며 메서드 본문 끝 탐색.
+        boolean inString = false;
+        int depth = 0;
+        for (int i = m.end(); i < source.length(); i++) {
+            char c = source.charAt(i);
+            if (inString) {
+                if (c == '\\') { i++; continue; }  // 이스케이프 다음 문자 건너뜀
+                if (c == '"')  { inString = false; }
+                continue;
+            }
+            if (c == '"') { inString = true; continue; }
+            if (c == '{')      depth++;
+            else if (c == '}') {
+                depth--;
+                if (depth == 0) return source.substring(sigIdx, i + 1);
+            }
+        }
+        return source.substring(sigIdx);
     }
 }

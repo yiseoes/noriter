@@ -214,6 +214,7 @@ public class PipelineOrchestrator {
             // QA 결과 처리
             // test-report.json을 artifacts에 먼저 저장 — handleQaFailure의 CTO debug context에 필요
             if (qaResult.getArtifacts() != null) artifacts.putAll(qaResult.getArtifacts());
+            saveTestReport(projectId, artifacts); // BUG-4A FIX
             if (qaResult.getStatus() == AgentResult.Status.NEEDS_REVIEW) {
                 sendHandoff(projectId, AgentRole.QA, AgentRole.CTO, "테스트에서 버그가 발견되었습니다. 디버깅이 필요합니다.", "test-report.json");
                 handleQaFailure(project, stages, artifacts, qaResult);
@@ -347,6 +348,7 @@ public class PipelineOrchestrator {
                 AgentResult qaResult = executeStage(project, stages, StageType.QA, qaAgent, artifacts);
                 // test-report.json을 artifacts에 먼저 저장 — handleQaFailure의 CTO debug context에 필요
                 if (qaResult.getArtifacts() != null) artifacts.putAll(qaResult.getArtifacts());
+                saveTestReport(projectId, artifacts); // BUG-4A FIX
                 if (qaResult.getStatus() == AgentResult.Status.NEEDS_REVIEW) {
                     handleQaFailure(project, stages, artifacts, qaResult);
                 } else if (qaResult.getStatus() == AgentResult.Status.SUCCESS) {
@@ -460,6 +462,11 @@ public class PipelineOrchestrator {
                     return;
                 }
                 String ctoInstruction = ctoDebugResult.getArtifacts().getOrDefault("debug-instruction.json", "");
+                // BUG-4C FIX: CTO 디버그 분석 메시지를 채팅으로 전달 (사용자가 볼 수 있도록)
+                if (ctoDebugResult.getMessage() != null && !ctoDebugResult.getMessage().isBlank()) {
+                    messageBus.send(projectId, AgentRole.CTO, AgentRole.FRONTEND,
+                            MessageType.CHAT, ctoDebugResult.getMessage(), null);
+                }
 
                 // 2) Frontend/Backend 수정 (BUG-5: fixTarget에 따라 필요한 에이전트만 실행)
                 project.updateProgress(80 + (attempt * 2), StageType.DEBUG);
@@ -564,6 +571,7 @@ public class PipelineOrchestrator {
 
                 // 재테스트도 실패 → 다음 루프
                 artifacts.putAll(retestResult.getArtifacts());
+                saveTestReport(projectId, artifacts); // BUG-4A FIX
                 log.warn("[파이프라인] 디버깅 #{} 재테스트 실패 - projectId={}", attempt, projectId);
 
             } catch (Exception e) {
@@ -575,6 +583,12 @@ public class PipelineOrchestrator {
 
         log.warn("[파이프라인] 디버깅 최대 횟수 초과 - projectId={}, {}회 시도 후 FAILED",
                 projectId, maxAttempts);
+        // BUG-4E FIX: 디버그 루프 maxAttempts 초과 시 QA Stage FAILED 처리 (STARTED 상태 고착 방지)
+        Stage qaStageForFail = findStage(stages, StageType.QA);
+        if (qaStageForFail != null && qaStageForFail.getStatus() != StageStatus.COMPLETED) {
+            qaStageForFail.fail(String.format("디버깅 %d회 시도 후에도 QA 통과 실패", maxAttempts));
+            stageRepository.save(qaStageForFail);
+        }
         handlePipelineFailure(project, String.format("디버깅 %d회 시도 후에도 QA 통과 실패", maxAttempts));
     }
 
@@ -621,6 +635,11 @@ public class PipelineOrchestrator {
             }
             String ctoInstruction = ctoResult.getArtifacts().getOrDefault("debug-instruction.json", "");
             artifacts.put("debug-instruction.json", ctoInstruction);
+            // BUG-4C FIX: CTO 피드백 분석 메시지를 채팅으로 전달 (사용자가 볼 수 있도록)
+            if (ctoResult.getMessage() != null && !ctoResult.getMessage().isBlank()) {
+                messageBus.send(projectId, AgentRole.CTO, AgentRole.FRONTEND,
+                        MessageType.CHAT, ctoResult.getMessage(), null);
+            }
 
             project.updateProgress(40, StageType.DEBUG);
             projectRepository.save(project);
@@ -745,6 +764,7 @@ public class PipelineOrchestrator {
 
             AgentResult qaResult = qaAgent.execute(qaContext);
             if (qaResult.getArtifacts() != null) artifacts.putAll(qaResult.getArtifacts());
+            saveTestReport(projectId, artifacts); // BUG-4A FIX
 
             if (qaResult.getStatus() == AgentResult.Status.NEEDS_REVIEW) {
                 sendHandoff(projectId, AgentRole.QA, AgentRole.CTO, "수정 후 재검증에서 버그가 발견되었습니다.", "test-report.json");
@@ -959,5 +979,22 @@ public class PipelineOrchestrator {
             case DEBUG -> AgentRole.CTO;
             case RELEASE -> AgentRole.SYSTEM;
         };
+    }
+
+    /**
+     * BUG-4A FIX: test-report.json을 artifacts에서 디스크로 저장.
+     * QA FAIL(NEEDS_REVIEW)이어도 호출해야 resumePipeline() 재시도 시 이전 리포트를 유지할 수 있음.
+     * handleResult()는 QA SUCCESS 시에만 호출되므로 FAIL 경우는 별도 저장 필요.
+     */
+    private void saveTestReport(String projectId, Map<String, String> artifacts) {
+        String testReport = artifacts.getOrDefault("test-report.json", "");
+        if (!testReport.isBlank()) {
+            try {
+                fileStorageService.saveArtifact(projectId, "test-report.json", testReport);
+            } catch (Exception e) {
+                log.warn("[파이프라인] test-report.json 디스크 저장 실패 (무시) - projectId={}, error={}",
+                        projectId, e.getMessage());
+            }
+        }
     }
 }

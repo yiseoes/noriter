@@ -39,7 +39,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
       "codeHint": "수정 후 코드가 어떤 모습이어야 하는지 (짧은 스니펫, 선택)",
       "priority": "high|medium|low"
     }
-  ]
+  ],
+  "chatMessage": "팀에게 전하는 피드백 분석 결과 (1~2문장, 구어체 한국어) — 수정 요청의 핵심과 어떤 부분을 바꿀지 요약"
 }
 
 Do NOT include any text outside the JSON.

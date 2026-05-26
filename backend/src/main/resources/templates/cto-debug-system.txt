@@ -80,7 +80,8 @@ OUTPUT FORMAT: Return ONLY a valid JSON object:
       "codeHint": "수정 후 코드가 어떤 모습이어야 하는지 (짧은 스니펫, 선택)",
       "priority": "high|medium|low"
     }
-  ]
+  ],
+  "chatMessage": "팀에게 전하는 디버그 분석 결과 (1~2문장, 구어체 한국어) — 어떤 버그가 원인이고 어디를 수정할지 핵심만"
 }
 
 Do NOT include any text outside the JSON.

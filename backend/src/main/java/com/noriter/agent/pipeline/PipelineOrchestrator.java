@@ -551,6 +551,13 @@ public class PipelineOrchestrator {
                 if (retestResult.getStatus() == AgentResult.Status.SUCCESS) {
                     log.info("[파이프라인] 디버깅 성공! - projectId={}, {}회 만에 통과", projectId, attempt);
                     artifacts.putAll(retestResult.getArtifacts());
+                    // BUG-3C FIX: 디버그 루프 성공 시 QA Stage COMPLETED 처리 (누락되어 STARTED 상태로 남는 문제)
+                    Stage qaStageForComplete = findStage(stages, StageType.QA);
+                    if (qaStageForComplete != null
+                            && qaStageForComplete.getStatus() != com.noriter.domain.enums.StageStatus.COMPLETED) {
+                        qaStageForComplete.complete(null);
+                        stageRepository.save(qaStageForComplete);
+                    }
                     completeRelease(project, stages);
                     return;
                 }

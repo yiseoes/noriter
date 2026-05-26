@@ -39,9 +39,26 @@ public class ContentAgent implements BaseAgent {
 
         String plan = context.getPreviousArtifacts().getOrDefault("plan.json", "");
 
-        // plan.json에 content 필드가 없으면 건너뜀
-        if (!plan.contains("\"content\"")) {
-            log.info("[콘텐츠팀] plan.json에 content 없음, 건너뜀 - projectId={}", context.getProjectId());
+        // BUG-3D FIX: 기존 plan.contains("\"content\"") 조건은 plan 포맷에 "content" 필드가 항상 존재해서 절대 발동 안 됨.
+        // content.items 배열에 실제 아이템이 있는지 확인하는 방식으로 교체.
+        com.fasterxml.jackson.databind.JsonNode planNode = JsonParser.parse(plan);
+        boolean hasContentItems = false;
+        if (planNode != null && planNode.has("content")) {
+            com.fasterxml.jackson.databind.JsonNode contentNode = planNode.get("content");
+            if (contentNode.has("items") && contentNode.get("items").isArray()
+                    && contentNode.get("items").size() > 0) {
+                // items 배열에 실제 아이템이 있을 때만 ContentAgent 실행
+                for (com.fasterxml.jackson.databind.JsonNode item : contentNode.get("items")) {
+                    if (item.has("list") && item.get("list").isArray()
+                            && item.get("list").size() > 0) {
+                        hasContentItems = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!hasContentItems) {
+            log.info("[콘텐츠팀] plan.json에 실제 콘텐츠 아이템 없음, 건너뜀 - projectId={}", context.getProjectId());
             return AgentResult.success(Map.of(), "기획서에 별도 콘텐츠 데이터 정의가 없어서 건너뛸게요~", 0, 0);
         }
 

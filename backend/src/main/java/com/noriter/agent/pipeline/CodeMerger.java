@@ -153,25 +153,106 @@ public class CodeMerger {
     /**
      * window.addEventListener('load', ...) 또는 DOMContentLoaded 초기화 블록 제거.
      * 에이전트가 실수로 포함시킨 중복 초기화 코드 방지.
+     *
+     * BUG-3A FIX: 기존 정규식(.은 \n 미매치)을 브레이스 카운팅으로 교체.
+     * 문자열 리터럴 내 {}는 무시하여 정확한 블록 경계 탐지.
      */
     private String removeInitCode(String code) {
-        // window.addEventListener('load'|'DOMContentLoaded', ...) 패턴 제거
-        String result = code.replaceAll(
-                "window\\.addEventListener\\s*\\(\\s*['\"](?:load|DOMContentLoaded)['\"].*?\\}\\s*\\);?",
-                "/* [초기화 코드는 시스템이 자동 추가] */"
-        );
+        // window.addEventListener('load'|'DOMContentLoaded', ...) 블록 제거
+        String[] windowPatterns = {
+                "window.addEventListener('load'",
+                "window.addEventListener(\"load\"",
+                "window.addEventListener('DOMContentLoaded'",
+                "window.addEventListener(\"DOMContentLoaded\""
+        };
+        for (String pattern : windowPatterns) {
+            code = removeWindowListenerBlock(code, pattern);
+        }
         // const game = new Game() 단독 실행 라인 제거
-        result = result.replaceAll("(?m)^\\s*const\\s+game\\s*=\\s*new\\s+Game\\(.*?\\);\\s*$", "");
-        return result;
+        code = code.replaceAll("(?m)^\\s*const\\s+game\\s*=\\s*new\\s+Game\\(.*?\\);\\s*$", "");
+        return code;
+    }
+
+    /**
+     * 특정 window.addEventListener(pattern, ...) 블록을 브레이스 카운팅으로 정확히 제거.
+     * 문자열 리터럴 내 { }는 카운트에서 제외.
+     */
+    private String removeWindowListenerBlock(String code, String pattern) {
+        int idx = code.indexOf(pattern);
+        if (idx < 0) return code;
+
+        // 콜백의 여는 { 탐색
+        int braceStart = code.indexOf('{', idx);
+        if (braceStart < 0) return code;
+
+        // 문자열 인식 브레이스 카운팅으로 블록 끝 탐색
+        int braceEnd = findBlockEnd(code, braceStart);
+        if (braceEnd < 0) return code;
+
+        // 블록 끝( }) 이후 );  처리
+        int endIdx = braceEnd + 1;
+        while (endIdx < code.length() && Character.isWhitespace(code.charAt(endIdx))) endIdx++;
+        if (endIdx < code.length() && code.charAt(endIdx) == ')') endIdx++;
+        while (endIdx < code.length() && Character.isWhitespace(code.charAt(endIdx))) endIdx++;
+        if (endIdx < code.length() && code.charAt(endIdx) == ';') endIdx++;
+
+        log.warn("[코드 병합] {} 블록 제거 — 에이전트가 잘못 포함시킨 초기화 코드", pattern);
+        return code.substring(0, idx) + "/* [초기화 코드는 시스템이 자동 추가] */" + code.substring(endIdx);
+    }
+
+    /**
+     * 문자열 리터럴(', ", `)과 주석(//, /* *\/) 내 {}를 무시하는 브레이스 카운팅.
+     * @param code  대상 코드
+     * @param start 여는 '{' 위치 (이 위치부터 탐색 시작)
+     * @return 매칭되는 닫는 '}' 위치, 못 찾으면 -1
+     */
+    private int findBlockEnd(String code, int start) {
+        int depth = 0;
+        boolean inString = false;
+        char stringChar = 0;
+        boolean inLineComment = false;
+        boolean inBlockComment = false;
+
+        for (int i = start; i < code.length(); i++) {
+            char c = code.charAt(i);
+            char next = (i + 1 < code.length()) ? code.charAt(i + 1) : 0;
+
+            if (inLineComment) {
+                if (c == '\n') inLineComment = false;
+                continue;
+            }
+            if (inBlockComment) {
+                if (c == '*' && next == '/') { inBlockComment = false; i++; }
+                continue;
+            }
+            if (inString) {
+                if (c == '\\') { i++; continue; }  // 이스케이프 문자 건너뜀
+                if (c == stringChar) inString = false;
+                continue;
+            }
+
+            if (c == '/' && next == '/') { inLineComment = true; i++; continue; }
+            if (c == '/' && next == '*') { inBlockComment = true; i++; continue; }
+            if (c == '\'' || c == '"' || c == '`') { inString = true; stringChar = c; continue; }
+
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
     }
 
     /**
      * 특정 클래스 정의를 코드에서 제거.
-     * 중괄호 depth 추적으로 클래스 블록 전체를 정확히 제거.
+     * BUG-3B FIX: 문자열 리터럴/주석 내 {}를 구분하는 findBlockEnd() 사용.
      * AI가 지시를 무시하고 불필요한 클래스를 포함시키는 케이스 대응.
      */
     /**
      * game.js에서 특정 클래스 블록만 추출 (역추출용)
+     * BUG-3B FIX: 문자열 리터럴/주석 내 {}를 구분하는 findBlockEnd() 사용.
      */
     public String extractClass(String code, String className) {
         String marker = "class " + className;
@@ -179,16 +260,7 @@ public class CodeMerger {
         if (classIdx < 0) return null;
         int braceStart = code.indexOf('{', classIdx);
         if (braceStart < 0) return null;
-        int depth = 0;
-        int braceEnd = -1;
-        for (int i = braceStart; i < code.length(); i++) {
-            char c = code.charAt(i);
-            if (c == '{') depth++;
-            else if (c == '}') {
-                depth--;
-                if (depth == 0) { braceEnd = i; break; }
-            }
-        }
+        int braceEnd = findBlockEnd(code, braceStart);
         if (braceEnd < 0) return null;
         return code.substring(classIdx, braceEnd + 1).trim();
     }
@@ -201,17 +273,8 @@ public class CodeMerger {
         int braceStart = code.indexOf('{', classIdx);
         if (braceStart < 0) return code;
 
-        // 매칭되는 닫는 중괄호 찾기
-        int depth = 0;
-        int braceEnd = -1;
-        for (int i = braceStart; i < code.length(); i++) {
-            char c = code.charAt(i);
-            if (c == '{') depth++;
-            else if (c == '}') {
-                depth--;
-                if (depth == 0) { braceEnd = i; break; }
-            }
-        }
+        // BUG-3B FIX: 문자열 리터럴/주석 인식 브레이스 카운팅으로 매칭 닫는 중괄호 탐색
+        int braceEnd = findBlockEnd(code, braceStart);
         if (braceEnd < 0) return code;
 
         // 클래스 선언 앞의 섹션 주석 라인도 함께 제거

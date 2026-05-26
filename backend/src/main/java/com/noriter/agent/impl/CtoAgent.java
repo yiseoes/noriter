@@ -6,6 +6,7 @@ import com.noriter.agent.prompt.PromptTemplate;
 import com.noriter.domain.enums.AgentRole;
 import com.noriter.infrastructure.claude.ClaudeApiClient;
 import com.noriter.infrastructure.claude.ClaudeApiClient.ClaudeResponse;
+import com.noriter.util.JsonParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
@@ -39,12 +40,14 @@ public class CtoAgent implements BaseAgent {
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
+        // 코드펜스(```json ... ```) 제거 — Claude가 간혹 JSON을 코드펜스로 감싸서 반환
+        String architecture = JsonParser.stripCodeBlock(response.content());
 
         log.info("[CTO] 기술 아키텍처 설계 완료 - projectId={}", context.getProjectId());
 
-        String message = extractChatMessage(response.content(), "아키텍처 설계 완료! 프론트/백엔드팀, 인터페이스 계약 확인하고 개발 시작해주세요.");
+        String message = extractChatMessage(architecture, "아키텍처 설계 완료! 프론트/백엔드팀, 인터페이스 계약 확인하고 개발 시작해주세요.");
         return AgentResult.success(
-                Map.of("architecture.json", response.content()),
+                Map.of("architecture.json", architecture),
                 message,
                 response.inputTokens(), response.outputTokens()
         );

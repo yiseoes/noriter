@@ -366,7 +366,8 @@ public class PipelineOrchestrator {
     /** 기존 산출물 파일 로드 */
     private Map<String, String> loadExistingArtifacts(String projectId) {
         Map<String, String> artifacts = new HashMap<>();
-        String[] artifactFiles = {"plan.json", "content.json", "architecture.json", "design.json"};
+        // test-report.json 포함 — resumePipeline/startRevisionPipeline에서 QA 재테스트 시 이전 리포트 유지
+        String[] artifactFiles = {"plan.json", "content.json", "architecture.json", "design.json", "test-report.json"};
         for (String file : artifactFiles) {
             try {
                 String content = fileStorageService.readArtifact(projectId, file);
@@ -460,14 +461,30 @@ public class PipelineOrchestrator {
                 }
                 String ctoInstruction = ctoDebugResult.getArtifacts().getOrDefault("debug-instruction.json", "");
 
-                // 2) Frontend/Backend 수정
+                // 2) Frontend/Backend 수정 (BUG-5: fixTarget에 따라 필요한 에이전트만 실행)
                 project.updateProgress(80 + (attempt * 2), StageType.DEBUG);
                 projectRepository.save(project);
                 sseEmitterService.sendEvent(projectId, SseEvent.stageUpdate(
                         String.format("{\"stage\":\"DEBUG\",\"status\":\"FIXING\",\"attempt\":%d}", attempt)));
 
+                // CTO 응답에서 fixTarget 파싱 — 실패 시 "both"로 fallback
+                String fixTarget = "both";
+                try {
+                    com.fasterxml.jackson.databind.JsonNode instrNode =
+                            com.noriter.util.JsonParser.parse(ctoInstruction);
+                    if (instrNode != null && instrNode.has("fixTarget")) {
+                        String parsed = instrNode.get("fixTarget").asText();
+                        if ("frontend".equals(parsed) || "backend".equals(parsed) || "both".equals(parsed)) {
+                            fixTarget = parsed;
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("[파이프라인] fixTarget 파싱 실패, both로 fallback");
+                }
+                log.info("[파이프라인] 디버깅 fixTarget={} - projectId={}", fixTarget, projectId);
+
                 logService.createLog(projectId, LogLevel.INFO, AgentRole.FRONTEND, StageType.DEBUG,
-                        "발견된 버그를 수정하고 있어요...");
+                        "발견된 버그를 수정하고 있어요... (수정 대상: " + fixTarget + ")");
 
                 AgentContext fixContext = AgentContext.builder()
                         .projectId(projectId)
@@ -479,11 +496,14 @@ public class PipelineOrchestrator {
                         .debugAttempt(attempt)
                         .build();
 
-                AgentResult frontFixResult = frontendAgent.executeFix(fixContext);
-                artifacts.putAll(frontFixResult.getArtifacts());
-
-                AgentResult backFixResult = backendAgent.executeFix(fixContext);
-                artifacts.putAll(backFixResult.getArtifacts());
+                if (!"backend".equals(fixTarget)) {
+                    AgentResult frontFixResult = frontendAgent.executeFix(fixContext);
+                    if (frontFixResult.getArtifacts() != null) artifacts.putAll(frontFixResult.getArtifacts());
+                }
+                if (!"frontend".equals(fixTarget)) {
+                    AgentResult backFixResult = backendAgent.executeFix(fixContext);
+                    if (backFixResult.getArtifacts() != null) artifacts.putAll(backFixResult.getArtifacts());
+                }
 
                 // 코드 재병합
                 String backLogic = artifacts.getOrDefault("gameJsLogicSection", "");
@@ -492,6 +512,22 @@ public class PipelineOrchestrator {
                 String mergedJs = codeMerger.mergeGameJs(backLogic, frontRender, archJson);
                 artifacts.put("game.js", mergedJs);
                 fileStorageService.saveGameFile(projectId, "game.js", mergedJs);
+
+                // BUG-7: 디버그 fix 후 JS 문법 + 런타임 검증 (QA 호출 전에 선검증)
+                JsSyntaxValidator.ValidationResult debugSyntax = JsSyntaxValidator.validate(mergedJs);
+                if (!debugSyntax.valid()) {
+                    log.warn("[파이프라인] 디버그 후 JS 문법 오류 - errors={}", debugSyntax.errors());
+                    logService.createLog(projectId, LogLevel.WARN, AgentRole.QA, StageType.DEBUG,
+                            "디버그 후 코드 오류 감지: " + debugSyntax.errors());
+                }
+                JsRuntimeValidator.ValidationResult debugRuntime = JsRuntimeValidator.validate(mergedJs);
+                if (!debugRuntime.valid()) {
+                    log.warn("[파이프라인] 디버그 후 런타임 오류 - {}", debugRuntime.summary());
+                    logService.createLog(projectId, LogLevel.WARN, AgentRole.QA, StageType.DEBUG,
+                            "디버그 후 런타임 오류: " + debugRuntime.summary() + " (QA에서 계속 처리)");
+                } else {
+                    log.info("[파이프라인] 디버그 후 런타임 검증 통과");
+                }
 
                 // 3) QA 재테스트
                 project.updateProgress(85 + (attempt * 2), StageType.DEBUG);
@@ -623,6 +659,57 @@ public class PipelineOrchestrator {
                 if (artifacts.containsKey(f) && !artifacts.get(f).isBlank()) {
                     fileStorageService.saveGameFile(projectId, f, artifacts.get(f));
                 }
+            }
+
+            // JS 문법 검증 (BUG-4: startRevisionPipeline에도 Runtime 검증 추가)
+            String revisionGameJs = artifacts.getOrDefault("game.js", "");
+            JsSyntaxValidator.ValidationResult revisionSyntax = JsSyntaxValidator.validate(revisionGameJs);
+            if (!revisionSyntax.valid()) {
+                log.warn("[수정 파이프라인] JS 문법 오류 감지, BackendAgent 재시도 - errors={}", revisionSyntax.errors());
+                logService.createLog(projectId, LogLevel.WARN, AgentRole.QA, StageType.DEBUG,
+                        "수정 후 코드 구조 오류 감지, 자동 수정 중: " + revisionSyntax.errors());
+                AgentResult syntaxFixResult = backendAgent.executeFix(fixContext);
+                if (syntaxFixResult.getStatus() != AgentResult.Status.FAILED
+                        && syntaxFixResult.getArtifacts() != null) {
+                    artifacts.putAll(syntaxFixResult.getArtifacts());
+                    String remergedJs = codeMerger.mergeGameJs(
+                            artifacts.getOrDefault("gameJsLogicSection", ""),
+                            artifacts.getOrDefault("gameJsRenderSection", ""),
+                            artifacts.getOrDefault("architecture.json", ""));
+                    artifacts.put("game.js", remergedJs);
+                    fileStorageService.saveGameFile(projectId, "game.js", remergedJs);
+                }
+            }
+            // JS 런타임 검증
+            JsRuntimeValidator.ValidationResult revisionRuntime =
+                    JsRuntimeValidator.validate(artifacts.getOrDefault("game.js", ""));
+            if (!revisionRuntime.valid()) {
+                log.warn("[수정 파이프라인] 런타임 오류 감지, BackendAgent 재시도 - {}", revisionRuntime.summary());
+                logService.createLog(projectId, LogLevel.WARN, AgentRole.QA, StageType.DEBUG,
+                        "수정 후 런타임 오류 감지: " + revisionRuntime.summary() + " — 자동 수정 중");
+                AgentContext runtimeRevisionFixContext = AgentContext.builder()
+                        .projectId(projectId)
+                        .stageType(StageType.DEBUG)
+                        .requirement(project.getRequirement())
+                        .previousArtifacts(new HashMap<>(artifacts))
+                        .bugReport("런타임 오류: " + revisionRuntime.summary())
+                        .debugAttempt(0)
+                        .build();
+                AgentResult runtimeRevisionResult = backendAgent.executeFix(runtimeRevisionFixContext);
+                if (runtimeRevisionResult.getStatus() != AgentResult.Status.FAILED
+                        && runtimeRevisionResult.getArtifacts() != null) {
+                    artifacts.putAll(runtimeRevisionResult.getArtifacts());
+                    String remergedJs = codeMerger.mergeGameJs(
+                            artifacts.getOrDefault("gameJsLogicSection", ""),
+                            artifacts.getOrDefault("gameJsRenderSection", ""),
+                            artifacts.getOrDefault("architecture.json", ""));
+                    artifacts.put("game.js", remergedJs);
+                    fileStorageService.saveGameFile(projectId, "game.js", remergedJs);
+                }
+            } else {
+                log.info("[수정 파이프라인] 런타임 검증 통과 - Game/Renderer 정상 로드 확인");
+                logService.createLog(projectId, LogLevel.INFO, AgentRole.QA, StageType.DEBUG,
+                        "수정 후 런타임 검증 통과! Game/Renderer 정상 로드 확인.");
             }
 
             project.updateProgress(80, StageType.DEBUG);

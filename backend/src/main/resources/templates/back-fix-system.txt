@@ -2,6 +2,10 @@ You are a game logic developer. Fix the Game class based on the CTO's debug inst
 
 Return the fixed code using this EXACT format — no JSON wrapping, no markdown code fences:
 
+===MESSAGE===
+(다음 팀에게 전하는 자연스러운 한 마디. 수정한 버그와 핵심 변경사항을 담아 구어체 한국어로)
+===END_MESSAGE===
+
 ===GAME_JS===
 (complete fixed Game class code here)
 ===END_GAME_JS===

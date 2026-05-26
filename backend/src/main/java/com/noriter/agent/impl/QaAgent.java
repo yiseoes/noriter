@@ -73,6 +73,22 @@ public class QaAgent implements BaseAgent {
         return sb.toString();
     }
 
+    /** game.js 프롬프트 포함 최대 글자 수 — 초과 시 앞뒤 발췌로 대체 (HTTP 400 / 타임아웃 방지) */
+    private static final int MAX_GAME_JS_CHARS = 30_000;
+
+    /**
+     * game.js가 너무 길면 앞 15,000자 + 생략 안내 + 뒤 15,000자로 대체.
+     * CTO debug와 동일한 방식.
+     */
+    private String truncateGameJs(String gameJs) {
+        if (gameJs == null || gameJs.length() <= MAX_GAME_JS_CHARS) return gameJs;
+        int half = MAX_GAME_JS_CHARS / 2;
+        String head = gameJs.substring(0, half);
+        String tail = gameJs.substring(gameJs.length() - half);
+        log.warn("[QA팀] game.js 크기 초과 ({}자) — 앞뒤 {}자씩 발췌하여 전달", gameJs.length(), half);
+        return head + "\n\n// ... (중략 — 코드 크기 초과로 생략) ...\n\n" + tail;
+    }
+
     @Override
     public AgentResult execute(AgentContext context) {
         log.info("[QA팀] 코드 검증 시작 - projectId={}, debugAttempt={}",
@@ -85,7 +101,7 @@ public class QaAgent implements BaseAgent {
         String architecture = context.getPreviousArtifacts().getOrDefault("architecture.json", "");
         String indexHtml = context.getPreviousArtifacts().getOrDefault("index.html", "");
         String styleCss = context.getPreviousArtifacts().getOrDefault("style.css", "");
-        String gameJs = context.getPreviousArtifacts().getOrDefault("game.js", "");
+        String gameJs = truncateGameJs(context.getPreviousArtifacts().getOrDefault("game.js", ""));
 
         String systemPrompt = promptRegistry.getSystemPrompt(promptId);
         String userPrompt;

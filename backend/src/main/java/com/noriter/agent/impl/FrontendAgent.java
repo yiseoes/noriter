@@ -65,7 +65,13 @@ public class FrontendAgent implements BaseAgent {
         // 섹션 블록 파싱 실패 시 분할 생성으로 fallback
         if (!artifacts.containsKey("gameJsRenderSection") || artifacts.get("gameJsRenderSection").isBlank()) {
             log.warn("[프론트팀] 섹션 파싱 실패, 분할 생성 전환 - projectId={}", context.getProjectId());
-            Map<String, String> baseContext = Map.of("plan", plan, "architecture", architecture, "design", design);
+            // backendCode 포함 — Renderer가 Game 클래스 속성명/shape 타입을 보고 구현하도록
+            Map<String, String> baseContext = Map.of(
+                    "plan", plan,
+                    "architecture", architecture,
+                    "design", design,
+                    "backendCode", backendCode
+            );
 
             if (!artifacts.containsKey("index.html") || artifacts.get("index.html").isBlank()) {
                 artifacts.put("index.html", generateSingleFile(baseContext,
@@ -78,6 +84,7 @@ public class FrontendAgent implements BaseAgent {
             artifacts.put("gameJsRenderSection", generateSingleFile(baseContext,
                     "Renderer 클래스만 생성하세요. ```javascript ... ``` 코드블록으로 반환. " +
                     "architecture의 gameInterface.rendererClass.publicMethods를 모두 구현하세요. " +
+                    "백엔드 Game 클래스 코드(backendCode)를 반드시 참고하여 속성명과 shape 타입을 맞추세요. " +
                     "Game 클래스, 초기화 코드, 게임 루프 절대 포함 금지."));
         }
 
@@ -159,8 +166,13 @@ public class FrontendAgent implements BaseAgent {
 
     private String generateSingleFile(Map<String, String> baseContext, String instruction) {
         String systemPrompt = "You are a frontend game developer. " + instruction;
+        String backendSection = baseContext.getOrDefault("backendCode", "").isBlank()
+                ? ""
+                : "\n\n백엔드 Game 클래스 (속성명/shape 타입 참고):\n===BACKEND_CODE===\n"
+                  + baseContext.getOrDefault("backendCode", "") + "\n===END_BACKEND_CODE===";
         String userPrompt = PromptTemplate.render(
-                "게임 기획서:\n{{plan}}\n\n기술 아키텍처:\n{{architecture}}\n\n디자인 명세:\n{{design}}\n\n" + instruction,
+                "게임 기획서:\n{{plan}}\n\n기술 아키텍처:\n{{architecture}}\n\n디자인 명세:\n{{design}}"
+                + backendSection + "\n\n" + instruction,
                 baseContext
         );
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());

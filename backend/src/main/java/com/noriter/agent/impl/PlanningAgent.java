@@ -40,12 +40,14 @@ public class PlanningAgent implements BaseAgent {
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
+        // 코드펜스(```json ... ```) 제거 — Claude가 간혹 JSON을 코드펜스로 감싸서 반환
+        String plan = JsonParser.stripCodeBlock(response.content());
 
         log.info("[기획팀] 게임 기획서 작성 완료 - projectId={}", context.getProjectId());
 
-        String message = extractChatMessage(response.content(), "기획서 완성! CTO님, 아키텍처 설계 부탁드려요.");
+        String message = extractChatMessage(plan, "기획서 완성! CTO님, 아키텍처 설계 부탁드려요.");
         return AgentResult.success(
-                Map.of("plan.json", response.content()),
+                Map.of("plan.json", plan),
                 message,
                 response.inputTokens(), response.outputTokens()
         );

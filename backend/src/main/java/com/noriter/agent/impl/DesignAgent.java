@@ -41,12 +41,14 @@ public class DesignAgent implements BaseAgent {
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
+        // 코드펜스(```json ... ```) 제거 — Claude가 간혹 JSON을 코드펜스로 감싸서 반환
+        String design = JsonParser.stripCodeBlock(response.content());
 
         log.info("[디자인팀] 디자인 스펙 작성 완료 - projectId={}", context.getProjectId());
 
-        String message = extractChatMessage(response.content(), "디자인 시스템 완성! 색상 테마랑 이펙트 가이드 확인해주세요.");
+        String message = extractChatMessage(design, "디자인 시스템 완성! 색상 테마랑 이펙트 가이드 확인해주세요.");
         return AgentResult.success(
-                Map.of("design.json", response.content()),
+                Map.of("design.json", design),
                 message,
                 response.inputTokens(), response.outputTokens()
         );

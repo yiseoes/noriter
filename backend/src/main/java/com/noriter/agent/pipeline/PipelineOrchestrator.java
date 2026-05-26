@@ -668,7 +668,17 @@ public class PipelineOrchestrator {
                 log.warn("[수정 파이프라인] JS 문법 오류 감지, BackendAgent 재시도 - errors={}", revisionSyntax.errors());
                 logService.createLog(projectId, LogLevel.WARN, AgentRole.QA, StageType.DEBUG,
                         "수정 후 코드 구조 오류 감지, 자동 수정 중: " + revisionSyntax.errors());
-                AgentResult syntaxFixResult = backendAgent.executeFix(fixContext);
+                // BUG-C FIX: fixContext는 frontFix/backFix 이전 스냅샷 → syntax fix는 최신 artifacts로 새 context 생성
+                AgentContext syntaxFixContext = AgentContext.builder()
+                        .projectId(projectId)
+                        .stageType(StageType.DEBUG)
+                        .requirement(project.getRequirement())
+                        .previousArtifacts(new HashMap<>(artifacts))
+                        .ctoInstruction(ctoInstruction)
+                        .feedback(feedback)
+                        .debugAttempt(1)
+                        .build();
+                AgentResult syntaxFixResult = backendAgent.executeFix(syntaxFixContext);
                 if (syntaxFixResult.getStatus() != AgentResult.Status.FAILED
                         && syntaxFixResult.getArtifacts() != null) {
                     artifacts.putAll(syntaxFixResult.getArtifacts());

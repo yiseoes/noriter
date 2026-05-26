@@ -82,10 +82,12 @@ public class CtoAgent implements BaseAgent {
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
         log.info("[CTO] 피드백 분석 완료 - projectId={}", context.getProjectId());
+        // 코드펜스(```json ... ```) 제거 — Claude가 간혹 JSON을 코드펜스로 감싸서 반환
+        String debugInstruction = JsonParser.stripCodeBlock(response.content());
 
-        String message = extractChatMessage(response.content(), "피드백 분석 완료! 수정 지시서 넘길게요.");
+        String message = extractChatMessage(debugInstruction, "피드백 분석 완료! 수정 지시서 넘길게요.");
         return AgentResult.success(
-                Map.of("debug-instruction.json", response.content()),
+                Map.of("debug-instruction.json", debugInstruction),
                 message,
                 response.inputTokens(), response.outputTokens()
         );
@@ -116,10 +118,12 @@ public class CtoAgent implements BaseAgent {
         );
 
         ClaudeResponse response = claudeApiClient.sendPrompt(systemPrompt, userPrompt, getRole());
+        // 코드펜스(```json ... ```) 제거 — Claude가 간혹 JSON을 코드펜스로 감싸서 반환
+        String debugInstruction = JsonParser.stripCodeBlock(response.content());
 
-        String message = extractChatMessage(response.content(), "버그 원인 파악 완료! 수정 지시서 확인해주세요.");
+        String message = extractChatMessage(debugInstruction, "버그 원인 파악 완료! 수정 지시서 확인해주세요.");
         return AgentResult.success(
-                Map.of("debug-instruction.json", response.content()),
+                Map.of("debug-instruction.json", debugInstruction),
                 message,
                 response.inputTokens(), response.outputTokens()
         );
@@ -138,7 +142,7 @@ public class CtoAgent implements BaseAgent {
      * HTTP 400 및 타임아웃 방지.
      */
     private String truncateGameJs(String gameJs) {
-        if (gameJs.length() <= MAX_GAME_JS_CHARS) return gameJs;
+        if (gameJs == null || gameJs.length() <= MAX_GAME_JS_CHARS) return gameJs;
         int half = MAX_GAME_JS_CHARS / 2;
         String head = gameJs.substring(0, half);
         String tail = gameJs.substring(gameJs.length() - half);

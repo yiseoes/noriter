@@ -90,10 +90,15 @@ public class StageExecutor {
                         projectId, stageType, role);
 
                 // 에이전트 대화 메시지 → 다음 에이전트에게 직접 전달 (에이전트 간 대화 형태)
+                // BUG-7C FIX: try-catch 없이 직접 호출 시 예외가 바깥 catch로 전파 → stage.fail()+FAILED 반환으로 결과 유실
                 if (result.getMessage() != null && !result.getMessage().isBlank()) {
                     AgentRole chatTarget = getNextChatTarget(role);
-                    messageBus.send(projectId, role, chatTarget,
-                            MessageType.CHAT, result.getMessage(), null);
+                    try {
+                        messageBus.send(projectId, role, chatTarget,
+                                MessageType.CHAT, result.getMessage(), null);
+                    } catch (Exception msgEx) {
+                        log.debug("[스테이지 실행] 메시지 전송 실패 (무시) - projectId={}, role={}", projectId, role);
+                    }
                 }
 
                 // 산출물 목록 로그
@@ -120,10 +125,15 @@ public class StageExecutor {
                         projectId, stageType);
 
                 // QA 버그 리포트를 채팅으로 전송 (사용자가 볼 수 있도록)
+                // BUG-7C FIX: try-catch 없이 직접 호출 시 예외가 바깥 catch로 전파 → NEEDS_REVIEW 결과 유실
                 if (result.getMessage() != null && !result.getMessage().isBlank()) {
                     AgentRole chatTarget = getNextChatTarget(role);
-                    messageBus.send(projectId, role, chatTarget,
-                            MessageType.CHAT, result.getMessage(), null);
+                    try {
+                        messageBus.send(projectId, role, chatTarget,
+                                MessageType.CHAT, result.getMessage(), null);
+                    } catch (Exception msgEx) {
+                        log.debug("[스테이지 실행] QA 메시지 전송 실패 (무시) - projectId={}, role={}", projectId, role);
+                    }
                 }
 
                 logService.createLog(projectId, LogLevel.WARN, role, stageType,

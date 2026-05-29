@@ -122,6 +122,9 @@ public class PipelineOrchestrator {
             AgentResult backResult = executeStage(project, stages, StageType.IMPLEMENTATION,
                     backendAgent, artifacts);
             if (backResult.getStatus() == AgentResult.Status.FAILED) {
+                // BUG-6B FIX: IMPLEMENTATION Stage FAILED DB 저장
+                Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
+                if (implStage != null && implStage.getStatus() == StageStatus.IN_PROGRESS) stageRepository.save(implStage);
                 handlePipelineFailure(project, "백엔드 구현 실패: " + backResult.getErrorMessage());
                 return;
             }
@@ -135,6 +138,9 @@ public class PipelineOrchestrator {
             AgentResult frontResult = executeStage(project, stages, StageType.IMPLEMENTATION,
                     frontendAgent, artifacts);
             if (frontResult.getStatus() == AgentResult.Status.FAILED) {
+                // BUG-6B FIX: IMPLEMENTATION Stage FAILED DB 저장
+                Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
+                if (implStage != null && implStage.getStatus() == StageStatus.IN_PROGRESS) stageRepository.save(implStage);
                 handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
                 return;
             }
@@ -297,6 +303,9 @@ public class PipelineOrchestrator {
                 // 4-1. Backend 먼저 실행 — Game 클래스 생성
                 AgentResult backResult = executeStage(project, stages, StageType.IMPLEMENTATION, backendAgent, artifacts);
                 if (backResult.getStatus() == AgentResult.Status.FAILED) {
+                    // BUG-6B FIX: IMPLEMENTATION Stage FAILED DB 저장
+                    Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
+                    if (implStage != null && implStage.getStatus() == StageStatus.IN_PROGRESS) stageRepository.save(implStage);
                     handlePipelineFailure(project, "백엔드 구현 실패: " + backResult.getErrorMessage());
                     return;
                 }
@@ -309,6 +318,9 @@ public class PipelineOrchestrator {
                 // 4-2. Frontend 실행 — Backend의 gameJsLogicSection을 artifacts에서 참조
                 AgentResult frontResult = executeStage(project, stages, StageType.IMPLEMENTATION, frontendAgent, artifacts);
                 if (frontResult.getStatus() == AgentResult.Status.FAILED) {
+                    // BUG-6B FIX: IMPLEMENTATION Stage FAILED DB 저장
+                    Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
+                    if (implStage != null && implStage.getStatus() == StageStatus.IN_PROGRESS) stageRepository.save(implStage);
                     handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
                     return;
                 }
@@ -474,10 +486,14 @@ public class PipelineOrchestrator {
                     return;
                 }
                 String ctoInstruction = ctoDebugResult.getArtifacts().getOrDefault("debug-instruction.json", "");
-                // BUG-4C FIX: CTO 디버그 분석 메시지를 채팅으로 전달 (사용자가 볼 수 있도록)
+                // BUG-4C FIX: CTO 디버그 분석 메시지를 채팅으로 전달 (BUG-6C: try-catch 감싸기)
                 if (ctoDebugResult.getMessage() != null && !ctoDebugResult.getMessage().isBlank()) {
-                    messageBus.send(projectId, AgentRole.CTO, AgentRole.FRONTEND,
-                            MessageType.CHAT, ctoDebugResult.getMessage(), null);
+                    try {
+                        messageBus.send(projectId, AgentRole.CTO, AgentRole.FRONTEND,
+                                MessageType.CHAT, ctoDebugResult.getMessage(), null);
+                    } catch (Exception e) {
+                        log.debug("[파이프라인] CTO 디버그 메시지 전송 실패 (무시) - projectId={}", projectId);
+                    }
                 }
 
                 // 2) Frontend/Backend 수정 (BUG-5: fixTarget에 따라 필요한 에이전트만 실행)
@@ -647,10 +663,14 @@ public class PipelineOrchestrator {
             }
             String ctoInstruction = ctoResult.getArtifacts().getOrDefault("debug-instruction.json", "");
             artifacts.put("debug-instruction.json", ctoInstruction);
-            // BUG-4C FIX: CTO 피드백 분석 메시지를 채팅으로 전달 (사용자가 볼 수 있도록)
+            // BUG-4C FIX: CTO 피드백 분석 메시지를 채팅으로 전달 (BUG-6C: try-catch 감싸기)
             if (ctoResult.getMessage() != null && !ctoResult.getMessage().isBlank()) {
-                messageBus.send(projectId, AgentRole.CTO, AgentRole.FRONTEND,
-                        MessageType.CHAT, ctoResult.getMessage(), null);
+                try {
+                    messageBus.send(projectId, AgentRole.CTO, AgentRole.FRONTEND,
+                            MessageType.CHAT, ctoResult.getMessage(), null);
+                } catch (Exception e) {
+                    log.debug("[파이프라인] CTO 피드백 메시지 전송 실패 (무시) - projectId={}", projectId);
+                }
             }
 
             project.updateProgress(40, StageType.DEBUG);
@@ -875,6 +895,11 @@ public class PipelineOrchestrator {
         }
 
         if (result.getStatus() == AgentResult.Status.FAILED) {
+            // BUG-6A FIX: StageExecutor에서 stage.fail()은 호출했지만 stageRepository.save() 없음 → DB 미반영
+            Stage failedStage = findStage(stages, stageType);
+            if (failedStage != null && failedStage.getStatus() == StageStatus.IN_PROGRESS) {
+                stageRepository.save(failedStage);
+            }
             handlePipelineFailure(project, stageType + " 실패: " + result.getErrorMessage());
             return false;
         }

@@ -223,6 +223,12 @@ public class PipelineOrchestrator {
                 handleResult(project, qaResult, stages, StageType.QA, artifacts);
                 completeRelease(project, stages);
             } else {
+                // BUG-5B FIX: QA 에이전트 오류(FAILED) 시 QA Stage FAILED 처리 (IN_PROGRESS 고착 방지)
+                Stage qaStageErr = findStage(stages, StageType.QA);
+                if (qaStageErr != null && qaStageErr.getStatus() != StageStatus.COMPLETED) {
+                    qaStageErr.fail("QA 에이전트 오류: " + qaResult.getErrorMessage());
+                    stageRepository.save(qaStageErr);
+                }
                 handlePipelineFailure(project, "QA 실패: " + qaResult.getErrorMessage());
             }
 
@@ -355,6 +361,12 @@ public class PipelineOrchestrator {
                     handleResult(project, qaResult, stages, StageType.QA, artifacts);
                     completeRelease(project, stages);
                 } else {
+                    // BUG-5B FIX: QA 에이전트 오류(FAILED) 시 QA Stage FAILED 처리
+                    Stage qaStageErr = findStage(stages, StageType.QA);
+                    if (qaStageErr != null && qaStageErr.getStatus() != StageStatus.COMPLETED) {
+                        qaStageErr.fail("QA 에이전트 오류: " + qaResult.getErrorMessage());
+                        stageRepository.save(qaStageErr);
+                    }
                     handlePipelineFailure(project, "QA 실패: " + qaResult.getErrorMessage());
                 }
             }
@@ -569,8 +581,8 @@ public class PipelineOrchestrator {
                     return;
                 }
 
-                // 재테스트도 실패 → 다음 루프
-                artifacts.putAll(retestResult.getArtifacts());
+                // 재테스트도 실패 → 다음 루프 (BUG-5A FIX: FAILED 시 artifacts=null → null 체크 필수)
+                if (retestResult.getArtifacts() != null) artifacts.putAll(retestResult.getArtifacts());
                 saveTestReport(projectId, artifacts); // BUG-4A FIX
                 log.warn("[파이프라인] 디버깅 #{} 재테스트 실패 - projectId={}", attempt, projectId);
 
@@ -774,6 +786,12 @@ public class PipelineOrchestrator {
                 handleResult(project, qaResult, stages, StageType.QA, artifacts);
                 completeRelease(project, stages);
             } else {
+                // BUG-5B FIX: QA 에이전트 오류(FAILED) 시 QA Stage FAILED 처리
+                Stage qaStageErr = findStage(stages, StageType.QA);
+                if (qaStageErr != null && qaStageErr.getStatus() != StageStatus.COMPLETED) {
+                    qaStageErr.fail("QA 에이전트 오류: " + qaResult.getErrorMessage());
+                    stageRepository.save(qaStageErr);
+                }
                 handlePipelineFailure(project, "수정 파이프라인 QA 실패: " + qaResult.getErrorMessage());
             }
 

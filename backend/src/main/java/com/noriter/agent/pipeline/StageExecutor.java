@@ -9,6 +9,7 @@ import com.noriter.domain.enums.AgentRole;
 import com.noriter.domain.enums.AuditEventType;
 import com.noriter.domain.enums.MessageType;
 import com.noriter.domain.enums.StageType;
+import com.noriter.repository.StageRepository;
 import com.noriter.service.AuditService;
 import com.noriter.service.LogService;
 import com.noriter.service.TokenUsageService;
@@ -33,6 +34,7 @@ public class StageExecutor {
     private final TokenUsageService tokenUsageService;
     private final SseEmitterService sseEmitterService;
     private final MessageBus messageBus;
+    private final StageRepository stageRepository;
 
     /**
      * 파이프라인 순서상 각 에이전트의 다음 대화 대상
@@ -62,8 +64,9 @@ public class StageExecutor {
         log.info("[스테이지 실행] 에이전트 시작 - projectId={}, stage={}, agent={}",
                 projectId, stageType, role);
 
-        // 스테이지 시작
+        // 스테이지 시작 — 상태 변경 즉시 DB 반영
         stage.start();
+        stageRepository.save(stage);
         auditService.log(AuditEventType.STAGE_STARTED, projectId,
                 String.format("%s 스테이지 시작 (%s)", stageType, role), null);
 
@@ -144,6 +147,7 @@ public class StageExecutor {
                         projectId, stageType, result.getErrorMessage());
 
                 stage.fail(result.getErrorMessage());
+                stageRepository.save(stage); // 실패 상태 즉시 DB 반영
                 logService.createErrorLog(projectId, role, stageType,
                         result.getErrorMessage(), "NT-ERR-A004", null);
 
@@ -162,6 +166,7 @@ public class StageExecutor {
                     projectId, stageType, role, e.getMessage(), e);
 
             stage.fail(e.getMessage());
+            stageRepository.save(stage); // 예외 상태 즉시 DB 반영
             logService.createErrorLog(projectId, role, stageType,
                     e.getMessage(), "NT-ERR-A004", e.toString());
 

@@ -122,10 +122,7 @@ public class PipelineOrchestrator {
             AgentResult backResult = executeStage(project, stages, StageType.IMPLEMENTATION,
                     backendAgent, artifacts);
             if (backResult.getStatus() == AgentResult.Status.FAILED) {
-                // BUG-6B FIX: IMPLEMENTATION Stage FAILED DB 저장
-                // BUG-7B FIX: 조건을 FAILED로 수정 (StageExecutor가 이미 stage.fail() 호출 → IN_PROGRESS 아님)
-                Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
-                if (implStage != null && implStage.getStatus() == StageStatus.FAILED) stageRepository.save(implStage);
+                // StageExecutor에서 stage.fail() + stageRepository.save() 처리됨
                 handlePipelineFailure(project, "백엔드 구현 실패: " + backResult.getErrorMessage());
                 return;
             }
@@ -139,10 +136,7 @@ public class PipelineOrchestrator {
             AgentResult frontResult = executeStage(project, stages, StageType.IMPLEMENTATION,
                     frontendAgent, artifacts);
             if (frontResult.getStatus() == AgentResult.Status.FAILED) {
-                // BUG-6B FIX: IMPLEMENTATION Stage FAILED DB 저장
-                // BUG-7B FIX: 조건을 FAILED로 수정 (동일 이유)
-                Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
-                if (implStage != null && implStage.getStatus() == StageStatus.FAILED) stageRepository.save(implStage);
+                // StageExecutor에서 stage.fail() + stageRepository.save() 처리됨
                 handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
                 return;
             }
@@ -231,12 +225,7 @@ public class PipelineOrchestrator {
                 handleResult(project, qaResult, stages, StageType.QA, artifacts);
                 completeRelease(project, stages);
             } else {
-                // BUG-5B FIX: QA 에이전트 오류(FAILED) 시 QA Stage FAILED 처리 (IN_PROGRESS 고착 방지)
-                Stage qaStageErr = findStage(stages, StageType.QA);
-                if (qaStageErr != null && qaStageErr.getStatus() != StageStatus.COMPLETED) {
-                    qaStageErr.fail("QA 에이전트 오류: " + qaResult.getErrorMessage());
-                    stageRepository.save(qaStageErr);
-                }
+                // StageExecutor에서 stage.fail() + stageRepository.save() 처리됨
                 handlePipelineFailure(project, "QA 실패: " + qaResult.getErrorMessage());
             }
 
@@ -305,10 +294,7 @@ public class PipelineOrchestrator {
                 // 4-1. Backend 먼저 실행 — Game 클래스 생성
                 AgentResult backResult = executeStage(project, stages, StageType.IMPLEMENTATION, backendAgent, artifacts);
                 if (backResult.getStatus() == AgentResult.Status.FAILED) {
-                    // BUG-6B FIX: IMPLEMENTATION Stage FAILED DB 저장
-                    // BUG-7B FIX: 조건을 FAILED로 수정 (StageExecutor가 이미 stage.fail() 호출 → IN_PROGRESS 아님)
-                    Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
-                    if (implStage != null && implStage.getStatus() == StageStatus.FAILED) stageRepository.save(implStage);
+                    // StageExecutor에서 stage.fail() + stageRepository.save() 처리됨
                     handlePipelineFailure(project, "백엔드 구현 실패: " + backResult.getErrorMessage());
                     return;
                 }
@@ -321,10 +307,7 @@ public class PipelineOrchestrator {
                 // 4-2. Frontend 실행 — Backend의 gameJsLogicSection을 artifacts에서 참조
                 AgentResult frontResult = executeStage(project, stages, StageType.IMPLEMENTATION, frontendAgent, artifacts);
                 if (frontResult.getStatus() == AgentResult.Status.FAILED) {
-                    // BUG-6B FIX: IMPLEMENTATION Stage FAILED DB 저장
-                    // BUG-7B FIX: 조건을 FAILED로 수정 (동일 이유)
-                    Stage implStage = findStage(stages, StageType.IMPLEMENTATION);
-                    if (implStage != null && implStage.getStatus() == StageStatus.FAILED) stageRepository.save(implStage);
+                    // StageExecutor에서 stage.fail() + stageRepository.save() 처리됨
                     handlePipelineFailure(project, "프론트엔드 구현 실패: " + frontResult.getErrorMessage());
                     return;
                 }
@@ -377,12 +360,7 @@ public class PipelineOrchestrator {
                     handleResult(project, qaResult, stages, StageType.QA, artifacts);
                     completeRelease(project, stages);
                 } else {
-                    // BUG-5B FIX: QA 에이전트 오류(FAILED) 시 QA Stage FAILED 처리
-                    Stage qaStageErr = findStage(stages, StageType.QA);
-                    if (qaStageErr != null && qaStageErr.getStatus() != StageStatus.COMPLETED) {
-                        qaStageErr.fail("QA 에이전트 오류: " + qaResult.getErrorMessage());
-                        stageRepository.save(qaStageErr);
-                    }
+                    // StageExecutor에서 stage.fail() + stageRepository.save() 처리됨
                     handlePipelineFailure(project, "QA 실패: " + qaResult.getErrorMessage());
                 }
             }
@@ -810,12 +788,7 @@ public class PipelineOrchestrator {
                 handleResult(project, qaResult, stages, StageType.QA, artifacts);
                 completeRelease(project, stages);
             } else {
-                // BUG-5B FIX: QA 에이전트 오류(FAILED) 시 QA Stage FAILED 처리
-                Stage qaStageErr = findStage(stages, StageType.QA);
-                if (qaStageErr != null && qaStageErr.getStatus() != StageStatus.COMPLETED) {
-                    qaStageErr.fail("QA 에이전트 오류: " + qaResult.getErrorMessage());
-                    stageRepository.save(qaStageErr);
-                }
+                // StageExecutor에서 stage.fail() + stageRepository.save() 처리됨
                 handlePipelineFailure(project, "수정 파이프라인 QA 실패: " + qaResult.getErrorMessage());
             }
 
@@ -899,12 +872,7 @@ public class PipelineOrchestrator {
         }
 
         if (result.getStatus() == AgentResult.Status.FAILED) {
-            // BUG-6A FIX: StageExecutor에서 stage.fail()은 호출했지만 stageRepository.save() 없음 → DB 미반영
-            // BUG-7A FIX: 조건을 FAILED로 수정 — StageExecutor가 이미 stage.fail() 호출해서 status=FAILED 상태
-            Stage failedStage = findStage(stages, stageType);
-            if (failedStage != null && failedStage.getStatus() == StageStatus.FAILED) {
-                stageRepository.save(failedStage);
-            }
+            // StageExecutor에서 stage.fail() + stageRepository.save() 처리됨
             handlePipelineFailure(project, stageType + " 실패: " + result.getErrorMessage());
             return false;
         }

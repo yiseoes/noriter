@@ -37,7 +37,7 @@ public class MessageBus {
     public AgentMessageEntity send(String projectId, AgentRole from, AgentRole to,
                                     MessageType type, String content, String artifactRef) {
         log.info("[메시지 버스] 메시지 전송 - projectId={}, {} → {}, type={}, 내용 길이={}자",
-                projectId, from, to, type, content.length());
+                projectId, from, to, type, content != null ? content.length() : 0);
 
         AgentMessageEntity message = AgentMessageEntity.create(
                 projectId, from, to, type, content, artifactRef);
